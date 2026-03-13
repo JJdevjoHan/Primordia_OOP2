@@ -9,7 +9,7 @@ public class Main {
         GamePanel gamePanel = new GamePanel();
 
         window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        window.setResizable();
+        window.setResizable(true);
         window.add(gamePanel);
         window.pack();
         window.setLocationRelativeTo(null);
