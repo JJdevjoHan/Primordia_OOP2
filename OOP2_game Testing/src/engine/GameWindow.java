@@ -1,5 +1,7 @@
 package engine;
 
+import assets.Utility.FontManager;
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -9,7 +11,6 @@ public class GameWindow extends JFrame {
     private JPanel container;
 
     public GameWindow() {
-
         layout = new CardLayout();
         container = new JPanel(layout);
 
@@ -30,6 +31,7 @@ public class GameWindow extends JFrame {
 
         layout.show(container, "INTRO");
     }
+
 
     public void showGamePanel() {
         layout.show(container, "GAME");
