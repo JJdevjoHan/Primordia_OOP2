@@ -1,5 +1,3 @@
-package main;
-
 import engine.GameWindow;
 
 public class Main {

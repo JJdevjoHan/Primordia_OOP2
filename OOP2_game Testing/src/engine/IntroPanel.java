@@ -1,7 +1,6 @@
 package engine;
 
 import assets.Utility.FontManager;
-import main.Main;
 import javax.swing.*;
 import java.awt.*;
 import java.net.URL;
