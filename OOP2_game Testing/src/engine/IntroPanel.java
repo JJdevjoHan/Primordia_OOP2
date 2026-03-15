@@ -1,5 +1,6 @@
 package engine;
 
+import assets.Utility.FontManager;
 import main.Main;
 import javax.swing.*;
 import java.awt.*;
@@ -22,7 +23,6 @@ public class IntroPanel extends JPanel {
         this.setLayout(null);
 
         loadBackground("/assets/maps/splashscreen.png");
-
         createStartButton();
     }
 
@@ -30,6 +30,14 @@ public class IntroPanel extends JPanel {
         JButton startButton = new JButton("START") {
             @Override
             protected void paintComponent(Graphics g) {
+
+                /*
+
+                label.setFont(FontManager.getFont(24f));
+                title.setFont(FontManager.getFont(32f));
+
+                 */
+
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
@@ -56,7 +64,8 @@ public class IntroPanel extends JPanel {
                 btnWidth,
                 btnHeight
         );
-        startButton.setFont(new Font("Monospaced", Font.BOLD, 32));
+
+        startButton.setFont(FontManager.getFont(35));
         startButton.setForeground(Color.WHITE);
         startButton.setBackground(new Color(40, 40, 40));
         startButton.setFocusPainted(false);

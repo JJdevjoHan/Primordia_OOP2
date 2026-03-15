@@ -13,6 +13,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import javax.imageio.ImageIO;
 import javax.xml.parsers.DocumentBuilderFactory;
+
+import assets.Utility.FontManager;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -112,21 +114,28 @@ public class GamePanel extends JPanel {
         // Call setCharacters(playerIdx, enemyIdx) anytime to swap them.
         setCharacters(0, 1);
 
+        Font boldFont = FontManager.getFont(40).deriveFont(Font.BOLD);
+        Font noneBold = FontManager.getFont(22).deriveFont(Font.BOLD);
+
         // Turn Indicator Label
         turnLabel = new JLabel("PLAYER 1'S TURN", SwingConstants.CENTER);
-        turnLabel.setFont(new Font("Monospaced", Font.BOLD, 40));
+
+        /*
+        turnLabel.setFont(FontManager.getFont(40));
         turnLabel.setForeground(Color.BLACK);
+         */
+        turnLabel.setFont(boldFont);
         turnLabel.setBounds(0, 10, screenWidth, 50);
         this.add(turnLabel);
 
         // HP labels
         p1HPLabel = new JLabel("HP: 100", SwingConstants.CENTER);
-        p1HPLabel.setFont(new Font("Arial", Font.BOLD, 22));
+        p1HPLabel.setFont(noneBold);
         p1HPLabel.setForeground(Color.black);
         this.add(p1HPLabel);
 
         p2HPLabel = new JLabel("HP: 100", SwingConstants.CENTER);
-        p2HPLabel.setFont(new Font("Arial", Font.BOLD, 22));
+        p2HPLabel.setFont(noneBold);
         p2HPLabel.setForeground(Color.black);
         this.add(p2HPLabel);
 
