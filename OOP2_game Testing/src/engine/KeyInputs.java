@@ -19,7 +19,6 @@ public class KeyInputs implements KeyListener {
         if (code == KeyEvent.VK_1) gp.executeSkill(1);
         if (code == KeyEvent.VK_2) gp.executeSkill(2);
         if (code == KeyEvent.VK_3) gp.executeSkill(3);
-        if (code == KeyEvent.VK_4) gp.executeSkill(4);
     }
 
     @Override

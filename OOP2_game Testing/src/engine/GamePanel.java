@@ -24,28 +24,19 @@ public class GamePanel extends JPanel {
     private final int screenHeight = tileSize * 7;
     private static final int DEFAULT_DRAW_WIDTH = 384;
     private static final int DEFAULT_DRAW_HEIGHT = 384;
+    private static final int DEFAULT_FRAME_SIZE = 128;
+    private static final int DEFAULT_IDLE_DELAY_MS = 120;
+    private static final int DEFAULT_DEAD_DELAY_MS = 150;
+    private static final int DEFAULT_SKILL_DELAY_MS = 90;
+    private static final int DEFAULT_HURT_DELAY_MS = 90;
+    private static final int POST_ATTACK_HURT_MS = 600;
 
     // TMX map pixel size (used to convert TMX object coordinates to panel coordinates)
     private int mapPixelWidth = screenWidth;
     private int mapPixelHeight = screenHeight;
 
-    // All available characters – add new CharacterDef entries here to register more.
-    public static final List<CharacterDef> ALL_CHARACTERS = List.of(
-        new CharacterDef(
-            "Light Mage",
-            new CharacterDef.AnimationDef("/assets/spritesheet/Light Mage/Idle-Sheet.png", 128, 128, 120),
-            new CharacterDef.AnimationDef("/assets/spritesheet/Light Mage/Dead-Sheet.png", 128, 128, 150),
-            384,
-            384
-        ),
-        new CharacterDef(
-            "Idk Magician",
-            new CharacterDef.AnimationDef("/assets/spritesheet/Idk Magician/Idle.png", 128, 128, 120),
-            new CharacterDef.AnimationDef("/assets/spritesheet/Idk Magician/Dead.png", 128, 128, 150),
-            384,
-            384
-        )
-    );
+    // Characters are loaded from assets/data/characters.json with fallback defaults.
+    public static final List<CharacterDef> ALL_CHARACTERS = loadCharacterDefs();
 
     // Assets
     private Image backgroundImage;
@@ -59,6 +50,34 @@ public class GamePanel extends JPanel {
     private List<BufferedImage> enemyFrames = new ArrayList<>();
     private int enemyFrameIndex = 0;
     private Timer enemyTimer;
+
+    // Skill animation state (plays once, then returns to idle)
+    private List<List<BufferedImage>> playerSkillAnimations = new ArrayList<>();
+    private List<List<BufferedImage>> enemySkillAnimations = new ArrayList<>();
+    private List<BufferedImage> activePlayerSkillFrames = List.of();
+    private List<BufferedImage> activeEnemySkillFrames = List.of();
+    private int playerSkillFrameIndex = 0;
+    private int enemySkillFrameIndex = 0;
+    private Timer playerSkillTimer;
+    private Timer enemySkillTimer;
+    private boolean isPlayerSkillAnimating = false;
+    private boolean isEnemySkillAnimating = false;
+    private int activePlayerSkillOffsetX = 0;
+    private int activeEnemySkillOffsetX = 0;
+
+    // Hurt animation state — plays once when the target takes a damage-type skill
+    private List<BufferedImage> playerHurtFrames = new ArrayList<>();
+    private List<BufferedImage> enemyHurtFrames  = new ArrayList<>();
+    private int playerHurtFrameIndex = 0;
+    private int enemyHurtFrameIndex  = 0;
+    private Timer playerHurtTimer;
+    private Timer enemyHurtTimer;
+    private Timer playerHurtDelayTimer;
+    private Timer enemyHurtDelayTimer;
+    private Timer playerHurtWindowTimer;
+    private Timer enemyHurtWindowTimer;
+    private boolean isPlayerHurtAnimating = false;
+    private boolean isEnemyHurtAnimating = false;
 
     // Dead animation state — plays once when HP reaches 0, then holds on last frame
     private CharacterDef currentPlayerDef, currentEnemyDef;
@@ -85,6 +104,8 @@ public class GamePanel extends JPanel {
 
     // UI Elements - These now ONLY hold buttons
     private JPanel p1ButtonPanel, p2ButtonPanel;
+    private final List<JButton> p1SkillButtons = new ArrayList<>();
+    private final List<JButton> p2SkillButtons = new ArrayList<>();
     private JLabel turnLabel, p1HPLabel, p2HPLabel;
 
     public GamePanel() {
@@ -131,23 +152,24 @@ public class GamePanel extends JPanel {
         this.add(p2HPLabel);
 
         // Skill button panels
-        p1ButtonPanel = createSkillUI();
+        p1ButtonPanel = createSkillUI(p1SkillButtons);
         this.add(p1ButtonPanel);
 
-        p2ButtonPanel = createSkillUI();
+        p2ButtonPanel = createSkillUI(p2SkillButtons);
         this.add(p2ButtonPanel);
+
+        refreshSkillButtonLabels();
 
         repositionUI();
         updateGameState();
     }
 
-    private JPanel createSkillUI() {
-        JPanel panel = new JPanel(new GridLayout(2, 2, 4, 4));
+    private JPanel createSkillUI(List<JButton> buttonStore) {
+        JPanel panel = new JPanel(new GridLayout(1, 3, 4, 4));
         panel.setOpaque(false); // Transparent so background image shows through gaps
 
-        String[] skills = {"Atk", "Heal", "S.Atk", "S.Heal"};
-        for (int i = 0; i < 4; i++) {
-            JButton btn = new JButton(skills[i]);
+        for (int i = 0; i < 3; i++) {
+            JButton btn = new JButton("Skill " + (i + 1));
             btn.setFocusable(false);
             btn.setFont(new Font("Arial", Font.BOLD, 10));
             btn.setBackground(new Color(255, 255, 255, 180));
@@ -156,6 +178,7 @@ public class GamePanel extends JPanel {
             int skillID = i + 1;
             btn.addActionListener(e -> executeSkill(skillID));
             panel.add(btn);
+            buttonStore.add(btn);
         }
         return panel;
     }
@@ -176,6 +199,12 @@ public class GamePanel extends JPanel {
                 BufferedImage frame = playerDeadFrames.get(playerDeadFrameIndex);
                 g2.drawImage(frame, p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
             }
+        } else if (isPlayerHurtAnimating && !playerHurtFrames.isEmpty()) {
+            BufferedImage frame = playerHurtFrames.get(playerHurtFrameIndex);
+            g2.drawImage(frame, p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
+        } else if (isPlayerSkillAnimating && !activePlayerSkillFrames.isEmpty()) {
+            BufferedImage frame = activePlayerSkillFrames.get(playerSkillFrameIndex);
+            g2.drawImage(frame, p1SpriteX + activePlayerSkillOffsetX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
         } else if (!playerFrames.isEmpty()) {
             BufferedImage frame = playerFrames.get(playerFrameIndex);
             g2.drawImage(frame, p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
@@ -187,6 +216,12 @@ public class GamePanel extends JPanel {
                 BufferedImage frame = enemyDeadFrames.get(enemyDeadFrameIndex);
                 g2.drawImage(frame, p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
             }
+        } else if (isEnemyHurtAnimating && !enemyHurtFrames.isEmpty()) {
+            BufferedImage frame = enemyHurtFrames.get(enemyHurtFrameIndex);
+            g2.drawImage(frame, p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
+        } else if (isEnemySkillAnimating && !activeEnemySkillFrames.isEmpty()) {
+            BufferedImage frame = activeEnemySkillFrames.get(enemySkillFrameIndex);
+            g2.drawImage(frame, p2SpriteX + getEnemyDrawWidth() + activeEnemySkillOffsetX, p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
         } else if (!enemyFrames.isEmpty()) {
             BufferedImage frame = enemyFrames.get(enemyFrameIndex);
             g2.drawImage(frame, p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
@@ -228,6 +263,10 @@ public class GamePanel extends JPanel {
     public void setCharacters(int playerIdx, int enemyIdx) {
         if (playerTimer != null && playerTimer.isRunning()) playerTimer.stop();
         if (enemyTimer  != null && enemyTimer.isRunning())  enemyTimer.stop();
+        stopSkillAnimation(true);
+        stopSkillAnimation(false);
+        stopHurtTimeline(true);
+        stopHurtTimeline(false);
 
         CharacterDef playerDef = ALL_CHARACTERS.get(playerIdx);
         CharacterDef enemyDef  = ALL_CHARACTERS.get(enemyIdx);
@@ -235,12 +274,16 @@ public class GamePanel extends JPanel {
         currentPlayerDef = playerDef;
         currentEnemyDef  = enemyDef;
 
+        refreshSkillButtonLabels();
+
         updateP1DrawFromSpawn();
         updateP2DrawFromSpawn();
         repositionUI();
 
         playerFrames = loadFrames(playerDef);
         enemyFrames  = loadFrames(enemyDef);
+        playerSkillAnimations = loadSkillAnimations(playerDef);
+        enemySkillAnimations = loadSkillAnimations(enemyDef);
         playerFrameIndex = 0;
         enemyFrameIndex  = 0;
 
@@ -262,6 +305,10 @@ public class GamePanel extends JPanel {
 
         if (playerDeadTimer != null) { playerDeadTimer.stop(); playerDeadTimer = null; }
         if (enemyDeadTimer  != null) { enemyDeadTimer.stop();  enemyDeadTimer  = null; }
+        playerHurtFrames = loadHurtFrames(playerDef);
+        enemyHurtFrames  = loadHurtFrames(enemyDef);
+        playerHurtFrameIndex = 0;
+        enemyHurtFrameIndex  = 0;
         playerDeadFrames = loadDeadFrames(playerDef);
         enemyDeadFrames  = loadDeadFrames(enemyDef);
         playerDeadFrameIndex = 0;
@@ -275,6 +322,28 @@ public class GamePanel extends JPanel {
 
     private List<BufferedImage> loadDeadFrames(CharacterDef def) {
         return loadAnimationFrames(def.deadAnimation);
+    }
+
+    private List<BufferedImage> loadHurtFrames(CharacterDef def) {
+        return loadAnimationFrames(def.hurtAnimation);
+    }
+
+    private List<List<BufferedImage>> loadSkillAnimations(CharacterDef def) {
+        List<List<BufferedImage>> animations = new ArrayList<>();
+        for (int skillID = 1; skillID <= 3; skillID++) {
+            String skillSpritePath = def.getSkillSpritePath(skillID);
+            if (skillSpritePath == null || skillSpritePath.isBlank()) {
+                animations.add(List.of());
+                continue;
+            }
+            animations.add(loadAnimationFrames(new CharacterDef.AnimationDef(
+                skillSpritePath,
+                DEFAULT_FRAME_SIZE,
+                DEFAULT_FRAME_SIZE,
+                DEFAULT_SKILL_DELAY_MS
+            )));
+        }
+        return animations;
     }
 
     private List<BufferedImage> loadAnimationFrames(CharacterDef.AnimationDef animation) {
@@ -437,11 +506,23 @@ public class GamePanel extends JPanel {
         int feetY1 = p1SpriteY + getPlayerDrawHeight();
         int feetX2 = p2SpriteX + getEnemyDrawWidth() / 2;
         int feetY2 = p2SpriteY + getEnemyDrawHeight();
-        int labelW = 160, labelH = 30, btnW = tileSize, btnH = 80, gap = 5;
+        int labelW = 160, labelH = 30, btnW = tileSize * 2, btnH = 40, gap = 5;
         if (p1HPLabel    != null) p1HPLabel   .setBounds(feetX1 - labelW / 2, feetY1 + gap,                   labelW, labelH);
         if (p2HPLabel    != null) p2HPLabel   .setBounds(feetX2 - labelW / 2, feetY2 + gap,                   labelW, labelH);
         if (p1ButtonPanel != null) p1ButtonPanel.setBounds(feetX1 - btnW / 2, feetY1 + gap + labelH + gap, btnW, btnH);
         if (p2ButtonPanel != null) p2ButtonPanel.setBounds(feetX2 - btnW / 2, feetY2 + gap + labelH + gap, btnW, btnH);
+    }
+
+    private void refreshSkillButtonLabels() {
+        applySkillNamesToButtons(currentPlayerDef, p1SkillButtons);
+        applySkillNamesToButtons(currentEnemyDef, p2SkillButtons);
+    }
+
+    private void applySkillNamesToButtons(CharacterDef character, List<JButton> buttons) {
+        if (character == null || buttons.isEmpty()) return;
+        for (int i = 0; i < buttons.size(); i++) {
+            buttons.get(i).setText(character.getSkillName(i + 1));
+        }
     }
 
     private int getPlayerDrawWidth() {
@@ -476,25 +557,225 @@ public class GamePanel extends JPanel {
     public void executeSkill(int skillID) {
         if (p1HP <= 0 || p2HP <= 0) return;
 
+        boolean actingPlayerOne = isP1Turn;
+        CharacterDef actor = actingPlayerOne ? currentPlayerDef : currentEnemyDef;
+        boolean isDamageSkill = actor != null && "damage".equalsIgnoreCase(actor.getSkillType(skillID));
+
         if (isP1Turn) {
             switch (skillID) {
                 case 1 -> p2HP = Math.max(0, p2HP - 10);
                 case 2 -> p1HP = Math.min(100, p1HP + 10);
                 case 3 -> p2HP = Math.max(0, p2HP - 25);
-                case 4 -> p1HP = Math.min(100, p1HP + 30);
             }
         } else {
             switch (skillID) {
                 case 1 -> p1HP = Math.max(0, p1HP - 10);
                 case 2 -> p2HP = Math.min(100, p2HP + 10);
                 case 3 -> p1HP = Math.max(0, p1HP - 25);
-                case 4 -> p2HP = Math.min(100, p2HP + 30);
             }
         }
+
+        if (isDamageSkill) {
+            scheduleHurtTimeline(actingPlayerOne, skillID);
+        }
+        playSkillAnimation(actingPlayerOne, skillID, null);
 
         isP1Turn = !isP1Turn;
         updateGameState();
         repaint();
+    }
+
+    private void playSkillAnimation(boolean isPlayerOne, int skillID, Runnable onCastFinished) {
+        if (skillID < 1 || skillID > 3) return;
+        Runnable callback = onCastFinished != null ? onCastFinished : () -> {};
+
+        List<List<BufferedImage>> source = isPlayerOne ? playerSkillAnimations : enemySkillAnimations;
+        if (source.isEmpty() || source.size() < skillID) {
+            callback.run();
+            return;
+        }
+
+        List<BufferedImage> frames = source.get(skillID - 1);
+        if (frames == null || frames.isEmpty()) {
+            callback.run();
+            return;
+        }
+
+        if (isPlayerOne) {
+            stopSkillAnimation(true);
+            activePlayerSkillFrames = frames;
+            playerSkillFrameIndex = 0;
+            isPlayerSkillAnimating = true;
+            activePlayerSkillOffsetX = currentPlayerDef != null ? currentPlayerDef.getSkillForwardOffsetX(skillID) : 0;
+
+            playerSkillTimer = new Timer(DEFAULT_SKILL_DELAY_MS, null);
+            playerSkillTimer.addActionListener(e -> {
+                if (playerSkillFrameIndex < activePlayerSkillFrames.size() - 1) {
+                    playerSkillFrameIndex++;
+                } else {
+                    stopSkillAnimation(true);
+                    callback.run();
+                }
+                repaint();
+            });
+            playerSkillTimer.start();
+        } else {
+            stopSkillAnimation(false);
+            activeEnemySkillFrames = frames;
+            enemySkillFrameIndex = 0;
+            isEnemySkillAnimating = true;
+            int forwardOffset = currentEnemyDef != null ? currentEnemyDef.getSkillForwardOffsetX(skillID) : 0;
+            activeEnemySkillOffsetX = -forwardOffset;
+
+            enemySkillTimer = new Timer(DEFAULT_SKILL_DELAY_MS, null);
+            enemySkillTimer.addActionListener(e -> {
+                if (enemySkillFrameIndex < activeEnemySkillFrames.size() - 1) {
+                    enemySkillFrameIndex++;
+                } else {
+                    stopSkillAnimation(false);
+                    callback.run();
+                }
+                repaint();
+            });
+            enemySkillTimer.start();
+        }
+    }
+
+    private void stopSkillAnimation(boolean isPlayerOne) {
+        if (isPlayerOne) {
+            if (playerSkillTimer != null) {
+                playerSkillTimer.stop();
+                playerSkillTimer = null;
+            }
+            isPlayerSkillAnimating = false;
+            playerSkillFrameIndex = 0;
+            activePlayerSkillOffsetX = 0;
+            activePlayerSkillFrames = List.of();
+        } else {
+            if (enemySkillTimer != null) {
+                enemySkillTimer.stop();
+                enemySkillTimer = null;
+            }
+            isEnemySkillAnimating = false;
+            enemySkillFrameIndex = 0;
+            activeEnemySkillOffsetX = 0;
+            activeEnemySkillFrames = List.of();
+        }
+    }
+
+    private void scheduleHurtTimeline(boolean attackerIsPlayerOne, int skillID) {
+        CharacterDef attacker = attackerIsPlayerOne ? currentPlayerDef : currentEnemyDef;
+        if (attacker == null) return;
+
+        int castDurationMs = getSkillCastDurationMs(attackerIsPlayerOne, skillID);
+        int configuredBufferMs = (int) Math.round(attacker.getSkillHurtTriggerBufferSeconds(skillID) * 1000.0);
+        int effectiveBufferMs = Math.max(0, Math.min(configuredBufferMs, castDurationMs));
+        int hurtDurationMs = Math.max(1, (castDurationMs - effectiveBufferMs) + POST_ATTACK_HURT_MS);
+
+        startDelayedHurt(attackerIsPlayerOne ? false : true, effectiveBufferMs, hurtDurationMs);
+    }
+
+    private int getSkillCastDurationMs(boolean attackerIsPlayerOne, int skillID) {
+        List<List<BufferedImage>> source = attackerIsPlayerOne ? playerSkillAnimations : enemySkillAnimations;
+        if (skillID < 1 || source.isEmpty() || source.size() < skillID) {
+            return DEFAULT_SKILL_DELAY_MS;
+        }
+        List<BufferedImage> frames = source.get(skillID - 1);
+        int frameCount = (frames == null || frames.isEmpty()) ? 1 : frames.size();
+        return frameCount * DEFAULT_SKILL_DELAY_MS;
+    }
+
+    private void startDelayedHurt(boolean targetIsPlayer, int delayMs, int durationMs) {
+        stopHurtTimeline(targetIsPlayer);
+
+        Timer delayTimer = new Timer(delayMs, null);
+        delayTimer.setRepeats(false);
+        delayTimer.addActionListener(e -> startTimedHurt(targetIsPlayer, durationMs));
+        delayTimer.start();
+
+        if (targetIsPlayer) {
+            playerHurtDelayTimer = delayTimer;
+        } else {
+            enemyHurtDelayTimer = delayTimer;
+        }
+    }
+
+    private void startTimedHurt(boolean isPlayer, int durationMs) {
+        if (isPlayer) {
+            if (p1HP <= 0 || playerHurtFrames.isEmpty()) return;
+            if (playerHurtTimer != null) playerHurtTimer.stop();
+            if (playerHurtWindowTimer != null) playerHurtWindowTimer.stop();
+
+            isPlayerHurtAnimating = true;
+            playerHurtFrameIndex = 0;
+            playerHurtTimer = new Timer(DEFAULT_HURT_DELAY_MS, null);
+            playerHurtTimer.addActionListener(e -> {
+                if (!playerHurtFrames.isEmpty()) {
+                    playerHurtFrameIndex = (playerHurtFrameIndex + 1) % playerHurtFrames.size();
+                }
+                repaint();
+            });
+            playerHurtTimer.start();
+
+            playerHurtWindowTimer = new Timer(durationMs, null);
+            playerHurtWindowTimer.setRepeats(false);
+            playerHurtWindowTimer.addActionListener(e -> stopHurtTimeline(true));
+            playerHurtWindowTimer.start();
+        } else {
+            if (p2HP <= 0 || enemyHurtFrames.isEmpty()) return;
+            if (enemyHurtTimer != null) enemyHurtTimer.stop();
+            if (enemyHurtWindowTimer != null) enemyHurtWindowTimer.stop();
+
+            isEnemyHurtAnimating = true;
+            enemyHurtFrameIndex = 0;
+            enemyHurtTimer = new Timer(DEFAULT_HURT_DELAY_MS, null);
+            enemyHurtTimer.addActionListener(e -> {
+                if (!enemyHurtFrames.isEmpty()) {
+                    enemyHurtFrameIndex = (enemyHurtFrameIndex + 1) % enemyHurtFrames.size();
+                }
+                repaint();
+            });
+            enemyHurtTimer.start();
+
+            enemyHurtWindowTimer = new Timer(durationMs, null);
+            enemyHurtWindowTimer.setRepeats(false);
+            enemyHurtWindowTimer.addActionListener(e -> stopHurtTimeline(false));
+            enemyHurtWindowTimer.start();
+        }
+    }
+
+    private void stopHurtTimeline(boolean isPlayer) {
+        if (isPlayer) {
+            if (playerHurtDelayTimer != null) {
+                playerHurtDelayTimer.stop();
+                playerHurtDelayTimer = null;
+            }
+            if (playerHurtWindowTimer != null) {
+                playerHurtWindowTimer.stop();
+                playerHurtWindowTimer = null;
+            }
+            if (playerHurtTimer != null) {
+                playerHurtTimer.stop();
+                playerHurtTimer = null;
+            }
+            isPlayerHurtAnimating = false;
+            playerHurtFrameIndex = 0;
+        } else {
+            if (enemyHurtDelayTimer != null) {
+                enemyHurtDelayTimer.stop();
+                enemyHurtDelayTimer = null;
+            }
+            if (enemyHurtWindowTimer != null) {
+                enemyHurtWindowTimer.stop();
+                enemyHurtWindowTimer = null;
+            }
+            if (enemyHurtTimer != null) {
+                enemyHurtTimer.stop();
+                enemyHurtTimer = null;
+            }
+            isEnemyHurtAnimating = false;
+            enemyHurtFrameIndex = 0;
+        }
     }
 
     private void updateGameState() {
@@ -520,6 +801,8 @@ public class GamePanel extends JPanel {
     private void startDeadAnimation(boolean isPlayer) {
         if (isPlayer) {
             if (playerTimer != null) playerTimer.stop();
+            stopSkillAnimation(true);
+            stopHurtTimeline(true);
             if (playerDeadFrames.isEmpty()) return;
             playerDeadFrameIndex = 0;
             int delay = currentPlayerDef != null ? currentPlayerDef.deadAnimation.frameDelayMs : 150;
@@ -535,6 +818,8 @@ public class GamePanel extends JPanel {
             playerDeadTimer.start();
         } else {
             if (enemyTimer != null) enemyTimer.stop();
+            stopSkillAnimation(false);
+            stopHurtTimeline(false);
             if (enemyDeadFrames.isEmpty()) return;
             enemyDeadFrameIndex = 0;
             int delay = currentEnemyDef != null ? currentEnemyDef.deadAnimation.frameDelayMs : 150;
@@ -549,5 +834,89 @@ public class GamePanel extends JPanel {
             });
             enemyDeadTimer.start();
         }
+    }
+
+    private static List<CharacterDef> loadCharacterDefs() {
+        List<CharacterDataLoader.CharacterConfig> configs = CharacterDataLoader.loadCharacterConfigs("/assets/data/characters.json");
+        List<CharacterDef> defs = new ArrayList<>();
+
+        for (CharacterDataLoader.CharacterConfig config : configs) {
+            defs.add(new CharacterDef(
+                config.name,
+                config.skill1Name,
+                config.skill2Name,
+                config.skill3Name,
+                config.skill1Type,
+                config.skill2Type,
+                config.skill3Type,
+                config.skill1SpritePath,
+                config.skill2SpritePath,
+                config.skill3SpritePath,
+                config.skill1ForwardOffsetX,
+                config.skill2ForwardOffsetX,
+                config.skill3ForwardOffsetX,
+                config.skill1HurtTriggerBufferSeconds,
+                config.skill2HurtTriggerBufferSeconds,
+                config.skill3HurtTriggerBufferSeconds,
+                new CharacterDef.AnimationDef(config.idleSpritePath, DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_IDLE_DELAY_MS),
+                new CharacterDef.AnimationDef(config.hurtSpritePath, DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_HURT_DELAY_MS),
+                new CharacterDef.AnimationDef(config.deathSpritePath, DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_DEAD_DELAY_MS),
+                DEFAULT_DRAW_WIDTH,
+                DEFAULT_DRAW_HEIGHT
+            ));
+        }
+
+        if (!defs.isEmpty()) {
+            return List.copyOf(defs);
+        }
+
+        return List.of(
+            new CharacterDef(
+                "Light Mage",
+                "Light Sword",
+                "Halo of Aegis",
+                "Dawn Piercer",
+                "damage",
+                "defense",
+                "damage",
+                "/assets/spritesheet/Light Mage/LightSword-Sheet.png",
+                "/assets/spritesheet/Light Mage/HaloOfAegis-Sheet.png",
+                "/assets/spritesheet/Light Mage/DawnPiercer-Sheet.png",
+                0,
+                0,
+                0,
+                0.0,
+                0.0,
+                0.0,
+                new CharacterDef.AnimationDef("/assets/spritesheet/Light Mage/Idle-Sheet.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_IDLE_DELAY_MS),
+                new CharacterDef.AnimationDef("/assets/spritesheet/Light Mage/Hurt-Sheet.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_HURT_DELAY_MS),
+                new CharacterDef.AnimationDef("/assets/spritesheet/Light Mage/Dead-Sheet.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_DEAD_DELAY_MS),
+                DEFAULT_DRAW_WIDTH,
+                DEFAULT_DRAW_HEIGHT
+            ),
+            new CharacterDef(
+                "Idk Magician",
+                "Magic Arrow",
+                "Arcane Charge",
+                "Magic Sphere",
+                "damage",
+                "defense",
+                "debuff",
+                "/assets/spritesheet/Idk Magician/Magic_arrow.png",
+                "/assets/spritesheet/Idk Magician/Charge_1.png",
+                "/assets/spritesheet/Idk Magician/Magic_sphere.png",
+                0,
+                0,
+                0,
+                0.0,
+                0.0,
+                0.0,
+                new CharacterDef.AnimationDef("/assets/spritesheet/Idk Magician/Idle.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_IDLE_DELAY_MS),
+                new CharacterDef.AnimationDef("/assets/spritesheet/Idk Magician/Hurt.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_HURT_DELAY_MS),
+                new CharacterDef.AnimationDef("/assets/spritesheet/Idk Magician/Dead.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_DEAD_DELAY_MS),
+                DEFAULT_DRAW_WIDTH,
+                DEFAULT_DRAW_HEIGHT
+            )
+        );
     }
 }

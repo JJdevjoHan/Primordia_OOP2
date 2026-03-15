@@ -1,0 +1,6 @@
+"src\gtest.java"
+"src\engine\CharacterDataLoader.java"
+"src\engine\CharacterDef.java"
+"src\engine\GamePanel.java"
+"src\engine\KeyInputs.java"
+"src\main\Main.java"
