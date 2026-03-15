@@ -1,20 +1,12 @@
 package main;
 
-import engine.GamePanel;
-import javax.swing.*;
+import engine.GameWindow;
 
 public class Main {
+
     public static void main(String[] args) {
-        JFrame window = new JFrame("OOP2 Game");
-        GamePanel gamePanel = new GamePanel();
 
-        window.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        window.setResizable(true);
-        window.add(gamePanel);
-        window.pack();
-        window.setLocationRelativeTo(null);
-        window.setVisible(true);
+        new GameWindow();
 
-        gamePanel.requestFocusInWindow();
     }
 }
