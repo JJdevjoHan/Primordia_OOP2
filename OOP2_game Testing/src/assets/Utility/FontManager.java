@@ -9,6 +9,7 @@ public class FontManager {
 
     static {
         try (InputStream is = FontManager.class.getResourceAsStream("/fonts/Silver.ttf")) {
+            //lain na font is Sta.Toasty
             if (is == null) {
                 throw new IOException("Font resource not found!");
             }

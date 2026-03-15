@@ -11,13 +11,16 @@ public class GameWindow extends JFrame {
     private JPanel container;
 
     public GameWindow() {
+
         layout = new CardLayout();
         container = new JPanel(layout);
 
         IntroPanel intro = new IntroPanel(this);
+        GameModeSelector menu = new GameModeSelector(this);
         GamePanel game = new GamePanel();
 
         container.add(intro, "INTRO");
+        container.add(menu, "MENU");
         container.add(game, "GAME");
 
         add(container);
@@ -32,8 +35,11 @@ public class GameWindow extends JFrame {
         layout.show(container, "INTRO");
     }
 
+    public void showMenu(){
+        layout.show(container,"MENU");
+    }
 
-    public void showGamePanel() {
-        layout.show(container, "GAME");
+    public void showGamePanel(){
+        layout.show(container,"GAME");
     }
 }

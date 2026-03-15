@@ -81,7 +81,7 @@ public class IntroPanel extends JPanel {
         });
 
         Toolkit.getDefaultToolkit().beep();
-        startButton.addActionListener(e -> window.showGamePanel());
+        startButton.addActionListener(e -> window.showMenu());
 
         add(startButton);
     }
