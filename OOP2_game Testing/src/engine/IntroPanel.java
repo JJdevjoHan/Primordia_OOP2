@@ -67,16 +67,17 @@ public class IntroPanel extends JPanel {
 
         startButton.setFont(FontManager.getFont(35));
         startButton.setForeground(Color.WHITE);
-        startButton.setBackground(new Color(40, 40, 40));
+        startButton.setBackground(new Color(30,30,50));
         startButton.setFocusPainted(false);
+        startButton.setBorder(BorderFactory.createLineBorder(new Color(200,160,40),1));
 
         // Hover effects
         startButton.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseEntered(java.awt.event.MouseEvent evt) {
-                startButton.setBackground(new Color(70, 70, 70));
+                startButton.setBackground(new Color(70, 70, 100));
             }
             public void mouseExited(java.awt.event.MouseEvent evt) {
-                startButton.setBackground(new Color(40, 40, 40));
+                startButton.setBackground(new Color(30, 30, 50));
             }
         });
 
