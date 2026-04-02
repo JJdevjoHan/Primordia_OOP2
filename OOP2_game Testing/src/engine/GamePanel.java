@@ -15,6 +15,7 @@ import javax.imageio.ImageIO;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import assets.Utility.FontManager;
+import assets.Utility.GameBar;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -110,6 +111,12 @@ public class GamePanel extends JPanel {
     private final List<JButton> p2SkillButtons = new ArrayList<>();
     private JLabel turnLabel, p1HPLabel, p2HPLabel;
 
+    //for hp and mp bar
+    private GameBar p1HealthBar, p2HealthBar;
+
+    int barW = 200;
+    int barH = 20;
+
     public GamePanel() {
 
         this.setPreferredSize(new Dimension(screenWidth, screenHeight));
@@ -166,6 +173,14 @@ public class GamePanel extends JPanel {
 
         p2ButtonPanel = createSkillUI(p2SkillButtons);
         this.add(p2ButtonPanel);
+
+        // ✅ CREATE HEALTH BARS
+        p1HealthBar = new GameBar(100, Color.GREEN);
+        p2HealthBar = new GameBar(100, Color.RED);
+
+        // ✅ ADD TO PANEL
+        this.add(p1HealthBar);
+        this.add(p2HealthBar);
 
         refreshSkillButtonLabels();
 
@@ -510,6 +525,8 @@ public class GamePanel extends JPanel {
         p2SpriteY = feetY - getEnemyDrawHeight();
     }
 
+    /*
+
     private void repositionUI() {
         int feetX1 = p1SpriteX + getPlayerDrawWidth() / 2;
         int feetY1 = p1SpriteY + getPlayerDrawHeight();
@@ -520,6 +537,45 @@ public class GamePanel extends JPanel {
         if (p2HPLabel    != null) p2HPLabel   .setBounds(feetX2 - labelW / 2, feetY2 + gap,                   labelW, labelH);
         if (p1ButtonPanel != null) p1ButtonPanel.setBounds(feetX1 - btnW / 2, feetY1 + gap + labelH + gap, btnW, btnH);
         if (p2ButtonPanel != null) p2ButtonPanel.setBounds(feetX2 - btnW / 2, feetY2 + gap + labelH + gap, btnW, btnH);
+    }
+
+     */
+
+    private void repositionUI() {
+
+        int feetX1 = p1SpriteX + getPlayerDrawWidth() / 2;
+        int feetY1 = p1SpriteY + getPlayerDrawHeight();
+
+        int feetX2 = p2SpriteX + getEnemyDrawWidth() / 2;
+        int feetY2 = p2SpriteY + getEnemyDrawHeight();
+
+        int labelW = 160, labelH = 30;
+        int btnW = tileSize * 2, btnH = 40;
+        int gap = 5;
+
+        // ✅ HP LABELS
+        if (p1HPLabel != null)
+            p1HPLabel.setBounds(feetX1 - labelW / 2, feetY1 + gap, labelW, labelH);
+
+        if (p2HPLabel != null)
+            p2HPLabel.setBounds(feetX2 - labelW / 2, feetY2 + gap, labelW, labelH);
+
+        // ✅ BUTTON PANELS (THIS FIXES YOUR DISAPPEARING BUTTONS)
+        if (p1ButtonPanel != null)
+            p1ButtonPanel.setBounds(feetX1 - btnW / 2, feetY1 + gap + labelH + gap, btnW, btnH);
+
+        if (p2ButtonPanel != null)
+            p2ButtonPanel.setBounds(feetX2 - btnW / 2, feetY2 + gap + labelH + gap, btnW, btnH);
+
+        // ✅ HEALTH BARS (NEW)
+        int barW = 200;
+        int barH = 20;
+
+        if (p1HealthBar != null)
+            p1HealthBar.setBounds(feetX1 - barW / 2, p1SpriteY - 20, barW, barH);
+
+        if (p2HealthBar != null)
+            p2HealthBar.setBounds(feetX2 - barW / 2, p2SpriteY - 20, barW, barH);
     }
 
     private void refreshSkillButtonLabels() {
@@ -561,6 +617,32 @@ public class GamePanel extends JPanel {
         Path resolved = (base == null ? Paths.get(normalizedRelative) : base.resolve(normalizedRelative)).normalize();
         String resourcePath = resolved.toString().replace('\\', '/');
         return resourcePath.startsWith("/") ? resourcePath : "/" + resourcePath;
+    }
+
+    private void updateGameState() {
+
+        // Clamp HP
+        p1HP = Math.max(0, Math.min(100, p1HP));
+        p2HP = Math.max(0, Math.min(100, p2HP));
+
+        p1HPLabel.setText("HP: " + p1HP);
+        p2HPLabel.setText("HP: " + p2HP);
+
+        if (p1HealthBar != null) p1HealthBar.updateValue(p1HP);
+        if (p2HealthBar != null) p2HealthBar.updateValue(p2HP);
+
+        if (p1HP <= 0 && playerDeadTimer == null) startDeadAnimation(true);
+        if (p2HP <= 0 && enemyDeadTimer  == null) startDeadAnimation(false);
+
+        if (p1HP <= 0 || p2HP <= 0) {
+            turnLabel.setText(p1HP <= 0 ? "PLAYER 2 WINS!" : "PLAYER 1 WINS!");
+            p1ButtonPanel.setVisible(false);
+            p2ButtonPanel.setVisible(false);
+        } else {
+            turnLabel.setText(isP1Turn ? "PLAYER 1'S TURN" : "PLAYER 2'S TURN");
+            p1ButtonPanel.setVisible(isP1Turn);
+            p2ButtonPanel.setVisible(!isP1Turn);
+        }
     }
 
     public void executeSkill(int skillID) {
@@ -787,7 +869,8 @@ public class GamePanel extends JPanel {
         }
     }
 
-    private void updateGameState() {
+    /*
+    public void updateGameState() {
         p1HPLabel.setText("HP: " + p1HP);
         p2HPLabel.setText("HP: " + p2HP);
 
@@ -806,6 +889,9 @@ public class GamePanel extends JPanel {
             p2ButtonPanel.setVisible(!isP1Turn);
         }
     }
+
+
+     */
 
     private void startDeadAnimation(boolean isPlayer) {
         if (isPlayer) {

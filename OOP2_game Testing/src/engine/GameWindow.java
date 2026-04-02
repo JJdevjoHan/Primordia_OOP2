@@ -19,6 +19,7 @@ public class GameWindow extends JFrame {
         GameModeSelector menu = new GameModeSelector(this);
         GamePanel game = new GamePanel();
 
+
         container.add(intro, "INTRO");
         container.add(menu, "MENU");
         container.add(game, "GAME");
@@ -36,10 +37,12 @@ public class GameWindow extends JFrame {
     }
 
     public void showMenu(){
+
         layout.show(container,"MENU");
     }
 
     public void showGamePanel(){
         layout.show(container,"GAME");
     }
+
 }
