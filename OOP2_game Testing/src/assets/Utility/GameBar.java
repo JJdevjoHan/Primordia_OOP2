@@ -1,4 +1,5 @@
 package assets.Utility;
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -14,7 +15,7 @@ public class GameBar extends JPanel {
         this.barColor = color;
 
         setOpaque(false);
-        setPreferredSize(new Dimension(200, 20));
+        setPreferredSize(new Dimension(220, 18)); // thinner, cleaner
     }
 
     public void updateValue(int current) {
@@ -31,6 +32,7 @@ public class GameBar extends JPanel {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
 
+        // Smooth rendering
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         int w = getWidth();
@@ -38,28 +40,29 @@ public class GameBar extends JPanel {
 
         if (maxVal <= 0) maxVal = 1;
 
-        double percent = (double) currentVal / maxVal;
-        if (percent < 0) percent = 0;
-
+        float percent = Math.max(0, (float) currentVal / maxVal);
         int fillWidth = (int) (w * percent);
 
-        // Background
-        g2.setColor(new Color(50, 50, 50));
-        int[] xBg = {0, w, w - 15, -15};
-        int[] yBg = {0, 0, h, h};
-        g2.fillPolygon(xBg, yBg, 4);
+        int arc = 12;
 
-        // Fill
-        g2.setColor(barColor);
+        g2.setColor(new Color(30, 30, 30, 200));
+        g2.fillRoundRect(0, 0, w, h, arc, arc);
+
         if (fillWidth > 0) {
-            int[] xFill = {0, fillWidth, fillWidth - 15, -15};
-            int[] yFill = {0, 0, h, h};
-            g2.fillPolygon(xFill, yFill, 4);
+            GradientPaint gradient = new GradientPaint(
+                    0, 0, barColor.brighter(),
+                    w, h, barColor.darker()
+            );
+            g2.setPaint(gradient);
+            g2.fillRoundRect(0, 0, fillWidth, h, arc, arc);
+
+            // --- Soft glow effect ---
+            g2.setColor(new Color(barColor.getRed(), barColor.getGreen(), barColor.getBlue(), 80));
+            g2.fillRoundRect(0, 0, fillWidth, h, arc, arc);
         }
 
-        // Border
-        g2.setColor(Color.WHITE);
-        g2.setStroke(new BasicStroke(2));
-        g2.drawPolygon(xBg, yBg, 4);
+        g2.setColor(new Color(212, 175, 55));
+        g2.setStroke(new BasicStroke(1.5f));
+        g2.drawRoundRect(0, 0, w - 1, h - 1, arc, arc);
     }
 }
