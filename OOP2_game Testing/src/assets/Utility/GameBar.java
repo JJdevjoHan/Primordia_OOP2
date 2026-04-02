@@ -32,7 +32,6 @@ public class GameBar extends JPanel {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
 
-        // Smooth rendering
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         int w = getWidth();
@@ -56,7 +55,6 @@ public class GameBar extends JPanel {
             g2.setPaint(gradient);
             g2.fillRoundRect(0, 0, fillWidth, h, arc, arc);
 
-            // --- Soft glow effect ---
             g2.setColor(new Color(barColor.getRed(), barColor.getGreen(), barColor.getBlue(), 80));
             g2.fillRoundRect(0, 0, fillWidth, h, arc, arc);
         }
