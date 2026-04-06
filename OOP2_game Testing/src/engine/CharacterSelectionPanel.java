@@ -5,6 +5,7 @@ import assets.Utility.FontManager;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.net.URL;
@@ -46,9 +47,17 @@ public class CharacterSelectionPanel extends JPanel {
         this.selectedMode = mode;
         this.characters = GamePanel.ALL_CHARACTERS;
 
+        setPreferredSize(new Dimension(SCREEN_WIDTH, SCREEN_HEIGHT));
         setFocusable(true);
-        requestFocusInWindow();
-        setFocusTraversalKeysEnabled(false);
+
+        addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                handleInput(e.getKeyCode());
+            }
+        });
+
+        resetSelectionState();
     }
 
 
