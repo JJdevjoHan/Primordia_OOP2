@@ -4,7 +4,6 @@ import assets.Utility.FontManager;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
 import java.net.URL;
 
 public class GameModeSelector extends JPanel {
@@ -56,7 +55,7 @@ public class GameModeSelector extends JPanel {
         add(survival);
         add(arcade);
 
-        pvp.addActionListener(_ -> window.showGamePanel());
+        pvp.addActionListener(ActionEvent_ -> window.showCharacterSelection());
 
     }
 

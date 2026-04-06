@@ -16,9 +16,13 @@ public final class CharacterDataLoader {
 
     public static class CharacterConfig {
         public final String name;
+        public final String backstory;
         public final String skill1Name;
         public final String skill2Name;
         public final String skill3Name;
+        public final String skill1Description;
+        public final String skill2Description;
+        public final String skill3Description;
         public final String skill1Type;
         public final String skill2Type;
         public final String skill3Type;
@@ -37,9 +41,13 @@ public final class CharacterDataLoader {
 
         public CharacterConfig(
             String name,
+            String backstory,
             String skill1Name,
             String skill2Name,
             String skill3Name,
+            String skill1Description,
+            String skill2Description,
+            String skill3Description,
             String skill1Type,
             String skill2Type,
             String skill3Type,
@@ -57,9 +65,13 @@ public final class CharacterDataLoader {
             String deathSpritePath
         ) {
             this.name = name;
+            this.backstory = backstory;
             this.skill1Name = skill1Name;
             this.skill2Name = skill2Name;
             this.skill3Name = skill3Name;
+            this.skill1Description = skill1Description;
+            this.skill2Description = skill2Description;
+            this.skill3Description = skill3Description;
             this.skill1Type = skill1Type;
             this.skill2Type = skill2Type;
             this.skill3Type = skill3Type;
@@ -101,6 +113,7 @@ public final class CharacterDataLoader {
                 if (!(entry instanceof Map<?, ?> characterMap)) continue;
 
                 String name = toStringValue(characterMap.get("name"));
+                String backstory = toStringValue(characterMap.get("backstory"));
                 List<?> skills = asList(characterMap.get("skills"));
                 Map<?, ?> sprites = asMap(characterMap.get("sprites"));
                 Map<?, ?> skillOffsets = asMap(characterMap.get("skillOffsets"));
@@ -108,6 +121,9 @@ public final class CharacterDataLoader {
                 String skill1Name = getSkillName(skills, 0, "Skill 1");
                 String skill2Name = getSkillName(skills, 1, "Skill 2");
                 String skill3Name = getSkillName(skills, 2, "Skill 3");
+                String skill1Description = getSkillDescription(skills, 0, "No description available.");
+                String skill2Description = getSkillDescription(skills, 1, "No description available.");
+                String skill3Description = getSkillDescription(skills, 2, "No description available.");
                 String skill1Type = getSkillType(skills, 0, "damage");
                 String skill2Type = getSkillType(skills, 1, "defense");
                 String skill3Type = getSkillType(skills, 2, "damage");
@@ -131,9 +147,13 @@ public final class CharacterDataLoader {
 
                 result.add(new CharacterConfig(
                     name,
+                    backstory,
                     skill1Name,
                     skill2Name,
                     skill3Name,
+                    skill1Description,
+                    skill2Description,
+                    skill3Description,
                     skill1Type,
                     skill2Type,
                     skill3Type,
@@ -168,6 +188,12 @@ public final class CharacterDataLoader {
     private static String getSkillType(List<?> skills, int index, String fallback) {
         if (skills.size() <= index || !(skills.get(index) instanceof Map<?, ?> skillMap)) return fallback;
         String value = toStringValue(skillMap.get("type"));
+        return (value == null || value.isBlank()) ? fallback : value;
+    }
+
+    private static String getSkillDescription(List<?> skills, int index, String fallback) {
+        if (skills.size() <= index || !(skills.get(index) instanceof Map<?, ?> skillMap)) return fallback;
+        String value = toStringValue(skillMap.get("description"));
         return (value == null || value.isBlank()) ? fallback : value;
     }
 

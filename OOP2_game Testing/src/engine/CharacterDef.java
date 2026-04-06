@@ -20,9 +20,13 @@ public class CharacterDef {
     }
 
     public final String name;
+    public final String backstory;
     public final String skill1Name;
     public final String skill2Name;
     public final String skill3Name;
+    public final String skill1Description;
+    public final String skill2Description;
+    public final String skill3Description;
     public final String skill1Type;
     public final String skill2Type;
     public final String skill3Type;
@@ -42,7 +46,9 @@ public class CharacterDef {
     public final int drawHeight;
 
     public CharacterDef(String name,
+                        String backstory,
                         String skill1Name, String skill2Name, String skill3Name,
+                        String skill1Description, String skill2Description, String skill3Description,
                         String skill1Type, String skill2Type, String skill3Type,
                         String skill1SpritePath, String skill2SpritePath, String skill3SpritePath,
                         int skill1ForwardOffsetX, int skill2ForwardOffsetX, int skill3ForwardOffsetX,
@@ -50,9 +56,13 @@ public class CharacterDef {
                         AnimationDef idleAnimation, AnimationDef hurtAnimation, AnimationDef deadAnimation,
                         int drawWidth, int drawHeight) {
         this.name = name;
+        this.backstory = backstory == null ? "" : backstory;
         this.skill1Name = skill1Name;
         this.skill2Name = skill2Name;
         this.skill3Name = skill3Name;
+        this.skill1Description = skill1Description == null ? "" : skill1Description;
+        this.skill2Description = skill2Description == null ? "" : skill2Description;
+        this.skill3Description = skill3Description == null ? "" : skill3Description;
         this.skill1Type = skill1Type;
         this.skill2Type = skill2Type;
         this.skill3Type = skill3Type;
@@ -95,6 +105,15 @@ public class CharacterDef {
             case 1 -> skill1Type;
             case 2 -> skill2Type;
             case 3 -> skill3Type;
+            default -> "";
+        };
+    }
+
+    public String getSkillDescription(int skillID) {
+        return switch (skillID) {
+            case 1 -> skill1Description;
+            case 2 -> skill2Description;
+            case 3 -> skill3Description;
             default -> "";
         };
     }

@@ -118,6 +118,10 @@ public class GamePanel extends JPanel {
     int barH = 20;
 
     public GamePanel() {
+        this(0, 1);
+    }
+
+    public GamePanel(int playerCharacterIndex, int enemyCharacterIndex) {
 
         this.setPreferredSize(new Dimension(screenWidth, screenHeight));
         this.setFocusable(true);
@@ -138,9 +142,10 @@ public class GamePanel extends JPanel {
         // Load map background and spawn points from TMX.
         loadMapData("/assets/maps/map1.tmx");
 
-        // Default: player = Light Mage (index 0), enemy = Idk Magician (index 1).
-        // Call setCharacters(playerIdx, enemyIdx) anytime to swap them.
-        setCharacters(0, 1);
+        // Start with selected characters and clamp indices when needed.
+        int safePlayerIndex = sanitizeCharacterIndex(playerCharacterIndex, 0);
+        int safeEnemyIndex = sanitizeCharacterIndex(enemyCharacterIndex, safePlayerIndex == 0 ? 1 : 0);
+        setCharacters(safePlayerIndex, safeEnemyIndex);
 
         Font boldFont = FontManager.getFont(40).deriveFont(Font.BOLD);
         Font noneBold = FontManager.getFont(22).deriveFont(Font.BOLD);
@@ -186,6 +191,19 @@ public class GamePanel extends JPanel {
 
         repositionUI();
         updateGameState();
+    }
+
+    private int sanitizeCharacterIndex(int requestedIndex, int fallbackIndex) {
+        if (ALL_CHARACTERS.isEmpty()) {
+            return 0;
+        }
+        if (requestedIndex >= 0 && requestedIndex < ALL_CHARACTERS.size()) {
+            return requestedIndex;
+        }
+        if (fallbackIndex >= 0 && fallbackIndex < ALL_CHARACTERS.size()) {
+            return fallbackIndex;
+        }
+        return 0;
     }
 
     private JPanel createSkillUI(List<JButton> buttonStore) {
@@ -938,9 +956,13 @@ public class GamePanel extends JPanel {
         for (CharacterDataLoader.CharacterConfig config : configs) {
             defs.add(new CharacterDef(
                 config.name,
+                config.backstory,
                 config.skill1Name,
                 config.skill2Name,
                 config.skill3Name,
+                config.skill1Description,
+                config.skill2Description,
+                config.skill3Description,
                 config.skill1Type,
                 config.skill2Type,
                 config.skill3Type,
@@ -968,9 +990,13 @@ public class GamePanel extends JPanel {
         return List.of(
             new CharacterDef(
                 "Light Mage",
+                "A former temple guardian who forged sacred combat arts to protect frontier villages.",
                 "Light Sword",
                 "Halo of Aegis",
                 "Dawn Piercer",
+                "Unleashes a radiant slash that deals high single-target light damage.",
+                "Creates a protective halo that grants a shield and minor regeneration to herself.",
+                "Calls down a focused beam that burns one enemy with concentrated light damage.",
                 "damage",
                 "defense",
                 "damage",
@@ -991,9 +1017,13 @@ public class GamePanel extends JPanel {
             ),
             new CharacterDef(
                 "Idk Magician",
+                "A wandering arcane prodigy who channels unstable spellcraft in battle.",
                 "Magic Arrow",
                 "Arcane Charge",
                 "Magic Sphere",
+                "Fires a condensed arcane bolt that pierces one target and deals medium magic damage.",
+                "Wraps the caster in a rune shield, reducing incoming damage for 2 turns.",
+                "Summons a rotating sphere that shocks enemies and lowers their attack.",
                 "damage",
                 "defense",
                 "debuff",
