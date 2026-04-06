@@ -16,12 +16,15 @@ import java.nio.file.Paths;
 import javax.imageio.ImageIO;
 import javax.xml.parsers.DocumentBuilderFactory;
 
+import assets.Utility.BackButton;
 import assets.Utility.FontManager;
 import assets.Utility.GameBar;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+
+import static java.awt.SystemColor.window;
 
 public class GamePanel extends JPanel {
     private final int tileSize = 128;
@@ -133,6 +136,8 @@ public class GamePanel extends JPanel {
     int barW = 200;
     int barH = 20;
 
+    private GameWindow window;
+
     public GamePanel() {
         this(0, 1);
     }
@@ -152,8 +157,13 @@ public class GamePanel extends JPanel {
             }
         });
 
+
         // Use Null Layout to place buttons at exact X/Y coordinate below the sprites
         this.setLayout(null);
+
+        JButton backBtn = new BackButton().createBackButton(window, this);
+        add(backBtn);
+
 
         // Load map background and spawn points from TMX.
         loadMapData("/assets/maps/map1.tmx");
@@ -173,6 +183,7 @@ public class GamePanel extends JPanel {
         turnLabel.setFont(FontManager.getFont(40));
         turnLabel.setForeground(Color.BLACK);
          */
+
         turnLabel.setFont(boldFont);
         turnLabel.setBounds(0, 10, screenWidth, 50);
         this.add(turnLabel);
@@ -207,6 +218,17 @@ public class GamePanel extends JPanel {
 
         repositionUI();
         updateGameState();
+    }
+
+    @Override
+    public void doLayout() {
+        super.doLayout();
+        // position the button bottom-right
+        for (Component c : getComponents()) {
+            if (c instanceof JButton && ((JButton)c).getText().equals("Back")) {
+                c.setBounds(getWidth() - 120, getHeight() - 70, 100, 40);
+            }
+        }
     }
 
     private int sanitizeCharacterIndex(int requestedIndex, int fallbackIndex) {
