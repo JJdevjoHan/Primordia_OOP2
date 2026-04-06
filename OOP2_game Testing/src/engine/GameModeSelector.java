@@ -44,7 +44,7 @@ public class GameModeSelector extends JPanel {
         int btnHeight = 50;
         int centerX = screenWidth/2 - btnWidth/2;
 
-        JButton pvp = createRPGButton("Player vs Player");
+        JButton pvp = createRPGButton("Versus");
         JButton survival = createRPGButton("Survival");
         JButton arcade = createRPGButton("Arcade");
 
