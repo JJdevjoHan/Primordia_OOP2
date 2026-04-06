@@ -6,7 +6,9 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,6 +35,9 @@ public class GamePanel extends JPanel {
     private static final int DEFAULT_SKILL_DELAY_MS = 90;
     private static final int DEFAULT_HURT_DELAY_MS = 90;
     private static final int POST_ATTACK_HURT_MS = 600;
+    private static final int DARK_WIZARD_PROJECTILE_DRAW_SIZE = 144;
+    private static final int DARK_WIZARD_PROJECTILE_VERTICAL_OFFSET = 50;
+    private static final int DARK_WIZARD_PROJECTILE_SPEED = 44;
 
     // TMX map pixel size (used to convert TMX object coordinates to panel coordinates)
     private int mapPixelWidth = screenWidth;
@@ -67,6 +72,17 @@ public class GamePanel extends JPanel {
     private boolean isEnemySkillAnimating = false;
     private int activePlayerSkillOffsetX = 0;
     private int activeEnemySkillOffsetX = 0;
+
+    // Dark Wizard projectile animation state.
+    private final Map<String, List<BufferedImage>> projectileAnimationCache = new HashMap<>();
+    private List<BufferedImage> activeProjectileFrames = List.of();
+    private int projectileFrameIndex = 0;
+    private int projectileX = 0;
+    private int projectileY = 0;
+    private int projectileDirection = 1;
+    private boolean projectileIsPlayerOne = true;
+    private Timer projectileTimer;
+    private boolean isProjectileAnimating = false;
 
     // Hurt animation state — plays once when the target takes a damage-type skill
     private List<BufferedImage> playerHurtFrames = new ArrayList<>();
@@ -268,6 +284,19 @@ public class GamePanel extends JPanel {
             BufferedImage frame = enemyFrames.get(enemyFrameIndex);
             g2.drawImage(frame, p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
         }
+
+        if (isProjectileAnimating && !activeProjectileFrames.isEmpty()) {
+            BufferedImage frame = activeProjectileFrames.get(projectileFrameIndex);
+            if (frame != null) {
+                int drawWidth = DARK_WIZARD_PROJECTILE_DRAW_SIZE;
+                int drawHeight = DARK_WIZARD_PROJECTILE_DRAW_SIZE;
+                if (projectileIsPlayerOne) {
+                    g2.drawImage(frame, projectileX, projectileY, projectileX + drawWidth, projectileY + drawHeight, 0, 0, frame.getWidth(), frame.getHeight(), this);
+                } else {
+                    g2.drawImage(frame, projectileX + drawWidth, projectileY, projectileX, projectileY + drawHeight, 0, 0, frame.getWidth(), frame.getHeight(), this);
+                }
+            }
+        }
     }
 
     private void loadMapData(String tmxResourcePath) {
@@ -307,6 +336,7 @@ public class GamePanel extends JPanel {
         if (enemyTimer  != null && enemyTimer.isRunning())  enemyTimer.stop();
         stopSkillAnimation(true);
         stopSkillAnimation(false);
+        stopProjectileAnimation();
         stopHurtTimeline(true);
         stopHurtTimeline(false);
 
@@ -669,6 +699,9 @@ public class GamePanel extends JPanel {
         boolean actingPlayerOne = isP1Turn;
         CharacterDef actor = actingPlayerOne ? currentPlayerDef : currentEnemyDef;
         boolean isDamageSkill = actor != null && "damage".equalsIgnoreCase(actor.getSkillType(skillID));
+        boolean isDarkWizardProjectile = actor != null
+            && "Dark Wizard".equalsIgnoreCase(actor.name)
+            && (skillID == 2 || skillID == 3);
 
         if (isP1Turn) {
             switch (skillID) {
@@ -686,6 +719,11 @@ public class GamePanel extends JPanel {
 
         if (isDamageSkill) {
             scheduleHurtTimeline(actingPlayerOne, skillID);
+        }
+        if (isDarkWizardProjectile) {
+            startProjectileAnimation(actingPlayerOne, skillID);
+        } else {
+            stopProjectileAnimation();
         }
         playSkillAnimation(actingPlayerOne, skillID, null);
 
@@ -770,6 +808,107 @@ public class GamePanel extends JPanel {
             activeEnemySkillOffsetX = 0;
             activeEnemySkillFrames = List.of();
         }
+    }
+
+    private void startProjectileAnimation(boolean isPlayerOne, int skillID) {
+        if (skillID != 2 && skillID != 3) {
+            return;
+        }
+
+        CharacterDef actor = isPlayerOne ? currentPlayerDef : currentEnemyDef;
+        if (actor == null || !"Dark Wizard".equalsIgnoreCase(actor.name)) {
+            return;
+        }
+
+        List<BufferedImage> frames = loadDarkWizardProjectileFrames(skillID);
+        if (frames.isEmpty()) {
+            return;
+        }
+
+        stopProjectileAnimation();
+
+        int attackerX = isPlayerOne ? p1SpriteX : p2SpriteX;
+        int attackerY = isPlayerOne ? p1SpriteY : p2SpriteY;
+        int attackerWidth = isPlayerOne ? getPlayerDrawWidth() : getEnemyDrawWidth();
+        int attackerHeight = isPlayerOne ? getPlayerDrawHeight() : getEnemyDrawHeight();
+        int targetX = isPlayerOne ? p2SpriteX : p1SpriteX;
+        int targetWidth = isPlayerOne ? getEnemyDrawWidth() : getPlayerDrawWidth();
+
+        int projectileWidth = DARK_WIZARD_PROJECTILE_DRAW_SIZE;
+        int projectileHeight = DARK_WIZARD_PROJECTILE_DRAW_SIZE;
+
+        projectileDirection = attackerX <= targetX ? 1 : -1;
+        projectileIsPlayerOne = isPlayerOne;
+        projectileX = attackerX + (attackerWidth / 2) - (projectileWidth / 2);
+        projectileY = attackerY + (attackerHeight / 2) - (projectileHeight / 2) + DARK_WIZARD_PROJECTILE_VERTICAL_OFFSET;
+        activeProjectileFrames = frames;
+        projectileFrameIndex = 0;
+        isProjectileAnimating = true;
+
+        int attackerCenterX = attackerX + (attackerWidth / 2);
+        int targetCenterX = targetX + (targetWidth / 2);
+        int stopBoundary = projectileDirection > 0
+            ? targetCenterX - (projectileWidth / 2)
+            : targetCenterX + (projectileWidth / 2);
+
+        projectileTimer = new Timer(DEFAULT_SKILL_DELAY_MS, null);
+        projectileTimer.addActionListener(e -> {
+            if (!isProjectileAnimating || activeProjectileFrames.isEmpty()) {
+                stopProjectileAnimation();
+                return;
+            }
+
+            projectileFrameIndex = (projectileFrameIndex + 1) % activeProjectileFrames.size();
+            projectileX += projectileDirection * DARK_WIZARD_PROJECTILE_SPEED;
+
+            if ((projectileDirection > 0 && projectileX >= stopBoundary)
+                || (projectileDirection < 0 && projectileX <= stopBoundary)) {
+                stopProjectileAnimation();
+            }
+
+            repaint();
+        });
+        projectileTimer.start();
+    }
+
+    private List<BufferedImage> loadDarkWizardProjectileFrames(int skillID) {
+        String sheetPath = switch (skillID) {
+            case 2 -> "/assets/spritesheet/Dark Wizard/Fire_1-Sheet.png";
+            case 3 -> "/assets/spritesheet/Dark Wizard/Fire_2-Sheet.png";
+            default -> null;
+        };
+
+        if (sheetPath == null) {
+            return List.of();
+        }
+
+        List<BufferedImage> cachedFrames = projectileAnimationCache.get(sheetPath);
+        if (cachedFrames != null) {
+            return cachedFrames;
+        }
+
+        List<BufferedImage> frames = loadAnimationFrames(new CharacterDef.AnimationDef(
+            sheetPath,
+            64,
+            64,
+            DEFAULT_SKILL_DELAY_MS
+        ));
+        projectileAnimationCache.put(sheetPath, frames);
+        return frames;
+    }
+
+    private void stopProjectileAnimation() {
+        if (projectileTimer != null) {
+            projectileTimer.stop();
+            projectileTimer = null;
+        }
+        isProjectileAnimating = false;
+        projectileFrameIndex = 0;
+        projectileX = 0;
+        projectileY = 0;
+        projectileDirection = 1;
+        projectileIsPlayerOne = true;
+        activeProjectileFrames = List.of();
     }
 
     private void scheduleHurtTimeline(boolean attackerIsPlayerOne, int skillID) {
