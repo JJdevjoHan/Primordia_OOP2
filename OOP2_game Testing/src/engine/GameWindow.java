@@ -28,9 +28,9 @@ public class GameWindow extends JFrame {
 
         add(container);
 
-        setTitle("OOP2 Game");
+        setTitle("Primordia");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setResizable(true);
+        setResizable(false);
         pack();
         setLocationRelativeTo(null);
         setVisible(true);
