@@ -1,0 +1,483 @@
+package engine;
+
+import assets.Utility.FontManager;
+
+import javax.imageio.ImageIO;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.image.BufferedImage;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class CharacterSelectionPanel extends JPanel {
+    private static final int SCREEN_WIDTH = 1536;
+    private static final int SCREEN_HEIGHT = 896;
+    private static final int GRID_COLUMNS = 4;
+    private static final int GRID_ROWS = 2;
+    private static final int GRID_SLOTS = GRID_COLUMNS * GRID_ROWS;
+    private static final int DEFAULT_FRAME_DELAY_MS = 120;
+
+    private final GameWindow window;
+    private final List<CharacterDef> characters;
+
+    private final Map<String, List<BufferedImage>> animationCache = new HashMap<>();
+    private final Map<Integer, BufferedImage> thumbnailCache = new HashMap<>();
+
+    private List<BufferedImage> previewFrames = List.of();
+    private int previewFrameIndex = 0;
+    private Timer previewTimer;
+
+    private int focusedIndex = 0;
+    private int playerOneIndex = -1;
+    private boolean selectingPlayerOne = true;
+
+    private final Font titleFont = FontManager.getFont(38f).deriveFont(Font.BOLD);
+    private final Font subtitleFont = FontManager.getFont(26f).deriveFont(Font.BOLD);
+    private final Font bodyFont = FontManager.getFont(22f).deriveFont(Font.PLAIN);
+    private final Font labelFont = FontManager.getFont(24f).deriveFont(Font.BOLD);
+
+    public CharacterSelectionPanel(GameWindow window) {
+        this.window = window;
+        this.characters = GamePanel.ALL_CHARACTERS;
+
+        setPreferredSize(new Dimension(SCREEN_WIDTH, SCREEN_HEIGHT));
+        setFocusable(true);
+
+        addKeyListener(new KeyAdapter() {
+            @Override
+            public void keyPressed(KeyEvent e) {
+                handleInput(e.getKeyCode());
+            }
+        });
+
+        resetSelectionState();
+    }
+
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        SwingUtilities.invokeLater(this::requestFocusInWindow);
+    }
+
+    public void resetSelectionState() {
+        selectingPlayerOne = true;
+        playerOneIndex = -1;
+        focusedIndex = 0;
+        previewFrameIndex = 0;
+        if (!characters.isEmpty()) {
+            setFocusedIndex(0);
+        }
+        SwingUtilities.invokeLater(this::requestFocusInWindow);
+        repaint();
+    }
+
+    private void handleInput(int keyCode) {
+        if (characters.isEmpty()) {
+            return;
+        }
+
+        switch (keyCode) {
+            case KeyEvent.VK_LEFT -> moveFocus(-1, 0);
+            case KeyEvent.VK_RIGHT -> moveFocus(1, 0);
+            case KeyEvent.VK_UP -> moveFocus(0, -1);
+            case KeyEvent.VK_DOWN -> moveFocus(0, 1);
+            case KeyEvent.VK_ENTER -> confirmSelection();
+            default -> {
+                return;
+            }
+        }
+
+        repaint();
+    }
+
+    private void moveFocus(int dx, int dy) {
+        if (characters.size() == 1) {
+            setFocusedIndex(0);
+            return;
+        }
+
+        int nextIndex = focusedIndex;
+        if (dx < 0 || dy < 0) {
+            nextIndex = Math.max(0, focusedIndex - 1);
+        } else if (dx > 0 || dy > 0) {
+            nextIndex = Math.min(characters.size() - 1, focusedIndex + 1);
+        }
+
+        if (nextIndex != focusedIndex) {
+            setFocusedIndex(nextIndex);
+        }
+    }
+
+    private void setFocusedIndex(int newIndex) {
+        if (newIndex < 0 || newIndex >= characters.size()) {
+            return;
+        }
+        focusedIndex = newIndex;
+        CharacterDef selected = characters.get(focusedIndex);
+        previewFrames = loadAnimationFrames(selected.idleAnimation);
+        previewFrameIndex = 0;
+        restartPreviewTimer(selected.idleAnimation.frameDelayMs);
+    }
+
+    private void confirmSelection() {
+        if (selectingPlayerOne) {
+            playerOneIndex = focusedIndex;
+            selectingPlayerOne = false;
+            return;
+        }
+        window.startPvPMatch(playerOneIndex, focusedIndex);
+    }
+
+    private void restartPreviewTimer(int frameDelayMs) {
+        if (previewTimer != null) {
+            previewTimer.stop();
+            previewTimer = null;
+        }
+
+        if (previewFrames.size() <= 1) {
+            return;
+        }
+
+        int safeDelay = frameDelayMs > 0 ? frameDelayMs : DEFAULT_FRAME_DELAY_MS;
+        previewTimer = new Timer(safeDelay, e -> {
+            previewFrameIndex = (previewFrameIndex + 1) % previewFrames.size();
+            repaint();
+        });
+        previewTimer.start();
+    }
+
+    private List<BufferedImage> loadAnimationFrames(CharacterDef.AnimationDef animation) {
+        if (animation == null || animation.sheetPath == null || animation.sheetPath.isBlank()) {
+            return List.of();
+        }
+
+        List<BufferedImage> cachedFrames = animationCache.get(animation.sheetPath);
+        if (cachedFrames != null) {
+            return cachedFrames;
+        }
+
+        List<BufferedImage> frames = new ArrayList<>();
+        try {
+            URL resource = getClass().getResource(animation.sheetPath);
+            if (resource == null) {
+                animationCache.put(animation.sheetPath, List.of());
+                return List.of();
+            }
+
+            BufferedImage sheet = ImageIO.read(resource);
+            if (sheet == null || animation.frameWidth <= 0 || animation.frameHeight <= 0) {
+                animationCache.put(animation.sheetPath, List.of());
+                return List.of();
+            }
+
+            int columns = sheet.getWidth() / animation.frameWidth;
+            int rows = sheet.getHeight() / animation.frameHeight;
+
+            for (int row = 0; row < rows; row++) {
+                for (int col = 0; col < columns; col++) {
+                    frames.add(sheet.getSubimage(
+                        col * animation.frameWidth,
+                        row * animation.frameHeight,
+                        animation.frameWidth,
+                        animation.frameHeight
+                    ));
+                }
+            }
+        } catch (Exception ignored) {
+            frames = List.of();
+        }
+
+        List<BufferedImage> immutableFrames = List.copyOf(frames);
+        animationCache.put(animation.sheetPath, immutableFrames);
+        return immutableFrames;
+    }
+
+    private BufferedImage getThumbnail(int index) {
+        if (index < 0 || index >= characters.size()) {
+            return null;
+        }
+        if (thumbnailCache.containsKey(index)) {
+            return thumbnailCache.get(index);
+        }
+
+        CharacterDef def = characters.get(index);
+        List<BufferedImage> frames = loadAnimationFrames(def.idleAnimation);
+        BufferedImage thumb = frames.isEmpty() ? null : frames.get(0);
+        thumbnailCache.put(index, thumb);
+        return thumb;
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+        paintBackground(g2);
+
+        int width = getWidth();
+        int height = getHeight();
+        int margin = 24;
+        int sectionGap = 14;
+
+        int topHeight = (int) (height * 0.48);
+        int leftWidth = (int) ((width - margin * 2 - sectionGap) * 0.30);
+
+        Rectangle leftPanel = new Rectangle(margin, margin, leftWidth, topHeight);
+        Rectangle rightPanel = new Rectangle(margin + leftWidth + sectionGap, margin, width - (margin * 2 + leftWidth + sectionGap), topHeight);
+        Rectangle bottomPanel = new Rectangle(margin, margin + topHeight + sectionGap, width - margin * 2, height - (margin * 2 + topHeight + sectionGap));
+
+        drawSectionFrame(g2, leftPanel, new Color(226, 220, 203));
+        drawSectionFrame(g2, rightPanel, new Color(219, 216, 209));
+        drawSectionFrame(g2, bottomPanel, new Color(232, 228, 216));
+
+        paintPreviewPanel(g2, leftPanel);
+        paintGridPanel(g2, rightPanel);
+        paintDetailsPanel(g2, bottomPanel);
+
+        g2.dispose();
+    }
+
+    private void paintBackground(Graphics2D g2) {
+        GradientPaint gradient = new GradientPaint(
+            0,
+            0,
+            new Color(37, 31, 25),
+            0,
+            getHeight(),
+            new Color(70, 55, 39)
+        );
+        g2.setPaint(gradient);
+        g2.fillRect(0, 0, getWidth(), getHeight());
+
+        g2.setColor(new Color(140, 112, 76, 40));
+        for (int i = 0; i < getHeight(); i += 28) {
+            g2.fillRect(0, i, getWidth(), 1);
+        }
+    }
+
+    private void drawSectionFrame(Graphics2D g2, Rectangle rect, Color fill) {
+        g2.setColor(fill);
+        g2.fillRect(rect.x, rect.y, rect.width, rect.height);
+
+        g2.setColor(new Color(27, 22, 18));
+        g2.setStroke(new BasicStroke(6f));
+        g2.drawRect(rect.x, rect.y, rect.width, rect.height);
+    }
+
+    private void paintPreviewPanel(Graphics2D g2, Rectangle panel) {
+        g2.setFont(subtitleFont);
+        g2.setColor(new Color(28, 24, 20));
+        String title = selectingPlayerOne ? "Player 1 Preview" : "Player 2 Preview";
+        g2.drawString(title, panel.x + 18, panel.y + 36);
+
+        int spriteAreaX = panel.x + 24;
+        int spriteAreaY = panel.y + 52;
+        int spriteAreaW = panel.width - 48;
+        int spriteAreaH = panel.height - 76;
+
+        g2.setColor(new Color(244, 241, 236));
+        g2.fillRect(spriteAreaX, spriteAreaY, spriteAreaW, spriteAreaH);
+        g2.setColor(new Color(24, 20, 17));
+        g2.setStroke(new BasicStroke(4f));
+        g2.drawRect(spriteAreaX, spriteAreaY, spriteAreaW, spriteAreaH);
+
+        if (characters.isEmpty()) {
+            return;
+        }
+
+        CharacterDef selected = characters.get(focusedIndex);
+        BufferedImage frame = previewFrames.isEmpty() ? null : previewFrames.get(previewFrameIndex);
+        if (frame == null) {
+            return;
+        }
+
+        int drawW = selected.drawWidth;
+        int drawH = selected.drawHeight;
+
+        double scale = Math.min((double) spriteAreaW / drawW, (double) spriteAreaH / drawH);
+        int scaledW = (int) Math.round(drawW * scale);
+        int scaledH = (int) Math.round(drawH * scale);
+
+        int drawX = spriteAreaX + (spriteAreaW - scaledW) / 2;
+        int drawY = spriteAreaY + (spriteAreaH - scaledH) / 2;
+
+        g2.drawImage(frame, drawX, drawY, scaledW, scaledH, this);
+    }
+
+    private void paintGridPanel(Graphics2D g2, Rectangle panel) {
+        g2.setFont(subtitleFont);
+        g2.setColor(new Color(28, 24, 20));
+        g2.drawString("Champion Gallery", panel.x + 18, panel.y + 36);
+
+        if (characters.isEmpty()) {
+            return;
+        }
+
+        int gridX = panel.x + 18;
+        int gridY = panel.y + 52;
+        int gridW = panel.width - 36;
+        int gridH = panel.height - 70;
+
+        int cols = GRID_COLUMNS;
+        int rows = GRID_ROWS;
+        int hGap = 10;
+        int vGap = 12;
+
+        int cellW = (gridW - hGap * (cols - 1)) / cols;
+        int cellH = (gridH - vGap * (rows - 1)) / rows;
+
+        for (int i = 0; i < GRID_SLOTS; i++) {
+            int row = i / cols;
+            int col = i % cols;
+
+            int cellX = gridX + col * (cellW + hGap);
+            int cellY = gridY + row * (cellH + vGap);
+
+            g2.setColor(new Color(250, 249, 246));
+            g2.fillRect(cellX, cellY, cellW, cellH);
+
+            g2.setColor(new Color(20, 20, 20));
+            g2.setStroke(new BasicStroke(3f));
+            g2.drawRect(cellX, cellY, cellW, cellH);
+
+            if (i < characters.size() && i == playerOneIndex && !selectingPlayerOne) {
+                g2.setColor(new Color(196, 147, 35));
+                g2.setStroke(new BasicStroke(4f));
+                g2.drawRect(cellX + 2, cellY + 2, cellW - 4, cellH - 4);
+            }
+
+            if (i < characters.size() && i == focusedIndex) {
+                g2.setColor(new Color(42, 101, 214));
+                g2.setStroke(new BasicStroke(5f));
+                g2.drawRect(cellX + 1, cellY + 1, cellW - 2, cellH - 2);
+            }
+
+            if (i < characters.size()) {
+                BufferedImage thumb = getThumbnail(i);
+                if (thumb != null) {
+                    int imageAreaH = cellH - 30;
+                    double scale = Math.min((double) (cellW - 12) / thumb.getWidth(), (double) (imageAreaH - 10) / thumb.getHeight());
+                    int scaledW = (int) Math.round(thumb.getWidth() * scale);
+                    int scaledH = (int) Math.round(thumb.getHeight() * scale);
+                    int imageX = cellX + (cellW - scaledW) / 2;
+                    int imageY = cellY + (imageAreaH - scaledH) / 2 + 4;
+                    g2.drawImage(thumb, imageX, imageY, scaledW, scaledH, this);
+                }
+            } else {
+                g2.setFont(bodyFont.deriveFont(Font.BOLD, 18f));
+                g2.setColor(new Color(120, 110, 98));
+                String emptyLabel = "Empty";
+                FontMetrics fm = g2.getFontMetrics();
+                int textX = cellX + Math.max(6, (cellW - fm.stringWidth(emptyLabel)) / 2);
+                int textY = cellY + cellH / 2 + 6;
+                g2.drawString(emptyLabel, textX, textY);
+            }
+
+            g2.setFont(bodyFont.deriveFont(Font.BOLD, 18f));
+            g2.setColor(new Color(21, 20, 18));
+            if (i < characters.size()) {
+                String name = characters.get(i).name;
+                FontMetrics fm = g2.getFontMetrics();
+                int textX = cellX + Math.max(6, (cellW - fm.stringWidth(name)) / 2);
+                int textY = cellY + cellH - 8;
+                g2.drawString(name, textX, textY);
+            }
+        }
+    }
+
+    private void paintDetailsPanel(Graphics2D g2, Rectangle panel) {
+        int x = panel.x + 20;
+        int y = panel.y + 34;
+        int textWidth = panel.width - 40;
+
+        g2.setFont(titleFont);
+        g2.setColor(new Color(24, 20, 16));
+
+        String phaseText = selectingPlayerOne ? "Player 1: Choose Your Champion" : "Player 2: Choose Your Champion";
+        g2.drawString(phaseText, x, y);
+        y += 28;
+
+        if (!selectingPlayerOne && playerOneIndex >= 0 && playerOneIndex < characters.size()) {
+            g2.setFont(labelFont);
+            g2.setColor(new Color(74, 57, 25));
+            g2.drawString("Player 1 Locked: " + characters.get(playerOneIndex).name, x, y + 12);
+            y += 32;
+        }
+
+        if (characters.isEmpty()) {
+            return;
+        }
+
+        CharacterDef selected = characters.get(focusedIndex);
+
+        y += 20;
+        g2.setFont(labelFont);
+        g2.setColor(new Color(31, 25, 20));
+        g2.drawString("Name", x, y);
+
+        y += 24;
+        g2.setFont(bodyFont);
+        g2.setColor(new Color(44, 36, 28));
+        y = drawWrappedText(g2, selected.name, x, y, textWidth, 24);
+
+        y += 8;
+        g2.setFont(labelFont);
+        g2.setColor(new Color(31, 25, 20));
+        g2.drawString("Backstory", x, y);
+
+        y += 24;
+        g2.setFont(bodyFont);
+        g2.setColor(new Color(44, 36, 28));
+        y = drawWrappedText(g2, selected.backstory, x, y, textWidth, 24);
+
+        y += 10;
+        g2.setFont(labelFont);
+        g2.setColor(new Color(31, 25, 20));
+        g2.drawString("Skills", x, y);
+
+        y += 24;
+        g2.setFont(bodyFont);
+        g2.setColor(new Color(44, 36, 28));
+        y = drawWrappedText(g2, "Skill 1: " + selected.skill1Name, x, y, textWidth, 24);
+        y = drawWrappedText(g2, selected.getSkillDescription(1), x + 16, y, textWidth - 16, 22);
+        y = drawWrappedText(g2, "Skill 2: " + selected.skill2Name, x, y + 4, textWidth, 24);
+        y = drawWrappedText(g2, selected.getSkillDescription(2), x + 16, y, textWidth - 16, 22);
+        y = drawWrappedText(g2, "Skill 3: " + selected.skill3Name, x, y + 4, textWidth, 24);
+        drawWrappedText(g2, selected.getSkillDescription(3), x + 16, y, textWidth - 16, 22);
+    }
+
+    private int drawWrappedText(Graphics2D g2, String text, int x, int y, int maxWidth, int lineHeight) {
+        if (text == null || text.isBlank()) {
+            return y + lineHeight;
+        }
+
+        FontMetrics metrics = g2.getFontMetrics();
+        String[] words = text.trim().split("\\s+");
+        StringBuilder line = new StringBuilder();
+
+        for (String word : words) {
+            String candidate = line.isEmpty() ? word : line + " " + word;
+            if (metrics.stringWidth(candidate) <= maxWidth) {
+                line = new StringBuilder(candidate);
+            } else {
+                g2.drawString(line.toString(), x, y);
+                y += lineHeight;
+                line = new StringBuilder(word);
+            }
+        }
+
+        if (!line.isEmpty()) {
+            g2.drawString(line.toString(), x, y);
+            y += lineHeight;
+        }
+
+        return y;
+    }
+}

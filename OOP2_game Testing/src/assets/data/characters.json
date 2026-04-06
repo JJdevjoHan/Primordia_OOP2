@@ -156,7 +156,7 @@
           "type": "debuff",
           "description": "Pins all enemies in a turbulent field, lowering speed and attack for 2 turns.",
           "manaCost": 29,
-          "speedDownPercent": 20,
+          "power": 26,
           "attackDownPercent": 15,
           "durationTurns": 2,
           "target": "all_enemies"
