@@ -115,11 +115,9 @@ public class SurivivalGamePanel extends JPanel {
     private int     p1HP    = 100, p2HP = 100;
     private boolean isP1Turn = true;
 
-    // [AI/SURVIVAL] Game mode and bot config
     private GameMode         gameMode   = GameMode.PVP;
     private BotAI.Difficulty difficulty = BotAI.Difficulty.NORMAL;
 
-    // [AI/SURVIVAL] Survival mode state
     private int  survivalRound = 1;
     private int  survivalScore = 0;
     private boolean survivalAwaitingNextRound = false;
@@ -131,21 +129,18 @@ public class SurivivalGamePanel extends JPanel {
     private final List<JButton> p2SkillButtons = new ArrayList<>();
     private JLabel turnLabel, p1HPLabel, p2HPLabel;
 
-    private JLabel roundLabel;   // shows "Round X" in survival
-    private JLabel scoreLabel;   // shows "Score: X" in survival
-    private JButton nextRoundBtn; // "Next Round" button shown between survival rounds
+    private JLabel roundLabel;
+    private JLabel scoreLabel;
+    private JButton nextRoundBtn;
 
     private GameBar p1HealthBar, p2HealthBar;
     int barW = 200;
     int barH = 20;
 
-
     public SurivivalGamePanel() {
         this(0, 1, GameMode.PVP, BotAI.Difficulty.NORMAL);
     }
 
-
-    // [AI/SURVIVAL] Primary constructor — accepts game mode and difficulty.
     public SurivivalGamePanel(int playerCharacterIndex, int enemyCharacterIndex,
                      GameMode mode, BotAI.Difficulty difficulty) {
         this.gameMode   = mode;
@@ -175,13 +170,11 @@ public class SurivivalGamePanel extends JPanel {
         Font boldFont = FontManager.getFont(40).deriveFont(Font.BOLD);
         Font noneBold = FontManager.getFont(22).deriveFont(Font.BOLD);
 
-        // Turn indicator
         turnLabel = new JLabel("PLAYER 1'S TURN", SwingConstants.CENTER);
         turnLabel.setFont(boldFont);
         turnLabel.setBounds(0, 10, screenWidth, 50);
         this.add(turnLabel);
 
-        // HP labels
         p1HPLabel = new JLabel("HP: 100", SwingConstants.CENTER);
         p1HPLabel.setFont(noneBold);
         p1HPLabel.setForeground(Color.black);
@@ -192,20 +185,17 @@ public class SurivivalGamePanel extends JPanel {
         p2HPLabel.setForeground(Color.black);
         this.add(p2HPLabel);
 
-        // Skill buttons
         p1ButtonPanel = createSkillUI(p1SkillButtons);
         this.add(p1ButtonPanel);
 
         p2ButtonPanel = createSkillUI(p2SkillButtons);
         this.add(p2ButtonPanel);
 
-        // Health bars
         p1HealthBar = new GameBar(100, Color.GREEN);
         p2HealthBar = new GameBar(100, Color.RED);
         this.add(p1HealthBar);
         this.add(p2HealthBar);
 
-        // [AI/SURVIVAL] Survival UI labels (hidden in non-survival modes)
         roundLabel = new JLabel("Round 1", SwingConstants.CENTER);
         roundLabel.setFont(FontManager.getFont(26).deriveFont(Font.BOLD));
         roundLabel.setForeground(new Color(255, 220, 80));
@@ -218,7 +208,6 @@ public class SurivivalGamePanel extends JPanel {
         scoreLabel.setVisible(gameMode == GameMode.SURVIVAL);
         this.add(scoreLabel);
 
-        // [AI/SURVIVAL] "Next Round" button — hidden until a round ends in survival
         nextRoundBtn = new JButton("⚔  Next Round");
         nextRoundBtn.setFont(FontManager.getFont(28).deriveFont(Font.BOLD));
         nextRoundBtn.setBackground(new Color(60, 180, 80));
@@ -282,7 +271,6 @@ public class SurivivalGamePanel extends JPanel {
             g2.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
         }
 
-        // Player sprite
         if (p1HP <= 0) {
             if (!playerDeadFrames.isEmpty()) {
                 BufferedImage frame = playerDeadFrames.get(playerDeadFrameIndex);
@@ -299,7 +287,6 @@ public class SurivivalGamePanel extends JPanel {
             g2.drawImage(frame, p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
         }
 
-        // Enemy sprite (mirrored)
         if (p2HP <= 0) {
             if (!enemyDeadFrames.isEmpty()) {
                 BufferedImage frame = enemyDeadFrames.get(enemyDeadFrameIndex);
@@ -316,7 +303,6 @@ public class SurivivalGamePanel extends JPanel {
             g2.drawImage(frame, p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
         }
 
-        // Projectile
         if (isProjectileAnimating && !activeProjectileFrames.isEmpty()) {
             BufferedImage frame = activeProjectileFrames.get(projectileFrameIndex);
             if (frame != null) {
@@ -413,7 +399,7 @@ public class SurivivalGamePanel extends JPanel {
     public void executeSkill(int skillID) {
         if (p1HP <= 0 || p2HP <= 0) return;
 
-        // [AI/SURVIVAL] Block player input while the bot is thinking.
+
         if (botIsThinking) return;
 
         boolean actingPlayerOne  = isP1Turn;
@@ -423,7 +409,7 @@ public class SurivivalGamePanel extends JPanel {
                 && "Dark Wizard".equalsIgnoreCase(actor.name)
                 && (skillID == 2 || skillID == 3);
 
-        // Apply HP changes
+
         if (isP1Turn) {
             switch (skillID) {
                 case 1 -> p2HP = Math.max(0, p2HP - 10);
@@ -455,13 +441,12 @@ public class SurivivalGamePanel extends JPanel {
         boolean isBotMode = (gameMode == GameMode.PVB || gameMode == GameMode.SURVIVAL);
         if (!isBotMode) return;
 
-        // It is now P2's turn (the bot) — P1 just acted, so !isP1Turn == true for bot.
-        // (isP1Turn was already flipped in executeSkill above.)
-        if (isP1Turn) return; // Still player's turn — shouldn't happen, but guard.
+        if (isP1Turn) return;
         if (p1HP <= 0 || p2HP <= 0) return; // Game already over.
+        //MAG ADD UG GAME OVER NA MURAG PANEL ARIIIIIHAA SAME SA VICTORY IF MADAOG
 
         botIsThinking = true;
-        setPlayerButtonsEnabled(false); // disable during bot turn
+        setPlayerButtonsEnabled(false);
 
         Timer botDelay = new Timer(BOT_TURN_DELAY_MS, null);
         botDelay.setRepeats(false);
@@ -472,23 +457,17 @@ public class SurivivalGamePanel extends JPanel {
         botDelay.start();
     }
 
-    /**
-     * The bot chooses and executes its skill.
-     * Note: executeSkill handles turn flipping, so after this call it will be P1's turn again.
-     */
     private void performBotAction() {
         if (p1HP <= 0 || p2HP <= 0) {
             setPlayerButtonsEnabled(true);
             return;
         }
 
-        // [AI/SURVIVAL] Scale difficulty in survival: every 3 rounds, bump up one tier.
         BotAI.Difficulty effectiveDiff = scaledDifficulty();
 
         int chosenSkill = BotAI.chooseSkill(p2HP, p1HP, currentEnemyDef, effectiveDiff, 100);
         executeSkill(chosenSkill);
 
-        // Re-enable player buttons after bot acts (executeSkill flips back to P1).
         setPlayerButtonsEnabled(true);
     }
 
@@ -507,14 +486,6 @@ public class SurivivalGamePanel extends JPanel {
         for (JButton btn : p1SkillButtons) btn.setEnabled(enabled);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // [AI/SURVIVAL] Survival round progression
-    // ─────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Called when the enemy (P2) dies in survival mode.
-     * Awards score, shows the "Next Round" button.
-     */
     private void handleSurvivalRoundWon() {
         // Score = base 100 per round, bonus for remaining HP, bonus for round number.
         int hpBonus      = p1HP;
@@ -523,13 +494,10 @@ public class SurivivalGamePanel extends JPanel {
         survivalScore   += roundScore;
         survivalAwaitingNextRound = true;
 
-        // Update score display
         scoreLabel.setText("Score: " + survivalScore);
 
-        // Show summary in turn label
         turnLabel.setText("Round " + survivalRound + " Clear!  +" + roundScore + " pts");
 
-        // Show the Next Round button, hide skill buttons
         nextRoundBtn.setVisible(true);
         p1ButtonPanel.setVisible(false);
         p2ButtonPanel.setVisible(false);
@@ -538,24 +506,15 @@ public class SurivivalGamePanel extends JPanel {
         repaint();
     }
 
-    /**
-     * Advances to the next survival round:
-     * - Heals the player partially
-     * - Picks a new random enemy
-     * - Resets enemy HP
-     * - Increments round counter
-     */
     private void advanceSurvivalRound() {
         if (!survivalAwaitingNextRound) return;
 
         survivalRound++;
         survivalAwaitingNextRound = false;
 
-        // Partial heal for the player
         p1HP = Math.min(100, p1HP + SURVIVAL_ROUND_HEAL_AMOUNT);
         p2HP = 100;
 
-        // Pick a new random enemy (different from the player's character)
         int playerIdx = ALL_CHARACTERS.indexOf(currentPlayerDef);
         int newEnemyIdx;
         if (ALL_CHARACTERS.size() > 1) {
@@ -566,16 +525,12 @@ public class SurivivalGamePanel extends JPanel {
             newEnemyIdx = 0;
         }
 
-        // Reload enemy (preserves player)
         setEnemyCharacter(newEnemyIdx);
 
-        // Reset turn to player
         isP1Turn = true;
 
-        // Update survival UI
         roundLabel.setText("Round " + survivalRound);
 
-        // Hide Next Round button, re-show player buttons
         nextRoundBtn.setVisible(false);
         survivalAwaitingNextRound = false;
 
@@ -584,10 +539,6 @@ public class SurivivalGamePanel extends JPanel {
         repaint();
     }
 
-    /**
-     * Reloads only the enemy character, keeping player state intact.
-     * (Lighter than setCharacters() which resets both sides.)
-     */
     private void setEnemyCharacter(int enemyIdx) {
         if (enemyTimer != null && enemyTimer.isRunning()) enemyTimer.stop();
         stopSkillAnimation(false);
@@ -620,10 +571,6 @@ public class SurivivalGamePanel extends JPanel {
         repaint();
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Game state update — survival hooks added
-    // ─────────────────────────────────────────────────────────────────────────
-
     private void updateGameState() {
         p1HP = Math.max(0, Math.min(100, p1HP));
         p2HP = Math.max(0, Math.min(100, p2HP));
@@ -638,20 +585,16 @@ public class SurivivalGamePanel extends JPanel {
         if (p2HP <= 0 && enemyDeadTimer  == null) startDeadAnimation(false);
 
         if (p1HP <= 0 || p2HP <= 0) {
-            // ── Game / Round over ──────────────────────────────────────────────
             if (gameMode == GameMode.SURVIVAL) {
                 if (p2HP <= 0 && p1HP > 0) {
-                    // Player won the round
                     handleSurvivalRoundWon();
                 } else {
-                    // Player died — game over in survival
                     turnLabel.setText("Game Over!  Final Score: " + survivalScore);
                     p1ButtonPanel.setVisible(false);
                     p2ButtonPanel.setVisible(false);
                     nextRoundBtn.setVisible(false);
                 }
             } else {
-                // PVP / PVB final result
                 String winner = (gameMode == GameMode.PVB && p2HP <= 0)
                         ? "YOU WIN!"
                         : (gameMode == GameMode.PVB && p1HP <= 0)
@@ -662,7 +605,6 @@ public class SurivivalGamePanel extends JPanel {
                 p2ButtonPanel.setVisible(false);
             }
         } else {
-            // ── Active round ───────────────────────────────────────────────────
             if (gameMode == GameMode.SURVIVAL) {
                 turnLabel.setText("Round " + survivalRound + (botIsThinking ? " — BOT IS THINKING…" : " — YOUR TURN"));
             } else if (gameMode == GameMode.PVB) {
@@ -673,7 +615,6 @@ public class SurivivalGamePanel extends JPanel {
                 turnLabel.setText(isP1Turn ? "PLAYER 1'S TURN" : "PLAYER 2'S TURN");
             }
 
-            // In PVB/Survival, only show P1 buttons on P1's turn (and not while bot thinks).
             boolean isBotMode = (gameMode == GameMode.PVB || gameMode == GameMode.SURVIVAL);
             if (isBotMode) {
                 p1ButtonPanel.setVisible(isP1Turn && !botIsThinking);
@@ -684,10 +625,6 @@ public class SurivivalGamePanel extends JPanel {
             }
         }
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // UI positioning  (unchanged logic; survival labels added)
-    // ─────────────────────────────────────────────────────────────────────────
 
     private void repositionUI() {
         int feetX1 = p1SpriteX + getPlayerDrawWidth() / 2;
@@ -706,20 +643,14 @@ public class SurivivalGamePanel extends JPanel {
         if (p1HealthBar  != null) p1HealthBar .setBounds(feetX1 - barW / 2, p1SpriteY - 20, barW, barH);
         if (p2HealthBar  != null) p2HealthBar .setBounds(feetX2 - barW / 2, p2SpriteY - 20, barW, barH);
 
-        // [AI/SURVIVAL] Round / score labels — top-right corner
         if (roundLabel != null) roundLabel.setBounds(screenWidth - 220, 60, 200, 30);
         if (scoreLabel != null) scoreLabel.setBounds(screenWidth - 220, 95, 200, 30);
 
-        // [AI/SURVIVAL] Next Round button — centred mid-screen
         if (nextRoundBtn != null) {
             int nbW = 260, nbH = 50;
             nextRoundBtn.setBounds(screenWidth / 2 - nbW / 2, screenHeight / 2 + 40, nbW, nbH);
         }
     }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // All methods below are UNCHANGED from the original GamePanel.
-    // ─────────────────────────────────────────────────────────────────────────
 
     private List<BufferedImage> loadFrames(CharacterDef def)      { return loadAnimationFrames(def.idleAnimation); }
     private List<BufferedImage> loadDeadFrames(CharacterDef def)  { return loadAnimationFrames(def.deadAnimation); }
@@ -1100,7 +1031,6 @@ public class SurivivalGamePanel extends JPanel {
         }
         if (!defs.isEmpty()) return List.copyOf(defs);
 
-        // ── Built-in fallback characters (identical to originals) ─────────────
         return List.of(
                 new CharacterDef("Light Mage", "A former temple guardian who forged sacred combat arts to protect frontier villages.",
                         "Light Sword", "Halo of Aegis", "Dawn Piercer",
