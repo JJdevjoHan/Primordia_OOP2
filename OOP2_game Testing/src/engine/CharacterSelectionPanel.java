@@ -5,7 +5,6 @@ import assets.Utility.FontManager;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.net.URL;
@@ -24,6 +23,7 @@ public class CharacterSelectionPanel extends JPanel {
 
     private final GameWindow window;
     private final List<CharacterDef> characters;
+    private final GameMode selectedMode;
 
     private final Map<String, List<BufferedImage>> animationCache = new HashMap<>();
     private final Map<Integer, BufferedImage> thumbnailCache = new HashMap<>();
@@ -41,22 +41,16 @@ public class CharacterSelectionPanel extends JPanel {
     private final Font bodyFont = FontManager.getFont(22f).deriveFont(Font.PLAIN);
     private final Font labelFont = FontManager.getFont(24f).deriveFont(Font.BOLD);
 
-    public CharacterSelectionPanel(GameWindow window) {
+    public CharacterSelectionPanel(GameWindow window, GameMode mode) {
         this.window = window;
+        this.selectedMode = mode;
         this.characters = GamePanel.ALL_CHARACTERS;
 
-        setPreferredSize(new Dimension(SCREEN_WIDTH, SCREEN_HEIGHT));
         setFocusable(true);
-
-        addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                handleInput(e.getKeyCode());
-            }
-        });
-
-        resetSelectionState();
+        requestFocusInWindow();
+        setFocusTraversalKeysEnabled(false);
     }
+
 
     @Override
     public void addNotify() {
@@ -125,12 +119,26 @@ public class CharacterSelectionPanel extends JPanel {
     }
 
     private void confirmSelection() {
-        if (selectingPlayerOne) {
-            playerOneIndex = focusedIndex;
-            selectingPlayerOne = false;
-            return;
+
+        switch (selectedMode) {
+
+            case PVP -> {
+                if (selectingPlayerOne) {
+                    playerOneIndex = focusedIndex;
+                    selectingPlayerOne = false;
+                    return;
+                }
+                window.startPvPMatch(playerOneIndex, focusedIndex);
+            }
+
+            case SURVIVAL -> {
+                window.startSurvivalMatch(focusedIndex);
+            }
+
+            case ARCADE -> {
+                window.startArcadeMatch(focusedIndex);
+            }
         }
-        window.startPvPMatch(playerOneIndex, focusedIndex);
     }
 
     private void restartPreviewTimer(int frameDelayMs) {

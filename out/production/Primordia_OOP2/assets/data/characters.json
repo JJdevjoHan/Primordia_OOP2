@@ -156,7 +156,7 @@
           "type": "debuff",
           "description": "Pins all enemies in a turbulent field, lowering speed and attack for 2 turns.",
           "manaCost": 29,
-          "speedDownPercent": 20,
+          "power": 26,
           "attackDownPercent": 15,
           "durationTurns": 2,
           "target": "all_enemies"
@@ -169,6 +169,57 @@
         "idle": "src/assets/spritesheet/Idk Magician/Idle.png",
         "death": "src/assets/spritesheet/Idk Magician/Dead.png",
         "hurt": "src/assets/spritesheet/Idk Magician/Hurt.png"
+      }
+    },
+    {
+      "id": "dark_wizard",
+      "name": "Dark Wizard",
+      "backstory": "Placeholder backstory.",
+      "elementType": "Dark",
+      "weakness": ["Light"],
+      "hp": 138,
+      "mana": 130,
+      "skills": [
+        {
+          "slot": 1,
+          "name": "Shadow Bolt",
+          "type": "damage",
+          "hurtTriggerBufferSeconds": 0.15,
+          "description": "Placeholder description.",
+          "manaCost": 19,
+          "power": 35,
+          "cooldownTurns": 0,
+          "target": "single_enemy"
+        },
+        {
+          "slot": 2,
+          "name": "Night Veil",
+          "type": "defense",
+          "description": "Placeholder description.",
+          "manaCost": 24,
+          "shieldValue": 24,
+          "durationTurns": 2,
+          "target": "self"
+        },
+        {
+          "slot": 3,
+          "name": "Abyss Grasp",
+          "type": "debuff",
+          "description": "Placeholder description.",
+          "manaCost": 28,
+          "power": 27,
+          "attackDownPercent": 18,
+          "durationTurns": 2,
+          "target": "all_enemies"
+        }
+      ],
+      "sprites": {
+        "skill1": "src/assets/spritesheet/Dark Wizard/Attack_1-Sheet.png",
+        "skill2": "src/assets/spritesheet/Dark Wizard/Attack_2-Sheet.png",
+        "skill3": "src/assets/spritesheet/Dark Wizard/Attack_3-Sheet.png",
+        "idle": "src/assets/spritesheet/Dark Wizard/Idle-Sheet.png",
+        "death": "src/assets/spritesheet/Dark Wizard/Dead-Sheet.png",
+        "hurt": "src/assets/spritesheet/Dark Wizard/Hurt-Sheet.png"
       }
     }
   ]

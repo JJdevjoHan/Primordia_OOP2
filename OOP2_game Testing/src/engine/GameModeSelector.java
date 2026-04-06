@@ -55,8 +55,9 @@ public class GameModeSelector extends JPanel {
         add(survival);
         add(arcade);
 
-        pvp.addActionListener(ActionEvent_ -> window.showCharacterSelection());
-
+        pvp.addActionListener(e -> window.showCharacterSelection(GameMode.PVP));
+        survival.addActionListener(e -> window.showCharacterSelection(GameMode.SURVIVAL));
+        arcade.addActionListener(e -> window.showCharacterSelection(GameMode.ARCADE));
     }
 
     private JButton createRPGButton(String text){
