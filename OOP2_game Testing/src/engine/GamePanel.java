@@ -139,10 +139,10 @@ public class GamePanel extends JPanel {
     private GameWindow window;
 
     public GamePanel() {
-        this(0, 1);
+        this(new GameWindow(),0, 1);
     }
 
-    public GamePanel(int playerCharacterIndex, int enemyCharacterIndex) {
+    public GamePanel(GameWindow window, int playerCharacterIndex, int enemyCharacterIndex) {
 
         this.setPreferredSize(new Dimension(screenWidth, screenHeight));
         this.setFocusable(true);
@@ -157,13 +157,14 @@ public class GamePanel extends JPanel {
             }
         });
 
-
-        // Use Null Layout to place buttons at exact X/Y coordinate below the sprites
-        this.setLayout(null);
+        this.window = window;
 
         JButton backBtn = new BackButton().createBackButton(window, this);
         add(backBtn);
 
+
+        // Use Null Layout to place buttons at exact X/Y coordinate below the sprites
+        this.setLayout(null);
 
         // Load map background and spawn points from TMX.
         loadMapData("/assets/maps/map1.tmx");

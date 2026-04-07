@@ -16,6 +16,7 @@ import java.nio.file.Paths;
 import javax.imageio.ImageIO;
 import javax.xml.parsers.DocumentBuilderFactory;
 
+import assets.Utility.BackButton;
 import assets.Utility.FontManager;
 import assets.Utility.GameBar;
 import org.w3c.dom.Document;
@@ -137,14 +138,17 @@ public class SurivivalGamePanel extends JPanel {
     int barW = 200;
     int barH = 20;
 
+    private GameWindow window;
+
     public SurivivalGamePanel() {
-        this(0, 1, GameMode.PVP, BotAI.Difficulty.NORMAL);
+        this(new GameWindow(),0, 1, GameMode.PVP, BotAI.Difficulty.NORMAL);
     }
 
-    public SurivivalGamePanel(int playerCharacterIndex, int enemyCharacterIndex,
+    public SurivivalGamePanel(GameWindow window, int playerCharacterIndex, int enemyCharacterIndex,
                      GameMode mode, BotAI.Difficulty difficulty) {
         this.gameMode   = mode;
         this.difficulty = difficulty;
+        this.window = window;
 
         this.setPreferredSize(new Dimension(screenWidth, screenHeight));
         this.setFocusable(true);
@@ -160,6 +164,9 @@ public class SurivivalGamePanel extends JPanel {
         });
 
         this.setLayout(null);
+
+        JButton backBtn = new BackButton().createBackButton(window, this);
+        add(backBtn);
 
         loadMapData("/assets/maps/map1.tmx");
 
@@ -221,6 +228,17 @@ public class SurivivalGamePanel extends JPanel {
         refreshSkillButtonLabels();
         repositionUI();
         updateGameState();
+    }
+
+    @Override
+    public void doLayout() {
+        super.doLayout();
+        // position the button bottom-right
+        for (Component c : getComponents()) {
+            if (c instanceof JButton && ((JButton)c).getText().equals("Back")) {
+                c.setBounds(getWidth() - 120, getHeight() - 70, 100, 40);
+            }
+        }
     }
 
     public void setGameMode(GameMode mode) {

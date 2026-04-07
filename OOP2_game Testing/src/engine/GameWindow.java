@@ -62,7 +62,7 @@ public class GameWindow extends JFrame {
 
     public void startPvPMatch(int p1, int p2) {
 
-        GamePanel panel = new GamePanel(p1, p2);
+        GamePanel panel = new GamePanel(this,p1, p2);
 
         container.add(panel, "GAME");
         layout.show(container, "GAME");
@@ -77,6 +77,7 @@ public class GameWindow extends JFrame {
         int botIndex = (int)(Math.random() * GamePanel.ALL_CHARACTERS.size());
 
         SurivivalGamePanel surivivalGamePanel = new SurivivalGamePanel(
+                this,
                 playerIndex,
                 botIndex,
                 GameMode.SURVIVAL,

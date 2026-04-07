@@ -1,5 +1,6 @@
 package assets.Utility;
 
+import engine.GameMode;
 import engine.GameWindow;
 
 import javax.swing.*;
@@ -17,6 +18,7 @@ public class BackButton {
         backBtn.setBackground(new Color(40, 40, 60));
         backBtn.setBorder(BorderFactory.createLineBorder(new Color(200, 160, 40), 2));
 
+
         backBtn.addActionListener(e -> {
             System.out.println("Back button pressed!"); // <- see if this prints
             int confirm = JOptionPane.showConfirmDialog(
@@ -28,9 +30,18 @@ public class BackButton {
 
             if (confirm == JOptionPane.YES_OPTION) {
                 System.out.println("Switching to menu...");
-                window.showMenu(); // this should switch
+                SwingUtilities.invokeLater(() -> window.showMenu());
             }
         });
+
+
+        /*
+        backBtn.addActionListener(e -> {
+            SwingUtilities.invokeLater(() -> window.showMenu());
+        });
+
+         */
+
 
         return backBtn;
     }
