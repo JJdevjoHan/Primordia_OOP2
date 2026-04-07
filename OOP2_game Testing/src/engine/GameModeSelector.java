@@ -36,7 +36,6 @@ public class GameModeSelector extends JPanel {
         }
     }
 
-
     private void createButtons(){
 
         int btnWidth = 250;

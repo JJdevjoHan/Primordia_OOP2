@@ -145,7 +145,7 @@ public class SurivivalGamePanel extends JPanel {
     }
 
     public SurivivalGamePanel(GameWindow window, int playerCharacterIndex, int enemyCharacterIndex,
-                     GameMode mode, BotAI.Difficulty difficulty) {
+                              GameMode mode, BotAI.Difficulty difficulty) {
         this.gameMode   = mode;
         this.difficulty = difficulty;
         this.window = window;
