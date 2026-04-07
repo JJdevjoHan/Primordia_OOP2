@@ -5,9 +5,14 @@ import java.awt.event.KeyListener;
 
 public class KeyInputs implements KeyListener {
     private GamePanel gp;
+    private SurivivalGamePanel sp;
 
     public KeyInputs(GamePanel gp) {
         this.gp = gp;
+    }
+
+    public KeyInputs(SurivivalGamePanel sp) {
+        this.sp = sp;
     }
 
     @Override
