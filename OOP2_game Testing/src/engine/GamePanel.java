@@ -25,8 +25,6 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import static java.awt.SystemColor.window;
-
 public class GamePanel extends JPanel {
     private final int tileSize = 128;
     private final int screenWidth = tileSize * 12;
@@ -43,31 +41,34 @@ public class GamePanel extends JPanel {
     private static final int DARK_WIZARD_PROJECTILE_VERTICAL_OFFSET = 50;
     private static final int DARK_WIZARD_PROJECTILE_SPEED = 44;
 
-    // ── Turn timer constants ──────────────────────────────────────────────────
-    private static final int TURN_TIME_SECONDS = 10;
-    private static final int TIMER_WARN_THRESHOLD = 3; // goes red at this value
+    private static final int MAX_MP            = 100;
+    private static final int MP_REGEN_PER_TURN = 10;
+    /** MP costs: index 0 = skill 1, 1 = skill 2, 2 = skill 3 */
+    private static final int[] SKILL_MP_COST = { 10, 20, 30 };
 
-    // TMX map pixel size (used to convert TMX object coordinates to panel coordinates)
+
+    private static final int TURN_TIME_SECONDS = 10;
+    private static final int TIMER_WARN_THRESHOLD = 3;
+
     private int mapPixelWidth = screenWidth;
     private int mapPixelHeight = screenHeight;
 
-    // Characters are loaded from assets/data/characters.json with fallback defaults.
     public static final List<CharacterDef> ALL_CHARACTERS = loadCharacterDefs();
 
     // Assets
     private Image backgroundImage;
 
-    // Player (first sprite) animation state
+    // Player animation state
     private List<BufferedImage> playerFrames = new ArrayList<>();
     private int playerFrameIndex = 0;
     private Timer playerTimer;
 
-    // Enemy (second sprite, always mirrored to face the player) animation state
+    // Enemy animation state
     private List<BufferedImage> enemyFrames = new ArrayList<>();
     private int enemyFrameIndex = 0;
     private Timer enemyTimer;
 
-    // Skill animation state (plays once, then returns to idle)
+    // Skill animation state
     private List<List<BufferedImage>> playerSkillAnimations = new ArrayList<>();
     private List<List<BufferedImage>> enemySkillAnimations = new ArrayList<>();
     private List<BufferedImage> activePlayerSkillFrames = List.of();
@@ -81,7 +82,7 @@ public class GamePanel extends JPanel {
     private int activePlayerSkillOffsetX = 0;
     private int activeEnemySkillOffsetX = 0;
 
-    // Dark Wizard projectile animation state.
+    // Projectile animation state
     private final Map<String, List<BufferedImage>> projectileAnimationCache = new HashMap<>();
     private List<BufferedImage> activeProjectileFrames = List.of();
     private int projectileFrameIndex = 0;
@@ -92,7 +93,7 @@ public class GamePanel extends JPanel {
     private Timer projectileTimer;
     private boolean isProjectileAnimating = false;
 
-    // Hurt animation state — plays once when the target takes a damage-type skill
+    // Hurt animation state
     private List<BufferedImage> playerHurtFrames = new ArrayList<>();
     private List<BufferedImage> enemyHurtFrames  = new ArrayList<>();
     private int playerHurtFrameIndex = 0;
@@ -106,7 +107,7 @@ public class GamePanel extends JPanel {
     private boolean isPlayerHurtAnimating = false;
     private boolean isEnemyHurtAnimating = false;
 
-    // Dead animation state — plays once when HP reaches 0, then holds on last frame
+    // Dead animation state
     private CharacterDef currentPlayerDef, currentEnemyDef;
     private List<BufferedImage> playerDeadFrames = new ArrayList<>();
     private List<BufferedImage> enemyDeadFrames  = new ArrayList<>();
@@ -115,7 +116,7 @@ public class GamePanel extends JPanel {
     private Timer playerDeadTimer;
     private Timer enemyDeadTimer;
 
-    // Sprite placement (read from map object layers when available)
+    // Sprite placement
     private int p1SpriteX = 350;
     private int p1SpriteY = 300;
     private int p1SpawnFeetMapX = p1SpriteX + (DEFAULT_DRAW_WIDTH / 2);
@@ -125,11 +126,10 @@ public class GamePanel extends JPanel {
     private int p2SpawnFeetMapX = p2SpriteX + (DEFAULT_DRAW_WIDTH / 2);
     private int p2SpawnFeetMapY = p2SpriteY + DEFAULT_DRAW_HEIGHT;
 
-    // Game State
     private int p1HP = 100, p2HP = 100;
+    private int p1MP = MAX_MP, p2MP = MAX_MP;
     private boolean isP1Turn = true;
 
-    // ── Turn Timer state ──────────────────────────────────────────────────────
     private int    turnSecondsLeft = TURN_TIME_SECONDS;
     private Timer  countdownTimer;
     private JLabel countdownLabel;
@@ -140,11 +140,13 @@ public class GamePanel extends JPanel {
     private final List<JButton> p2SkillButtons = new ArrayList<>();
     private JLabel turnLabel, p1HPLabel, p2HPLabel;
 
-    // for hp and mp bar
+    // HP bars
     private GameBar p1HealthBar, p2HealthBar;
+    // MP bars
+    private GameBar p1MpBar, p2MpBar;
 
-    int barW = 200;
-    int barH = 20;
+    int barW = 220;
+    int barH = 18;
 
     private GameWindow window;
     private RoundManager roundManager;
@@ -189,15 +191,17 @@ public class GamePanel extends JPanel {
         turnLabel.setBounds(0, 10, screenWidth, 50);
         this.add(turnLabel);
 
-        // HP labels
-        p1HPLabel = new JLabel("HP: 100", SwingConstants.CENTER);
+        // HP labels — kept invisible; values are shown inside the bars
+        p1HPLabel = new JLabel("", SwingConstants.CENTER);
         p1HPLabel.setFont(noneBold);
         p1HPLabel.setForeground(Color.black);
+        p1HPLabel.setVisible(false);
         this.add(p1HPLabel);
 
-        p2HPLabel = new JLabel("HP: 100", SwingConstants.CENTER);
+        p2HPLabel = new JLabel("", SwingConstants.CENTER);
         p2HPLabel.setFont(noneBold);
         p2HPLabel.setForeground(Color.black);
+        p2HPLabel.setVisible(false);
         this.add(p2HPLabel);
 
         // Skill button panels
@@ -207,11 +211,17 @@ public class GamePanel extends JPanel {
         p2ButtonPanel = createSkillUI(p2SkillButtons);
         this.add(p2ButtonPanel);
 
-        // Health bars
-        p1HealthBar = new GameBar(100, Color.GREEN);
-        p2HealthBar = new GameBar(100, Color.RED);
+        // ── HP bars ───────────────────────────────────────────────────────────
+        p1HealthBar = new GameBar(100, Color.GREEN, GameBar.BarType.HP);
+        p2HealthBar = new GameBar(100, Color.RED,   GameBar.BarType.HP);
         this.add(p1HealthBar);
         this.add(p2HealthBar);
+
+        // ── MP bars ───────────────────────────────────────────────────────────
+        p1MpBar = new GameBar(MAX_MP, new Color(80, 160, 255), GameBar.BarType.MP);
+        p2MpBar = new GameBar(MAX_MP, new Color(80, 160, 255), GameBar.BarType.MP);
+        this.add(p1MpBar);
+        this.add(p2MpBar);
 
         // ── Countdown label ───────────────────────────────────────────────────
         countdownLabel = new JLabel("10", SwingConstants.CENTER);
@@ -223,35 +233,35 @@ public class GamePanel extends JPanel {
         this.add(countdownLabel);
 
         roundManager = new RoundManager(
-                GameMode.PVP, // or whatever mode you're using
+                GameMode.PVP,
 
-                // 🔹 ROUND START
+                // ROUND START
                 (round, p1Wins, p2Wins) -> {
                     System.out.println("Round " + round + " Start!");
 
-                    // Reset HP every round
                     p1HP = 100;
                     p2HP = 100;
+                    // Restore MP fully at the start of every round
+                    p1MP = MAX_MP;
+                    p2MP = MAX_MP;
 
                     isP1Turn = true;
-
                     updateGameState();
                     repaint();
                 },
 
-                // 🔹 ROUND END
+                // ROUND END
                 (p1WonRound, round) -> {
                     String msg = p1WonRound ? "PLAYER 1 WINS ROUND " : "PLAYER 2 WINS ROUND ";
                     turnLabel.setText(msg + round);
 
-                    // Delay before next round
                     new Timer(2000, e -> {
-                        ((Timer)e.getSource()).stop();
+                        ((Timer) e.getSource()).stop();
                         roundManager.advanceRound();
                     }).start();
                 },
 
-                // 🔹 MATCH END
+                // MATCH END
                 (p1WonMatch, p1Wins, p2Wins, totalRounds) -> {
                     stopTurnTimer();
 
@@ -261,6 +271,7 @@ public class GamePanel extends JPanel {
                     p1ButtonPanel.setVisible(false);
                     p2ButtonPanel.setVisible(false);
                 });
+
         refreshSkillButtonLabels();
         repositionUI();
         updateGameState();
@@ -277,15 +288,46 @@ public class GamePanel extends JPanel {
         }
     }
 
-    // ── Turn Timer ────────────────────────────────────────────────────────────
+    private static int mpCostFor(int skillID) {
+        if (skillID < 1 || skillID > SKILL_MP_COST.length) return 0;
+        return SKILL_MP_COST[skillID - 1];
+    }
+
+    private boolean hasEnoughMP(boolean actingPlayerOne, int skillID) {
+        int available = actingPlayerOne ? p1MP : p2MP;
+        return available >= mpCostFor(skillID);
+    }
 
     /**
-     * Start (or restart) the 10-second countdown for the current player's turn.
-     * Resets the counter, updates the label style, and fires every second.
-     * When it reaches 0 the current player loses their turn automatically.
+     * Deduct MP from the acting player and regenerate MP for the waiting player.
      */
+    private void spendAndRegenMP(boolean actingPlayerOne, int skillID) {
+        int cost = mpCostFor(skillID);
+        if (actingPlayerOne) {
+            p1MP = Math.max(0, p1MP - cost);
+            p2MP = Math.min(MAX_MP, p2MP + MP_REGEN_PER_TURN);
+        } else {
+            p2MP = Math.max(0, p2MP - cost);
+            p1MP = Math.min(MAX_MP, p1MP + MP_REGEN_PER_TURN);
+        }
+    }
+
+    /** Grey out skill buttons the active player can't currently afford. */
+    private void refreshSkillButtonMPState() {
+        boolean actingP1 = isP1Turn;
+        List<JButton> activeButtons = actingP1 ? p1SkillButtons : p2SkillButtons;
+        int currentMP = actingP1 ? p1MP : p2MP;
+
+        for (int i = 0; i < activeButtons.size(); i++) {
+            int cost = mpCostFor(i + 1);
+            boolean canAfford = currentMP >= cost;
+            activeButtons.get(i).setEnabled(canAfford);
+            activeButtons.get(i).setForeground(canAfford ? Color.BLACK : new Color(140, 140, 140));
+        }
+    }
+
     private void startTurnTimer() {
-        stopTurnTimer(); // always stop any running timer first
+        stopTurnTimer();
 
         turnSecondsLeft = TURN_TIME_SECONDS;
         refreshCountdownLabel();
@@ -294,19 +336,11 @@ public class GamePanel extends JPanel {
         countdownTimer.addActionListener(e -> {
             turnSecondsLeft--;
             refreshCountdownLabel();
-
-            if (turnSecondsLeft <= 0) {
-                skipTurn();
-            }
+            if (turnSecondsLeft <= 0) skipTurn();
         });
         countdownTimer.start();
     }
 
-    /**
-     * Stop the countdown without firing any skip logic.
-     * Call this at the start of {@link #executeSkill} so a player's move
-     * cancels the timer cleanly.
-     */
     private void stopTurnTimer() {
         if (countdownTimer != null) {
             countdownTimer.stop();
@@ -314,24 +348,21 @@ public class GamePanel extends JPanel {
         }
     }
 
-    /**
-     * Called when the countdown hits 0. Skips the current turn with no damage,
-     * then hands control to the other player and restarts the timer.
-     */
     private void skipTurn() {
         stopTurnTimer();
-        if (p1HP <= 0 || p2HP <= 0) return; // game already ended — do nothing
+        if (p1HP <= 0 || p2HP <= 0) return;
 
         String skippedPlayer = isP1Turn ? "PLAYER 1" : "PLAYER 2";
+        // Still grant regen to the player whose turn was skipped
+        if (isP1Turn) p1MP = Math.min(MAX_MP, p1MP + MP_REGEN_PER_TURN);
+        else          p2MP = Math.min(MAX_MP, p2MP + MP_REGEN_PER_TURN);
+
         isP1Turn = !isP1Turn;
+        updateGameState();
 
-        updateGameState(); // updates button visibility, restarts timer for new turn
-
-        // Briefly flash the turn label to inform the player what happened
         turnLabel.setText(skippedPlayer + " took too long — turn skipped!");
         repaint();
 
-        // Restore the normal turn label after 1.5 s
         Timer restoreLabel = new Timer(1500, e2 -> {
             if (p1HP > 0 && p2HP > 0) {
                 turnLabel.setText(isP1Turn ? "PLAYER 1'S TURN" : "PLAYER 2'S TURN");
@@ -342,25 +373,17 @@ public class GamePanel extends JPanel {
         restoreLabel.start();
     }
 
-    /**
-     * Update the countdown label text and colour.
-     * White for normal time, red for {@link #TIMER_WARN_THRESHOLD} or below.
-     */
     private void refreshCountdownLabel() {
         if (countdownLabel == null) return;
-
         countdownLabel.setText(String.valueOf(Math.max(0, turnSecondsLeft)));
-
         boolean urgent = turnSecondsLeft <= TIMER_WARN_THRESHOLD;
-        countdownLabel.setForeground(urgent ? Color.WHITE : Color.WHITE);
+        countdownLabel.setForeground(Color.WHITE);
         countdownLabel.setBackground(urgent
                 ? new Color(180, 20, 20, 210)
                 : new Color(40, 40, 40, 180));
         countdownLabel.setBorder(BorderFactory.createLineBorder(
                 urgent ? Color.RED : Color.WHITE, urgent ? 2 : 1));
     }
-
-    // ── Rest of the panel ─────────────────────────────────────────────────────
 
     private int sanitizeCharacterIndex(int requestedIndex, int fallbackIndex) {
         if (ALL_CHARACTERS.isEmpty()) return 0;
@@ -379,6 +402,7 @@ public class GamePanel extends JPanel {
             btn.setFont(new Font("Arial", Font.BOLD, 10));
             btn.setBackground(new Color(255, 255, 255, 180));
             btn.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
+            btn.setToolTipText("MP Cost: " + SKILL_MP_COST[i]);
 
             int skillID = i + 1;
             btn.addActionListener(e -> executeSkill(skillID));
@@ -393,55 +417,53 @@ public class GamePanel extends JPanel {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
 
-        // Background
-        if (backgroundImage != null) {
+        if (backgroundImage != null)
             g2.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
-        }
 
-        // Player sprite (faces right)
+        // Player sprite
         if (p1HP <= 0) {
-            if (!playerDeadFrames.isEmpty()) {
-                BufferedImage frame = playerDeadFrames.get(playerDeadFrameIndex);
-                g2.drawImage(frame, p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
-            }
+            if (!playerDeadFrames.isEmpty())
+                g2.drawImage(playerDeadFrames.get(playerDeadFrameIndex),
+                        p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
         } else if (isPlayerHurtAnimating && !playerHurtFrames.isEmpty()) {
-            BufferedImage frame = playerHurtFrames.get(playerHurtFrameIndex);
-            g2.drawImage(frame, p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
+            g2.drawImage(playerHurtFrames.get(playerHurtFrameIndex),
+                    p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
         } else if (isPlayerSkillAnimating && !activePlayerSkillFrames.isEmpty()) {
-            BufferedImage frame = activePlayerSkillFrames.get(playerSkillFrameIndex);
-            g2.drawImage(frame, p1SpriteX + activePlayerSkillOffsetX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
+            g2.drawImage(activePlayerSkillFrames.get(playerSkillFrameIndex),
+                    p1SpriteX + activePlayerSkillOffsetX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
         } else if (!playerFrames.isEmpty()) {
-            BufferedImage frame = playerFrames.get(playerFrameIndex);
-            g2.drawImage(frame, p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
+            g2.drawImage(playerFrames.get(playerFrameIndex),
+                    p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
         }
 
-        // Enemy sprite (always mirrored so it faces the player)
+        // Enemy sprite (mirrored)
         if (p2HP <= 0) {
-            if (!enemyDeadFrames.isEmpty()) {
-                BufferedImage frame = enemyDeadFrames.get(enemyDeadFrameIndex);
-                g2.drawImage(frame, p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
-            }
+            if (!enemyDeadFrames.isEmpty())
+                g2.drawImage(enemyDeadFrames.get(enemyDeadFrameIndex),
+                        p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
         } else if (isEnemyHurtAnimating && !enemyHurtFrames.isEmpty()) {
-            BufferedImage frame = enemyHurtFrames.get(enemyHurtFrameIndex);
-            g2.drawImage(frame, p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
+            g2.drawImage(enemyHurtFrames.get(enemyHurtFrameIndex),
+                    p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
         } else if (isEnemySkillAnimating && !activeEnemySkillFrames.isEmpty()) {
-            BufferedImage frame = activeEnemySkillFrames.get(enemySkillFrameIndex);
-            g2.drawImage(frame, p2SpriteX + getEnemyDrawWidth() + activeEnemySkillOffsetX, p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
+            g2.drawImage(activeEnemySkillFrames.get(enemySkillFrameIndex),
+                    p2SpriteX + getEnemyDrawWidth() + activeEnemySkillOffsetX, p2SpriteY,
+                    -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
         } else if (!enemyFrames.isEmpty()) {
-            BufferedImage frame = enemyFrames.get(enemyFrameIndex);
-            g2.drawImage(frame, p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
+            g2.drawImage(enemyFrames.get(enemyFrameIndex),
+                    p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
         }
 
+        // Projectile
         if (isProjectileAnimating && !activeProjectileFrames.isEmpty()) {
             BufferedImage frame = activeProjectileFrames.get(projectileFrameIndex);
             if (frame != null) {
-                int drawWidth = DARK_WIZARD_PROJECTILE_DRAW_SIZE;
-                int drawHeight = DARK_WIZARD_PROJECTILE_DRAW_SIZE;
-                if (projectileIsPlayerOne) {
-                    g2.drawImage(frame, projectileX, projectileY, projectileX + drawWidth, projectileY + drawHeight, 0, 0, frame.getWidth(), frame.getHeight(), this);
-                } else {
-                    g2.drawImage(frame, projectileX + drawWidth, projectileY, projectileX, projectileY + drawHeight, 0, 0, frame.getWidth(), frame.getHeight(), this);
-                }
+                int dw = DARK_WIZARD_PROJECTILE_DRAW_SIZE, dh = DARK_WIZARD_PROJECTILE_DRAW_SIZE;
+                if (projectileIsPlayerOne)
+                    g2.drawImage(frame, projectileX, projectileY, projectileX + dw, projectileY + dh,
+                            0, 0, frame.getWidth(), frame.getHeight(), this);
+                else
+                    g2.drawImage(frame, projectileX + dw, projectileY, projectileX, projectileY + dh,
+                            0, 0, frame.getWidth(), frame.getHeight(), this);
             }
         }
     }
@@ -449,26 +471,19 @@ public class GamePanel extends JPanel {
     private void loadMapData(String tmxResourcePath) {
         try {
             URL tmxUrl = getClass().getResource(tmxResourcePath);
-            if (tmxUrl == null) {
-                System.err.println("TMX not found: " + tmxResourcePath);
-                return;
-            }
-
+            if (tmxUrl == null) { System.err.println("TMX not found: " + tmxResourcePath); return; }
             try (InputStream stream = tmxUrl.openStream()) {
                 DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
                 factory.setIgnoringComments(true);
                 factory.setNamespaceAware(false);
                 Document document = factory.newDocumentBuilder().parse(stream);
                 document.getDocumentElement().normalize();
-
                 loadMapDimensions(document);
                 loadMapBackground(document, tmxResourcePath, tmxUrl);
-                loadSpawnPoint(document, "spawnPlayer", true);
+                loadSpawnPoint(document, "spawnPlayer",  true);
                 loadSpawnPoint(document, "spawnPlayer2", false);
             }
-        } catch (Exception e) {
-            System.err.println("Failed to load TMX map data: " + e.getMessage());
-        }
+        } catch (Exception e) { System.err.println("Failed to load TMX map data: " + e.getMessage()); }
     }
 
     public void setCharacters(int playerIdx, int enemyIdx) {
@@ -482,7 +497,6 @@ public class GamePanel extends JPanel {
 
         CharacterDef playerDef = ALL_CHARACTERS.get(playerIdx);
         CharacterDef enemyDef  = ALL_CHARACTERS.get(enemyIdx);
-
         currentPlayerDef = playerDef;
         currentEnemyDef  = enemyDef;
 
@@ -505,7 +519,6 @@ public class GamePanel extends JPanel {
             });
             playerTimer.start();
         }
-
         if (!enemyFrames.isEmpty()) {
             enemyTimer = new Timer(enemyDef.idleAnimation.frameDelayMs, e -> {
                 enemyFrameIndex = (enemyFrameIndex + 1) % enemyFrames.size();
@@ -527,283 +540,21 @@ public class GamePanel extends JPanel {
         repaint();
     }
 
-    private List<BufferedImage> loadFrames(CharacterDef def)     { return loadAnimationFrames(def.idleAnimation); }
-    private List<BufferedImage> loadDeadFrames(CharacterDef def) { return loadAnimationFrames(def.deadAnimation); }
-    private List<BufferedImage> loadHurtFrames(CharacterDef def) { return loadAnimationFrames(def.hurtAnimation); }
-
-    private List<List<BufferedImage>> loadSkillAnimations(CharacterDef def) {
-        List<List<BufferedImage>> animations = new ArrayList<>();
-        for (int skillID = 1; skillID <= 3; skillID++) {
-            String skillSpritePath = def.getSkillSpritePath(skillID);
-            if (skillSpritePath == null || skillSpritePath.isBlank()) {
-                animations.add(List.of());
-                continue;
-            }
-            animations.add(loadAnimationFrames(new CharacterDef.AnimationDef(
-                    skillSpritePath,
-                    DEFAULT_FRAME_SIZE,
-                    DEFAULT_FRAME_SIZE,
-                    DEFAULT_SKILL_DELAY_MS
-            )));
-        }
-        return animations;
-    }
-
-    private List<BufferedImage> loadAnimationFrames(CharacterDef.AnimationDef animation) {
-        List<BufferedImage> frames = new ArrayList<>();
-        try {
-            URL resource = getClass().getResource(animation.sheetPath);
-            if (resource == null) {
-                System.err.println("Missing sprite sheet: " + animation.sheetPath);
-                return frames;
-            }
-            BufferedImage sheet = ImageIO.read(resource);
-            if (sheet == null) {
-                System.err.println("Could not decode sprite sheet: " + animation.sheetPath);
-                return frames;
-            }
-            int columns = sheet.getWidth()  / animation.frameWidth;
-            int rows    = sheet.getHeight() / animation.frameHeight;
-            for (int row = 0; row < rows; row++) {
-                for (int col = 0; col < columns; col++) {
-                    frames.add(sheet.getSubimage(
-                            col * animation.frameWidth,
-                            row * animation.frameHeight,
-                            animation.frameWidth,
-                            animation.frameHeight
-                    ));
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("Failed to load sprite sheet: " + e.getMessage());
-        }
-        return frames;
-    }
-
-    private void loadMapBackground(Document document, String tmxResourcePath, URL tmxUrl) {
-        NodeList imageNodes = document.getElementsByTagName("image");
-        if (imageNodes.getLength() == 0) return;
-
-        Element imageElement = (Element) imageNodes.item(0);
-        String source = imageElement.getAttribute("source");
-        if (source == null || source.isEmpty()) return;
-
-        int imageWidth  = parseNumber(imageElement.getAttribute("width"));
-        int imageHeight = parseNumber(imageElement.getAttribute("height"));
-        if (imageWidth  > 0) mapPixelWidth  = imageWidth;
-        if (imageHeight > 0) mapPixelHeight = imageHeight;
-
-        Image loaded = tryLoadMapImage(source, tmxResourcePath, tmxUrl);
-        if (loaded != null) {
-            backgroundImage = loaded;
-        } else {
-            System.err.println("TMX background image not found: " + source);
-        }
-    }
-
-    private Image tryLoadMapImage(String source, String tmxResourcePath, URL tmxUrl) {
-        String resolvedResourcePath = resolveResourcePath(tmxResourcePath, source);
-        URL resourceUrl = getClass().getResource(resolvedResourcePath);
-        if (resourceUrl != null) return new ImageIcon(resourceUrl).getImage();
-
-        try {
-            Path tmxFilePath = Paths.get(tmxUrl.toURI());
-            Path tmxDir = tmxFilePath.getParent();
-            if (tmxDir != null) {
-                Path imagePath = tmxDir.resolve(source.replace('\\', File.separatorChar)).normalize();
-                if (Files.exists(imagePath)) return new ImageIcon(imagePath.toString()).getImage();
-            }
-        } catch (Exception ignored) {}
-
-        return null;
-    }
-
-    private void loadSpawnPoint(Document document, String groupName, boolean isPlayerOne) {
-        NodeList groups = document.getElementsByTagName("objectgroup");
-        for (int i = 0; i < groups.getLength(); i++) {
-            Node node = groups.item(i);
-            if (node.getNodeType() != Node.ELEMENT_NODE) continue;
-
-            Element group = (Element) node;
-            if (!groupName.equals(group.getAttribute("name"))) continue;
-
-            int offsetX = parseNumber(group.getAttribute("offsetx"));
-            int offsetY = parseNumber(group.getAttribute("offsety"));
-
-            NodeList objects = group.getElementsByTagName("object");
-            if (objects.getLength() == 0) return;
-
-            Element object = (Element) objects.item(0);
-            int spawnX = parseNumber(object.getAttribute("x")) + offsetX;
-            int spawnY = parseNumber(object.getAttribute("y")) + offsetY;
-
-            if (isPlayerOne) {
-                p1SpawnFeetMapX = spawnX;
-                p1SpawnFeetMapY = spawnY;
-                updateP1DrawFromSpawn();
-            } else {
-                p2SpawnFeetMapX = spawnX;
-                p2SpawnFeetMapY = spawnY;
-                updateP2DrawFromSpawn();
-            }
-            return;
-        }
-    }
-
-    private void loadMapDimensions(Document document) {
-        Element map = document.getDocumentElement();
-        if (map == null || !"map".equals(map.getTagName())) return;
-
-        int widthInTiles  = parseNumber(map.getAttribute("width"));
-        int heightInTiles = parseNumber(map.getAttribute("height"));
-        int tileWidth     = parseNumber(map.getAttribute("tilewidth"));
-        int tileHeight    = parseNumber(map.getAttribute("tileheight"));
-
-        if (widthInTiles  > 0 && tileWidth  > 0) mapPixelWidth  = widthInTiles  * tileWidth;
-        if (heightInTiles > 0 && tileHeight > 0) mapPixelHeight = heightInTiles * tileHeight;
-    }
-
-    private int scaleMapXToPanel(int mapX) {
-        if (mapPixelWidth <= 0) return mapX;
-        int panelWidth = Math.max(getWidth(), screenWidth);
-        double scaleX = (double) panelWidth / mapPixelWidth;
-        return (int) Math.round(mapX * scaleX);
-    }
-
-    private int scaleMapYToPanel(int mapY) {
-        if (mapPixelHeight <= 0) return mapY;
-        int panelHeight = Math.max(getHeight(), screenHeight);
-        double scaleY = (double) panelHeight / mapPixelHeight;
-        return (int) Math.round(mapY * scaleY);
-    }
-
-    private void updateP1DrawFromSpawn() {
-        int feetX = scaleMapXToPanel(p1SpawnFeetMapX);
-        int feetY = scaleMapYToPanel(p1SpawnFeetMapY);
-        p1SpriteX = feetX - (getPlayerDrawWidth() / 2);
-        p1SpriteY = feetY -  getPlayerDrawHeight();
-    }
-
-    private void updateP2DrawFromSpawn() {
-        int feetX = scaleMapXToPanel(p2SpawnFeetMapX);
-        int feetY = scaleMapYToPanel(p2SpawnFeetMapY);
-        p2SpriteX = feetX - (getEnemyDrawWidth() / 2);
-        p2SpriteY = feetY -  getEnemyDrawHeight();
-    }
-
-    private void repositionUI() {
-        int feetX1 = p1SpriteX + getPlayerDrawWidth() / 2;
-        int feetY1 = p1SpriteY + getPlayerDrawHeight();
-        int feetX2 = p2SpriteX + getEnemyDrawWidth()  / 2;
-        int feetY2 = p2SpriteY + getEnemyDrawHeight();
-
-        int labelW = 160, labelH = 30;
-        int btnW   = tileSize * 2, btnH = 40;
-        int gap    = 5;
-
-        // HP labels
-        if (p1HPLabel    != null) p1HPLabel   .setBounds(feetX1 - labelW / 2, feetY1 + gap,                    labelW, labelH);
-        if (p2HPLabel    != null) p2HPLabel   .setBounds(feetX2 - labelW / 2, feetY2 + gap,                    labelW, labelH);
-
-        // Skill button panels
-        if (p1ButtonPanel != null) p1ButtonPanel.setBounds(feetX1 - btnW / 2, feetY1 + gap + labelH + gap,  btnW, btnH);
-        if (p2ButtonPanel != null) p2ButtonPanel.setBounds(feetX2 - btnW / 2, feetY2 + gap + labelH + gap,  btnW, btnH);
-
-        // Health bars
-        if (p1HealthBar  != null) p1HealthBar .setBounds(feetX1 - barW / 2, p1SpriteY - 20, barW, barH);
-        if (p2HealthBar  != null) p2HealthBar .setBounds(feetX2 - barW / 2, p2SpriteY - 20, barW, barH);
-
-        // ── Countdown label: centred above the active player's button panel ──
-        // We position it for whichever player's turn it currently is.
-        // repositionUI() is also called when the turn switches, so this stays
-        // in sync automatically.
-        if (countdownLabel != null) {
-            int cdW = 56, cdH = 40;
-            int activeFeetX = isP1Turn ? feetX1 : feetX2;
-            int activeFeetY = isP1Turn
-                    ? (feetY1 + gap + labelH + gap)   // top of p1 button panel
-                    : (feetY2 + gap + labelH + gap);  // top of p2 button panel
-            countdownLabel.setBounds(activeFeetX - cdW / 2, activeFeetY - cdH - 4, cdW, cdH);
-        }
-    }
-
-    private void refreshSkillButtonLabels() {
-        applySkillNamesToButtons(currentPlayerDef, p1SkillButtons);
-        applySkillNamesToButtons(currentEnemyDef,  p2SkillButtons);
-    }
-
-    private void applySkillNamesToButtons(CharacterDef character, List<JButton> buttons) {
-        if (character == null || buttons.isEmpty()) return;
-        for (int i = 0; i < buttons.size(); i++) {
-            buttons.get(i).setText(character.getSkillName(i + 1));
-        }
-    }
-
-    private int getPlayerDrawWidth()  { return currentPlayerDef != null ? currentPlayerDef.drawWidth  : DEFAULT_DRAW_WIDTH;  }
-    private int getPlayerDrawHeight() { return currentPlayerDef != null ? currentPlayerDef.drawHeight : DEFAULT_DRAW_HEIGHT; }
-    private int getEnemyDrawWidth()   { return currentEnemyDef  != null ? currentEnemyDef.drawWidth   : DEFAULT_DRAW_WIDTH;  }
-    private int getEnemyDrawHeight()  { return currentEnemyDef  != null ? currentEnemyDef.drawHeight  : DEFAULT_DRAW_HEIGHT; }
-
-    private int parseNumber(String value) {
-        if (value == null || value.isBlank()) return 0;
-        return (int) Math.round(Double.parseDouble(value));
-    }
-
-    private String resolveResourcePath(String basePath, String relativePath) {
-        String normalizedRelative = relativePath.replace('\\', '/');
-        Path base     = Paths.get(basePath).getParent();
-        Path resolved = (base == null ? Paths.get(normalizedRelative) : base.resolve(normalizedRelative)).normalize();
-        String resourcePath = resolved.toString().replace('\\', '/');
-        return resourcePath.startsWith("/") ? resourcePath : "/" + resourcePath;
-    }
-
-    private void updateGameState() {
-        // Clamp HP
-        p1HP = Math.max(0, Math.min(100, p1HP));
-        p2HP = Math.max(0, Math.min(100, p2HP));
-
-        p1HPLabel.setText("HP: " + p1HP);
-        p2HPLabel.setText("HP: " + p2HP);
-
-        if (p1HealthBar != null) p1HealthBar.updateValue(p1HP);
-        if (p2HealthBar != null) p2HealthBar.updateValue(p2HP);
-
-        if (p1HP <= 0 && playerDeadTimer == null) startDeadAnimation(true);
-        if (p2HP <= 0 && enemyDeadTimer  == null) startDeadAnimation(false);
-
-        if (p1HP <= 0 || p2HP <= 0) {
-            stopTurnTimer();
-
-            if (!roundManager.isMatchOver()) {
-                boolean p1WonRound = p2HP <= 0;
-                roundManager.recordRoundResult(p1WonRound);
-            }
-            return;
-        } else {
-            turnLabel.setText(
-                    (isP1Turn ? "PLAYER 1'S TURN" : "PLAYER 2'S TURN") +
-                            " | " + roundManager.getScoreDisplay("P1", "P2")
-            );
-
-            // ── Reposition countdown above the correct player then restart ───
-            if (countdownLabel != null) {
-                countdownLabel.setVisible(true);
-                repositionUI(); // snaps label to the now-active player's side
-            }
-            startTurnTimer();
-        }
-
-        System.out.println("P1: " + roundManager.getWinPips(true));
-        System.out.println("P2: " + roundManager.getWinPips(false));
-    }
-
 
     public void executeSkill(int skillID) {
         if (!roundManager.isRoundInProgress()) return;
-
         if (p1HP <= 0 || p2HP <= 0) return;
 
-        // ── Stop the timer immediately so it cannot fire mid-animation ────────
+        // ── MP check ─────────────────────────────────────────────────────────
+        if (!hasEnoughMP(isP1Turn, skillID)) {
+            String original = turnLabel.getText();
+            turnLabel.setText("Not enough MP! (Need " + mpCostFor(skillID) + " MP)");
+            Timer restore = new Timer(1200, e -> turnLabel.setText(original));
+            restore.setRepeats(false);
+            restore.start();
+            return;
+        }
+
         stopTurnTimer();
 
         boolean actingPlayerOne = isP1Turn;
@@ -827,24 +578,261 @@ public class GamePanel extends JPanel {
             }
         }
 
-        if (isDamageSkill)         scheduleHurtTimeline(actingPlayerOne, skillID);
+        // Spend MP for attacker, regen for defender
+        spendAndRegenMP(actingPlayerOne, skillID);
+
+        if (isDamageSkill)          scheduleHurtTimeline(actingPlayerOne, skillID);
         if (isDarkWizardProjectile) startProjectileAnimation(actingPlayerOne, skillID);
         else                        stopProjectileAnimation();
 
         playSkillAnimation(actingPlayerOne, skillID, null);
 
         isP1Turn = !isP1Turn;
-        updateGameState(); // restarts the timer for the next player's turn
+        updateGameState();
         repaint();
+    }
+
+    private void updateGameState() {
+        p1HP = Math.max(0, Math.min(100,    p1HP));
+        p2HP = Math.max(0, Math.min(100,    p2HP));
+        p1MP = Math.max(0, Math.min(MAX_MP, p1MP));
+        p2MP = Math.max(0, Math.min(MAX_MP, p2MP));
+
+        // HP label text (hidden — kept for safety)
+        p1HPLabel.setText("HP: " + p1HP);
+        p2HPLabel.setText("HP: " + p2HP);
+
+        if (p1HealthBar != null) p1HealthBar.updateValue(p1HP);
+        if (p2HealthBar != null) p2HealthBar.updateValue(p2HP);
+        if (p1MpBar     != null) p1MpBar.updateValue(p1MP);
+        if (p2MpBar     != null) p2MpBar.updateValue(p2MP);
+
+        if (p1HP <= 0 && playerDeadTimer == null) startDeadAnimation(true);
+        if (p2HP <= 0 && enemyDeadTimer  == null) startDeadAnimation(false);
+
+        if (p1HP <= 0 || p2HP <= 0) {
+            stopTurnTimer();
+            if (!roundManager.isMatchOver()) {
+                boolean p1WonRound = p2HP <= 0;
+                roundManager.recordRoundResult(p1WonRound);
+            }
+            return;
+        }
+
+        turnLabel.setText(
+                (isP1Turn ? "PLAYER 1'S TURN" : "PLAYER 2'S TURN") +
+                        " | " + roundManager.getScoreDisplay("P1", "P2")
+        );
+
+        // Grey out unaffordable skill buttons
+        refreshSkillButtonMPState();
+
+        if (countdownLabel != null) {
+            countdownLabel.setVisible(true);
+            repositionUI();
+        }
+        startTurnTimer();
+
+        System.out.println("P1: " + roundManager.getWinPips(true));
+        System.out.println("P2: " + roundManager.getWinPips(false));
+    }
+
+
+    private void repositionUI() {
+        int feetX1 = p1SpriteX + getPlayerDrawWidth() / 2;
+        int feetY1 = p1SpriteY + getPlayerDrawHeight();
+        int feetX2 = p2SpriteX + getEnemyDrawWidth()  / 2;
+        int feetY2 = p2SpriteY + getEnemyDrawHeight();
+
+        int btnW = tileSize * 2, btnH = 40;
+        int gap  = 5;
+
+        // Hidden HP labels — zero-sized so they take no space
+        if (p1HPLabel != null) p1HPLabel.setBounds(0, 0, 0, 0);
+        if (p2HPLabel != null) p2HPLabel.setBounds(0, 0, 0, 0);
+
+        // HP bars above the character
+        if (p1HealthBar != null) p1HealthBar.setBounds(feetX1 - barW / 2, p1SpriteY - 20 - barH - gap, barW, barH);
+        if (p2HealthBar != null) p2HealthBar.setBounds(feetX2 - barW / 2, p2SpriteY - 20 - barH - gap, barW, barH);
+
+        // MP bars directly below HP bars
+        if (p1MpBar != null) p1MpBar.setBounds(feetX1 - barW / 2, p1SpriteY - 20, barW, barH);
+        if (p2MpBar != null) p2MpBar.setBounds(feetX2 - barW / 2, p2SpriteY - 20, barW, barH);
+
+        // Skill buttons below feet (below bars stack)
+        if (p1ButtonPanel != null) p1ButtonPanel.setBounds(feetX1 - btnW / 2, feetY1 + gap + barH + gap + barH + gap, btnW, btnH);
+        if (p2ButtonPanel != null) p2ButtonPanel.setBounds(feetX2 - btnW / 2, feetY2 + gap + barH + gap + barH + gap, btnW, btnH);
+
+        // Countdown above the active player's button panel
+        if (countdownLabel != null) {
+            int cdW = 56, cdH = 40;
+            int activeFeetX = isP1Turn ? feetX1 : feetX2;
+            int activeFeetY = isP1Turn
+                    ? (feetY1 + gap + barH + gap + barH + gap)
+                    : (feetY2 + gap + barH + gap + barH + gap);
+            countdownLabel.setBounds(activeFeetX - cdW / 2, activeFeetY - cdH - 4, cdW, cdH);
+        }
+    }
+
+    private void refreshSkillButtonLabels() {
+        applySkillNamesToButtons(currentPlayerDef, p1SkillButtons);
+        applySkillNamesToButtons(currentEnemyDef,  p2SkillButtons);
+    }
+
+    private void applySkillNamesToButtons(CharacterDef character, List<JButton> buttons) {
+        if (character == null || buttons.isEmpty()) return;
+        for (int i = 0; i < buttons.size(); i++) {
+            String name = character.getSkillName(i + 1);
+            int cost    = SKILL_MP_COST[i];
+            buttons.get(i).setText("<html><center>" + name + "<br/><font color='#4488ff'>" + cost + " MP</font></center></html>");
+            buttons.get(i).setToolTipText("MP Cost: " + cost);
+        }
+    }
+
+
+    private int getPlayerDrawWidth()  { return currentPlayerDef != null ? currentPlayerDef.drawWidth  : DEFAULT_DRAW_WIDTH;  }
+    private int getPlayerDrawHeight() { return currentPlayerDef != null ? currentPlayerDef.drawHeight : DEFAULT_DRAW_HEIGHT; }
+    private int getEnemyDrawWidth()   { return currentEnemyDef  != null ? currentEnemyDef.drawWidth   : DEFAULT_DRAW_WIDTH;  }
+    private int getEnemyDrawHeight()  { return currentEnemyDef  != null ? currentEnemyDef.drawHeight  : DEFAULT_DRAW_HEIGHT; }
+
+    private void loadMapBackground(Document document, String tmxResourcePath, URL tmxUrl) {
+        NodeList imageNodes = document.getElementsByTagName("image");
+        if (imageNodes.getLength() == 0) return;
+        Element imageElement = (Element) imageNodes.item(0);
+        String source = imageElement.getAttribute("source");
+        if (source == null || source.isEmpty()) return;
+        int imageWidth  = parseNumber(imageElement.getAttribute("width"));
+        int imageHeight = parseNumber(imageElement.getAttribute("height"));
+        if (imageWidth  > 0) mapPixelWidth  = imageWidth;
+        if (imageHeight > 0) mapPixelHeight = imageHeight;
+        Image loaded = tryLoadMapImage(source, tmxResourcePath, tmxUrl);
+        if (loaded != null) backgroundImage = loaded;
+        else System.err.println("TMX background image not found: " + source);
+    }
+
+    private Image tryLoadMapImage(String source, String tmxResourcePath, URL tmxUrl) {
+        String resolvedResourcePath = resolveResourcePath(tmxResourcePath, source);
+        URL resourceUrl = getClass().getResource(resolvedResourcePath);
+        if (resourceUrl != null) return new ImageIcon(resourceUrl).getImage();
+        try {
+            Path tmxFilePath = Paths.get(tmxUrl.toURI());
+            Path tmxDir = tmxFilePath.getParent();
+            if (tmxDir != null) {
+                Path imagePath = tmxDir.resolve(source.replace('\\', File.separatorChar)).normalize();
+                if (Files.exists(imagePath)) return new ImageIcon(imagePath.toString()).getImage();
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    private void loadSpawnPoint(Document document, String groupName, boolean isPlayerOne) {
+        NodeList groups = document.getElementsByTagName("objectgroup");
+        for (int i = 0; i < groups.getLength(); i++) {
+            Node node = groups.item(i);
+            if (node.getNodeType() != Node.ELEMENT_NODE) continue;
+            Element group = (Element) node;
+            if (!groupName.equals(group.getAttribute("name"))) continue;
+            int offsetX = parseNumber(group.getAttribute("offsetx"));
+            int offsetY = parseNumber(group.getAttribute("offsety"));
+            NodeList objects = group.getElementsByTagName("object");
+            if (objects.getLength() == 0) return;
+            Element object = (Element) objects.item(0);
+            int spawnX = parseNumber(object.getAttribute("x")) + offsetX;
+            int spawnY = parseNumber(object.getAttribute("y")) + offsetY;
+            if (isPlayerOne) { p1SpawnFeetMapX = spawnX; p1SpawnFeetMapY = spawnY; updateP1DrawFromSpawn(); }
+            else             { p2SpawnFeetMapX = spawnX; p2SpawnFeetMapY = spawnY; updateP2DrawFromSpawn(); }
+            return;
+        }
+    }
+
+    private void loadMapDimensions(Document document) {
+        Element map = document.getDocumentElement();
+        if (map == null || !"map".equals(map.getTagName())) return;
+        int widthInTiles  = parseNumber(map.getAttribute("width"));
+        int heightInTiles = parseNumber(map.getAttribute("height"));
+        int tileWidth     = parseNumber(map.getAttribute("tilewidth"));
+        int tileHeight    = parseNumber(map.getAttribute("tileheight"));
+        if (widthInTiles  > 0 && tileWidth  > 0) mapPixelWidth  = widthInTiles  * tileWidth;
+        if (heightInTiles > 0 && tileHeight > 0) mapPixelHeight = heightInTiles * tileHeight;
+    }
+
+    private int scaleMapXToPanel(int mapX) {
+        if (mapPixelWidth <= 0) return mapX;
+        int panelWidth = Math.max(getWidth(), screenWidth);
+        return (int) Math.round(mapX * ((double) panelWidth / mapPixelWidth));
+    }
+
+    private int scaleMapYToPanel(int mapY) {
+        if (mapPixelHeight <= 0) return mapY;
+        int panelHeight = Math.max(getHeight(), screenHeight);
+        return (int) Math.round(mapY * ((double) panelHeight / mapPixelHeight));
+    }
+
+    private void updateP1DrawFromSpawn() {
+        int feetX = scaleMapXToPanel(p1SpawnFeetMapX);
+        int feetY = scaleMapYToPanel(p1SpawnFeetMapY);
+        p1SpriteX = feetX - (getPlayerDrawWidth()  / 2);
+        p1SpriteY = feetY -  getPlayerDrawHeight();
+    }
+
+    private void updateP2DrawFromSpawn() {
+        int feetX = scaleMapXToPanel(p2SpawnFeetMapX);
+        int feetY = scaleMapYToPanel(p2SpawnFeetMapY);
+        p2SpriteX = feetX - (getEnemyDrawWidth()  / 2);
+        p2SpriteY = feetY -  getEnemyDrawHeight();
+    }
+
+    private int parseNumber(String value) {
+        if (value == null || value.isBlank()) return 0;
+        return (int) Math.round(Double.parseDouble(value));
+    }
+
+    private String resolveResourcePath(String basePath, String relativePath) {
+        String normalizedRelative = relativePath.replace('\\', '/');
+        Path base     = Paths.get(basePath).getParent();
+        Path resolved = (base == null ? Paths.get(normalizedRelative) : base.resolve(normalizedRelative)).normalize();
+        String resourcePath = resolved.toString().replace('\\', '/');
+        return resourcePath.startsWith("/") ? resourcePath : "/" + resourcePath;
+    }
+
+    private List<BufferedImage> loadFrames(CharacterDef def)     { return loadAnimationFrames(def.idleAnimation); }
+    private List<BufferedImage> loadDeadFrames(CharacterDef def) { return loadAnimationFrames(def.deadAnimation); }
+    private List<BufferedImage> loadHurtFrames(CharacterDef def) { return loadAnimationFrames(def.hurtAnimation); }
+
+    private List<List<BufferedImage>> loadSkillAnimations(CharacterDef def) {
+        List<List<BufferedImage>> animations = new ArrayList<>();
+        for (int skillID = 1; skillID <= 3; skillID++) {
+            String path = def.getSkillSpritePath(skillID);
+            if (path == null || path.isBlank()) { animations.add(List.of()); continue; }
+            animations.add(loadAnimationFrames(new CharacterDef.AnimationDef(
+                    path, DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_SKILL_DELAY_MS)));
+        }
+        return animations;
+    }
+
+    private List<BufferedImage> loadAnimationFrames(CharacterDef.AnimationDef animation) {
+        List<BufferedImage> frames = new ArrayList<>();
+        try {
+            URL resource = getClass().getResource(animation.sheetPath);
+            if (resource == null) { System.err.println("Missing sprite sheet: " + animation.sheetPath); return frames; }
+            BufferedImage sheet = ImageIO.read(resource);
+            if (sheet == null)   { System.err.println("Could not decode sprite sheet: " + animation.sheetPath); return frames; }
+            int columns = sheet.getWidth()  / animation.frameWidth;
+            int rows    = sheet.getHeight() / animation.frameHeight;
+            for (int row = 0; row < rows; row++)
+                for (int col = 0; col < columns; col++)
+                    frames.add(sheet.getSubimage(
+                            col * animation.frameWidth, row * animation.frameHeight,
+                            animation.frameWidth, animation.frameHeight));
+        } catch (Exception e) { System.err.println("Failed to load sprite sheet: " + e.getMessage()); }
+        return frames;
     }
 
     private void playSkillAnimation(boolean isPlayerOne, int skillID, Runnable onCastFinished) {
         if (skillID < 1 || skillID > 3) return;
         Runnable callback = onCastFinished != null ? onCastFinished : () -> {};
-
         List<List<BufferedImage>> source = isPlayerOne ? playerSkillAnimations : enemySkillAnimations;
         if (source.isEmpty() || source.size() < skillID) { callback.run(); return; }
-
         List<BufferedImage> frames = source.get(skillID - 1);
         if (frames == null || frames.isEmpty()) { callback.run(); return; }
 
@@ -854,15 +842,10 @@ public class GamePanel extends JPanel {
             playerSkillFrameIndex    = 0;
             isPlayerSkillAnimating   = true;
             activePlayerSkillOffsetX = currentPlayerDef != null ? currentPlayerDef.getSkillForwardOffsetX(skillID) : 0;
-
             playerSkillTimer = new Timer(DEFAULT_SKILL_DELAY_MS, null);
             playerSkillTimer.addActionListener(e -> {
-                if (playerSkillFrameIndex < activePlayerSkillFrames.size() - 1) {
-                    playerSkillFrameIndex++;
-                } else {
-                    stopSkillAnimation(true);
-                    callback.run();
-                }
+                if (playerSkillFrameIndex < activePlayerSkillFrames.size() - 1) playerSkillFrameIndex++;
+                else { stopSkillAnimation(true); callback.run(); }
                 repaint();
             });
             playerSkillTimer.start();
@@ -871,17 +854,11 @@ public class GamePanel extends JPanel {
             activeEnemySkillFrames  = frames;
             enemySkillFrameIndex    = 0;
             isEnemySkillAnimating   = true;
-            int forwardOffset       = currentEnemyDef != null ? currentEnemyDef.getSkillForwardOffsetX(skillID) : 0;
-            activeEnemySkillOffsetX = -forwardOffset;
-
+            activeEnemySkillOffsetX = -(currentEnemyDef != null ? currentEnemyDef.getSkillForwardOffsetX(skillID) : 0);
             enemySkillTimer = new Timer(DEFAULT_SKILL_DELAY_MS, null);
             enemySkillTimer.addActionListener(e -> {
-                if (enemySkillFrameIndex < activeEnemySkillFrames.size() - 1) {
-                    enemySkillFrameIndex++;
-                } else {
-                    stopSkillAnimation(false);
-                    callback.run();
-                }
+                if (enemySkillFrameIndex < activeEnemySkillFrames.size() - 1) enemySkillFrameIndex++;
+                else { stopSkillAnimation(false); callback.run(); }
                 repaint();
             });
             enemySkillTimer.start();
@@ -891,40 +868,30 @@ public class GamePanel extends JPanel {
     private void stopSkillAnimation(boolean isPlayerOne) {
         if (isPlayerOne) {
             if (playerSkillTimer != null) { playerSkillTimer.stop(); playerSkillTimer = null; }
-            isPlayerSkillAnimating = false;
-            playerSkillFrameIndex  = 0;
-            activePlayerSkillOffsetX = 0;
-            activePlayerSkillFrames  = List.of();
+            isPlayerSkillAnimating = false; playerSkillFrameIndex = 0;
+            activePlayerSkillOffsetX = 0;   activePlayerSkillFrames = List.of();
         } else {
-            if (enemySkillTimer != null) { enemySkillTimer.stop(); enemySkillTimer = null; }
-            isEnemySkillAnimating = false;
-            enemySkillFrameIndex  = 0;
-            activeEnemySkillOffsetX = 0;
-            activeEnemySkillFrames  = List.of();
+            if (enemySkillTimer != null)  { enemySkillTimer.stop();  enemySkillTimer  = null; }
+            isEnemySkillAnimating = false;  enemySkillFrameIndex = 0;
+            activeEnemySkillOffsetX = 0;    activeEnemySkillFrames = List.of();
         }
     }
 
     private void startProjectileAnimation(boolean isPlayerOne, int skillID) {
         if (skillID != 2 && skillID != 3) return;
-
         CharacterDef actor = isPlayerOne ? currentPlayerDef : currentEnemyDef;
         if (actor == null || !"Dark Wizard".equalsIgnoreCase(actor.name)) return;
-
         List<BufferedImage> frames = loadDarkWizardProjectileFrames(skillID);
         if (frames.isEmpty()) return;
-
         stopProjectileAnimation();
-
         int attackerX      = isPlayerOne ? p1SpriteX : p2SpriteX;
         int attackerY      = isPlayerOne ? p1SpriteY : p2SpriteY;
         int attackerWidth  = isPlayerOne ? getPlayerDrawWidth()  : getEnemyDrawWidth();
         int attackerHeight = isPlayerOne ? getPlayerDrawHeight() : getEnemyDrawHeight();
         int targetX        = isPlayerOne ? p2SpriteX : p1SpriteX;
         int targetWidth    = isPlayerOne ? getEnemyDrawWidth()   : getPlayerDrawWidth();
-
         int projW = DARK_WIZARD_PROJECTILE_DRAW_SIZE;
         int projH = DARK_WIZARD_PROJECTILE_DRAW_SIZE;
-
         projectileDirection   = attackerX <= targetX ? 1 : -1;
         projectileIsPlayerOne = isPlayerOne;
         projectileX           = attackerX + (attackerWidth  / 2) - (projW / 2);
@@ -932,23 +899,17 @@ public class GamePanel extends JPanel {
         activeProjectileFrames = frames;
         projectileFrameIndex  = 0;
         isProjectileAnimating = true;
-
         int stopBoundary = projectileDirection > 0
                 ? (targetX + (targetWidth / 2)) - (projW / 2)
                 : (targetX + (targetWidth / 2)) + (projW / 2);
-
         projectileTimer = new Timer(DEFAULT_SKILL_DELAY_MS, null);
         projectileTimer.addActionListener(e -> {
-            if (!isProjectileAnimating || activeProjectileFrames.isEmpty()) {
-                stopProjectileAnimation();
-                return;
-            }
+            if (!isProjectileAnimating || activeProjectileFrames.isEmpty()) { stopProjectileAnimation(); return; }
             projectileFrameIndex = (projectileFrameIndex + 1) % activeProjectileFrames.size();
             projectileX += projectileDirection * DARK_WIZARD_PROJECTILE_SPEED;
             if ((projectileDirection > 0 && projectileX >= stopBoundary)
-                    || (projectileDirection < 0 && projectileX <= stopBoundary)) {
+                    || (projectileDirection < 0 && projectileX <= stopBoundary))
                 stopProjectileAnimation();
-            }
             repaint();
         });
         projectileTimer.start();
@@ -963,31 +924,26 @@ public class GamePanel extends JPanel {
         if (sheetPath == null) return List.of();
         List<BufferedImage> cached = projectileAnimationCache.get(sheetPath);
         if (cached != null) return cached;
-        List<BufferedImage> frames = loadAnimationFrames(new CharacterDef.AnimationDef(sheetPath, 64, 64, DEFAULT_SKILL_DELAY_MS));
+        List<BufferedImage> frames = loadAnimationFrames(
+                new CharacterDef.AnimationDef(sheetPath, 64, 64, DEFAULT_SKILL_DELAY_MS));
         projectileAnimationCache.put(sheetPath, frames);
         return frames;
     }
 
     private void stopProjectileAnimation() {
         if (projectileTimer != null) { projectileTimer.stop(); projectileTimer = null; }
-        isProjectileAnimating = false;
-        projectileFrameIndex  = 0;
-        projectileX           = 0;
-        projectileY           = 0;
-        projectileDirection   = 1;
-        projectileIsPlayerOne = true;
-        activeProjectileFrames = List.of();
+        isProjectileAnimating = false; projectileFrameIndex = 0;
+        projectileX = 0; projectileY = 0; projectileDirection = 1;
+        projectileIsPlayerOne = true;   activeProjectileFrames = List.of();
     }
 
     private void scheduleHurtTimeline(boolean attackerIsPlayerOne, int skillID) {
         CharacterDef attacker = attackerIsPlayerOne ? currentPlayerDef : currentEnemyDef;
         if (attacker == null) return;
-
         int castDurationMs     = getSkillCastDurationMs(attackerIsPlayerOne, skillID);
         int configuredBufferMs = (int) Math.round(attacker.getSkillHurtTriggerBufferSeconds(skillID) * 1000.0);
         int effectiveBufferMs  = Math.max(0, Math.min(configuredBufferMs, castDurationMs));
         int hurtDurationMs     = Math.max(1, (castDurationMs - effectiveBufferMs) + POST_ATTACK_HURT_MS);
-
         startDelayedHurt(!attackerIsPlayerOne, effectiveBufferMs, hurtDurationMs);
     }
 
@@ -1014,9 +970,7 @@ public class GamePanel extends JPanel {
             if (p1HP <= 0 || playerHurtFrames.isEmpty()) return;
             if (playerHurtTimer       != null) playerHurtTimer.stop();
             if (playerHurtWindowTimer != null) playerHurtWindowTimer.stop();
-
-            isPlayerHurtAnimating = true;
-            playerHurtFrameIndex  = 0;
+            isPlayerHurtAnimating = true; playerHurtFrameIndex = 0;
             playerHurtTimer = new Timer(DEFAULT_HURT_DELAY_MS, null);
             playerHurtTimer.addActionListener(e -> {
                 if (!playerHurtFrames.isEmpty())
@@ -1024,7 +978,6 @@ public class GamePanel extends JPanel {
                 repaint();
             });
             playerHurtTimer.start();
-
             playerHurtWindowTimer = new Timer(durationMs, null);
             playerHurtWindowTimer.setRepeats(false);
             playerHurtWindowTimer.addActionListener(e -> stopHurtTimeline(true));
@@ -1033,9 +986,7 @@ public class GamePanel extends JPanel {
             if (p2HP <= 0 || enemyHurtFrames.isEmpty()) return;
             if (enemyHurtTimer       != null) enemyHurtTimer.stop();
             if (enemyHurtWindowTimer != null) enemyHurtWindowTimer.stop();
-
-            isEnemyHurtAnimating = true;
-            enemyHurtFrameIndex  = 0;
+            isEnemyHurtAnimating = true; enemyHurtFrameIndex = 0;
             enemyHurtTimer = new Timer(DEFAULT_HURT_DELAY_MS, null);
             enemyHurtTimer.addActionListener(e -> {
                 if (!enemyHurtFrames.isEmpty())
@@ -1043,7 +994,6 @@ public class GamePanel extends JPanel {
                 repaint();
             });
             enemyHurtTimer.start();
-
             enemyHurtWindowTimer = new Timer(durationMs, null);
             enemyHurtWindowTimer.setRepeats(false);
             enemyHurtWindowTimer.addActionListener(e -> stopHurtTimeline(false));
@@ -1056,22 +1006,19 @@ public class GamePanel extends JPanel {
             if (playerHurtDelayTimer  != null) { playerHurtDelayTimer.stop();  playerHurtDelayTimer  = null; }
             if (playerHurtWindowTimer != null) { playerHurtWindowTimer.stop(); playerHurtWindowTimer = null; }
             if (playerHurtTimer       != null) { playerHurtTimer.stop();       playerHurtTimer       = null; }
-            isPlayerHurtAnimating = false;
-            playerHurtFrameIndex  = 0;
+            isPlayerHurtAnimating = false; playerHurtFrameIndex = 0;
         } else {
             if (enemyHurtDelayTimer  != null) { enemyHurtDelayTimer.stop();  enemyHurtDelayTimer  = null; }
             if (enemyHurtWindowTimer != null) { enemyHurtWindowTimer.stop(); enemyHurtWindowTimer = null; }
             if (enemyHurtTimer       != null) { enemyHurtTimer.stop();       enemyHurtTimer       = null; }
-            isEnemyHurtAnimating = false;
-            enemyHurtFrameIndex  = 0;
+            isEnemyHurtAnimating = false; enemyHurtFrameIndex = 0;
         }
     }
 
     private void startDeadAnimation(boolean isPlayer) {
         if (isPlayer) {
             if (playerTimer != null) playerTimer.stop();
-            stopSkillAnimation(true);
-            stopHurtTimeline(true);
+            stopSkillAnimation(true); stopHurtTimeline(true);
             if (playerDeadFrames.isEmpty()) return;
             playerDeadFrameIndex = 0;
             int delay = currentPlayerDef != null ? currentPlayerDef.deadAnimation.frameDelayMs : 150;
@@ -1084,8 +1031,7 @@ public class GamePanel extends JPanel {
             playerDeadTimer.start();
         } else {
             if (enemyTimer != null) enemyTimer.stop();
-            stopSkillAnimation(false);
-            stopHurtTimeline(false);
+            stopSkillAnimation(false); stopHurtTimeline(false);
             if (enemyDeadFrames.isEmpty()) return;
             enemyDeadFrameIndex = 0;
             int delay = currentEnemyDef != null ? currentEnemyDef.deadAnimation.frameDelayMs : 150;
@@ -1100,32 +1046,28 @@ public class GamePanel extends JPanel {
     }
 
     private static List<CharacterDef> loadCharacterDefs() {
-        List<CharacterDataLoader.CharacterConfig> configs = CharacterDataLoader.loadCharacterConfigs("/assets/data/characters.json");
+        List<CharacterDataLoader.CharacterConfig> configs =
+                CharacterDataLoader.loadCharacterConfigs("/assets/data/characters.json");
         List<CharacterDef> defs = new ArrayList<>();
-
         for (CharacterDataLoader.CharacterConfig config : configs) {
             defs.add(new CharacterDef(
-                    config.name,
-                    config.backstory,
+                    config.name, config.backstory,
                     config.skill1Name, config.skill2Name, config.skill3Name,
                     config.skill1Description, config.skill2Description, config.skill3Description,
                     config.skill1Type, config.skill2Type, config.skill3Type,
                     config.skill1SpritePath, config.skill2SpritePath, config.skill3SpritePath,
                     config.skill1ForwardOffsetX, config.skill2ForwardOffsetX, config.skill3ForwardOffsetX,
-                    config.skill1HurtTriggerBufferSeconds, config.skill2HurtTriggerBufferSeconds, config.skill3HurtTriggerBufferSeconds,
+                    config.skill1HurtTriggerBufferSeconds, config.skill2HurtTriggerBufferSeconds,
+                    config.skill3HurtTriggerBufferSeconds,
                     new CharacterDef.AnimationDef(config.idleSpritePath,  DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_IDLE_DELAY_MS),
                     new CharacterDef.AnimationDef(config.hurtSpritePath,  DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_HURT_DELAY_MS),
                     new CharacterDef.AnimationDef(config.deathSpritePath, DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_DEAD_DELAY_MS),
-                    DEFAULT_DRAW_WIDTH,
-                    DEFAULT_DRAW_HEIGHT
-            ));
+                    DEFAULT_DRAW_WIDTH, DEFAULT_DRAW_HEIGHT));
         }
-
         if (!defs.isEmpty()) return List.copyOf(defs);
 
         return List.of(
-                new CharacterDef(
-                        "Light Mage",
+                new CharacterDef("Light Mage",
                         "A former temple guardian who forged sacred combat arts to protect frontier villages.",
                         "Light Sword", "Halo of Aegis", "Dawn Piercer",
                         "Unleashes a radiant slash that deals high single-target light damage.",
@@ -1139,10 +1081,8 @@ public class GamePanel extends JPanel {
                         new CharacterDef.AnimationDef("/assets/spritesheet/Light Mage/Idle-Sheet.png",  DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_IDLE_DELAY_MS),
                         new CharacterDef.AnimationDef("/assets/spritesheet/Light Mage/Hurt-Sheet.png",  DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_HURT_DELAY_MS),
                         new CharacterDef.AnimationDef("/assets/spritesheet/Light Mage/Dead-Sheet.png",  DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_DEAD_DELAY_MS),
-                        DEFAULT_DRAW_WIDTH, DEFAULT_DRAW_HEIGHT
-                ),
-                new CharacterDef(
-                        "Idk Magician",
+                        DEFAULT_DRAW_WIDTH, DEFAULT_DRAW_HEIGHT),
+                new CharacterDef("Idk Magician",
                         "A wandering arcane prodigy who channels unstable spellcraft in battle.",
                         "Magic Arrow", "Arcane Charge", "Magic Sphere",
                         "Fires a condensed arcane bolt that pierces one target and deals medium magic damage.",
@@ -1156,8 +1096,6 @@ public class GamePanel extends JPanel {
                         new CharacterDef.AnimationDef("/assets/spritesheet/Idk Magician/Idle.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_IDLE_DELAY_MS),
                         new CharacterDef.AnimationDef("/assets/spritesheet/Idk Magician/Hurt.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_HURT_DELAY_MS),
                         new CharacterDef.AnimationDef("/assets/spritesheet/Idk Magician/Dead.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_DEAD_DELAY_MS),
-                        DEFAULT_DRAW_WIDTH, DEFAULT_DRAW_HEIGHT
-                )
-        );
+                        DEFAULT_DRAW_WIDTH, DEFAULT_DRAW_HEIGHT));
     }
 }
