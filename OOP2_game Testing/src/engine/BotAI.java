@@ -37,8 +37,7 @@ public final class BotAI {
 
         double botRatio    = (double) botHP    / maxHP;
         double playerRatio = (double) playerHP / maxHP;
-
-        // ── Tier 1: Desperate self-preservation ─────────────────────────────
+        
         if (botRatio <= DESPERATE_THRESHOLD) {
             int healSkill = findSkillOfType(botDef, "heal", "defense");
             if (healSkill != -1) return healSkill;
@@ -47,13 +46,11 @@ public final class BotAI {
             if (dmgSkill != -1) return dmgSkill;
         }
 
-        // ── Tier 2: Aggressive finishing blow ────────────────────────────────
         if (playerRatio <= AGGRESSIVE_THRESHOLD) {
             int dmgSkill = findStrongestDamageSkill(botDef);
             if (dmgSkill != -1) return dmgSkill;
         }
 
-        // ── Tier 3: Tactical mid-game ────────────────────────────────────────
         // If bot is moderately hurt and has a heal, use it ~60 % of the time
         if (botRatio < 0.55 && RNG.nextDouble() < 0.60) {
             int healSkill = findSkillOfType(botDef, "heal", "defense");
@@ -64,7 +61,7 @@ public final class BotAI {
         int dmgSkill = findStrongestDamageSkill(botDef);
         if (dmgSkill != -1) return dmgSkill;
 
-        // ── Tier 4: Random fallback ──────────────────────────────────────────
+        //fallback
         return randomSkill();
     }
 

@@ -83,7 +83,7 @@ public class GameWindow extends JFrame {
                 playerIndex,
                 botIndex,
                 GameMode.SURVIVAL,
-                BotAI.Difficulty.NORMAL
+                BotAI.Difficulty.EASY
         );
 
         container.add(surivivalGamePanel, "SURVIVAL");
