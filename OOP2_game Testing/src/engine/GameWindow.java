@@ -48,6 +48,8 @@ public class GameWindow extends JFrame {
         layout.show(container,"SURVIVAL");
     }
 
+    public void showArcadeGamePanel(){ layout.show(container,"ARCADE"); }
+
     public void showCharacterSelection(GameMode mode) {
 
         CharacterSelectionPanel panel = new CharacterSelectionPanel(this, mode);
@@ -92,6 +94,22 @@ public class GameWindow extends JFrame {
         surivivalGamePanel.requestFocusInWindow();
     }
 
-    public void startArcadeMatch(int focusedIndex) {
+    public void startArcadeMatch(int playerIndex) {
+        int botIndex = (int)(Math.random() * GamePanel.ALL_CHARACTERS.size());
+
+        ArcadeGamePanel arcade = new ArcadeGamePanel(
+                this,
+                playerIndex,
+                botIndex,
+                GameMode.PVB,
+                BotAI.Difficulty.NORMAL
+        );
+
+        container.add(arcade, "ARCADE");
+        layout.show(container, "ARCADE");
+
+        container.revalidate();
+        container.repaint();
+        arcade.requestFocusInWindow();
     }
 }

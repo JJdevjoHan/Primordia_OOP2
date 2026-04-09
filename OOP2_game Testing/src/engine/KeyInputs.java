@@ -6,14 +6,22 @@ import java.awt.event.KeyListener;
 public class KeyInputs implements KeyListener {
     private GamePanel gp;
     private SurivivalGamePanel sp;
+    private ArcadeGamePanel ap;
 
-    public KeyInputs(GamePanel gp) {
-        this.gp = gp;
+    public KeyInputs(ArcadeGamePanel ap) {
+
+        this.ap = ap;
     }
 
     public KeyInputs(SurivivalGamePanel sp) {
         this.sp = sp;
     }
+
+    public KeyInputs(GamePanel gp)
+    {
+        this.gp = gp;
+    }
+
 
     @Override
     public void keyTyped(KeyEvent e) {}
