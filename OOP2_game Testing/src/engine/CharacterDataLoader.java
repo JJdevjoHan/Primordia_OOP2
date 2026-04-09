@@ -35,6 +35,8 @@ public final class CharacterDataLoader {
         public final double skill1HurtTriggerBufferSeconds;
         public final double skill2HurtTriggerBufferSeconds;
         public final double skill3HurtTriggerBufferSeconds;
+        public final int drawWidth;
+        public final int drawHeight;
         public final String idleSpritePath;
         public final String hurtSpritePath;
         public final String deathSpritePath;
@@ -60,6 +62,8 @@ public final class CharacterDataLoader {
             double skill1HurtTriggerBufferSeconds,
             double skill2HurtTriggerBufferSeconds,
             double skill3HurtTriggerBufferSeconds,
+            int drawWidth,
+            int drawHeight,
             String idleSpritePath,
             String hurtSpritePath,
             String deathSpritePath
@@ -84,6 +88,8 @@ public final class CharacterDataLoader {
             this.skill1HurtTriggerBufferSeconds = skill1HurtTriggerBufferSeconds;
             this.skill2HurtTriggerBufferSeconds = skill2HurtTriggerBufferSeconds;
             this.skill3HurtTriggerBufferSeconds = skill3HurtTriggerBufferSeconds;
+            this.drawWidth = drawWidth;
+            this.drawHeight = drawHeight;
             this.idleSpritePath = idleSpritePath;
             this.hurtSpritePath = hurtSpritePath;
             this.deathSpritePath = deathSpritePath;
@@ -137,6 +143,8 @@ public final class CharacterDataLoader {
                 double skill1HurtTriggerBufferSeconds = getSkillHurtTriggerBufferSeconds(skills, 0);
                 double skill2HurtTriggerBufferSeconds = getSkillHurtTriggerBufferSeconds(skills, 1);
                 double skill3HurtTriggerBufferSeconds = getSkillHurtTriggerBufferSeconds(skills, 2);
+                int drawWidth = getOptionalInt(characterMap, "drawWidth");
+                int drawHeight = getOptionalInt(characterMap, "drawHeight");
                 String idleSpritePath = normalizeResourcePath(toStringValue(sprites.get("idle")));
                 String hurtSpritePath = normalizeResourcePath(toStringValue(sprites.get("hurt")));
                 String deathSpritePath = normalizeResourcePath(toStringValue(sprites.get("death")));
@@ -166,6 +174,8 @@ public final class CharacterDataLoader {
                     skill1HurtTriggerBufferSeconds,
                     skill2HurtTriggerBufferSeconds,
                     skill3HurtTriggerBufferSeconds,
+                    drawWidth,
+                    drawHeight,
                     idleSpritePath,
                     hurtSpritePath,
                     deathSpritePath
@@ -207,6 +217,21 @@ public final class CharacterDataLoader {
 
     private static String toStringValue(Object value) {
         return value == null ? null : String.valueOf(value);
+    }
+
+    private static int getOptionalInt(Map<?, ?> map, String key) {
+        Object raw = map.get(key);
+        if (raw instanceof Number number) {
+            return number.intValue();
+        }
+        if (raw != null) {
+            try {
+                return Integer.parseInt(String.valueOf(raw));
+            } catch (NumberFormatException ignored) {
+                return 0;
+            }
+        }
+        return 0;
     }
 
     private static int getSkillForwardOffsetX(Map<?, ?> skillOffsets, String skillKey) {
