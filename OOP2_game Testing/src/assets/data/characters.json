@@ -120,6 +120,162 @@
       }
     },
     {
+      "id": "fire_wizard",
+      "name": "Fire Wizard",
+      "backstory": "A volcanic battlemage who forged flames into disciplined sword and jet techniques. He overwhelms foes with relentless heat and explosive finishers.",
+      "elementType": "Fire",
+      "weakness": ["Water", "Earth"],
+      "hp": 136,
+      "mana": 132,
+      "skills": [
+        {
+          "slot": 1,
+          "name": "Blaze Saber",
+          "type": "damage",
+          "hurtTriggerBufferSeconds": 0.12,
+          "description": "Cuts through one enemy with a burning sword arc, dealing strong fire damage.",
+          "manaCost": 20,
+          "power": 37,
+          "cooldownTurns": 0,
+          "target": "single_enemy"
+        },
+        {
+          "slot": 2,
+          "name": "Heat Guard",
+          "type": "defense",
+          "description": "Channels furnace heat into a barrier that absorbs damage for 2 turns.",
+          "manaCost": 24,
+          "shieldValue": 26,
+          "durationTurns": 2,
+          "target": "self"
+        },
+        {
+          "slot": 3,
+          "name": "Inferno Orb",
+          "type": "damage",
+          "hurtTriggerBufferSeconds": 0.22,
+          "description": "Launches a condensed fireball that explodes on impact and heavily burns one target.",
+          "manaCost": 28,
+          "power": 43,
+          "cooldownTurns": 0,
+          "target": "single_enemy"
+        }
+      ],
+      "sprites": {
+        "skill1": "src/assets/spritesheet/Fire Wizard/Fire_sword-Sheet.png",
+        "skill2": "src/assets/spritesheet/Fire Wizard/Charge-Sheet.png",
+        "skill3": "src/assets/spritesheet/Fire Wizard/Fireball-Sheet.png",
+        "idle": "src/assets/spritesheet/Fire Wizard/Idle-Sheet.png",
+        "death": "src/assets/spritesheet/Fire Wizard/Dead-Sheet.png",
+        "hurt": "src/assets/spritesheet/Fire Wizard/Hurt-Sheet.png"
+      }
+    },
+    {
+      "id": "steel_wizard",
+      "name": "Steel Wizard",
+      "backstory": "An ironclad rune-smith who bends metal currents into blunt force spells. His style mixes heavy strikes with fortified casting.",
+      "elementType": "Earth",
+      "weakness": ["Nature", "Water"],
+      "hp": 150,
+      "mana": 118,
+      "skills": [
+        {
+          "slot": 1,
+          "name": "Iron Breaker",
+          "type": "damage",
+          "hurtTriggerBufferSeconds": 0.14,
+          "description": "Smashes one enemy with reinforced steel magic for high physical-impact damage.",
+          "manaCost": 19,
+          "power": 39,
+          "cooldownTurns": 0,
+          "target": "single_enemy"
+        },
+        {
+          "slot": 2,
+          "name": "Fortify Cast",
+          "type": "defense",
+          "description": "Hardens the caster with layered steel wards, reducing incoming damage for 2 turns.",
+          "manaCost": 23,
+          "shieldValue": 30,
+          "durationTurns": 2,
+          "target": "self"
+        },
+        {
+          "slot": 3,
+          "name": "Spine Barrage",
+          "type": "debuff",
+          "description": "Erupts jagged steel spines to pierce all enemies and lower their attack for 2 turns.",
+          "manaCost": 29,
+          "power": 28,
+          "attackDownPercent": 18,
+          "durationTurns": 2,
+          "target": "all_enemies"
+        }
+      ],
+      "sprites": {
+        "skill1": "src/assets/spritesheet/Steel Wizard/Attack_1-Sheet.png",
+        "skill2": "src/assets/spritesheet/Steel Wizard/Cast-Sheet.png",
+        "skill3": "src/assets/spritesheet/Steel Wizard/Spine-Sheet.png",
+        "idle": "src/assets/spritesheet/Steel Wizard/Idle-Sheet.png",
+        "death": "src/assets/spritesheet/Steel Wizard/Dead-Sheet.png",
+        "hurt": "src/assets/spritesheet/Steel Wizard/Hurt-Sheet.png"
+      }
+    },
+    {
+      "id": "nature_wizard",
+      "name": "Nature Wizard",
+      "backstory": "A forest tactician who commands roots, spores, and thorned projectiles. She wears down opponents while sustaining battlefield control.",
+      "elementType": "Nature",
+      "weakness": ["Fire", "Ice"],
+      "hp": 140,
+      "mana": 126,
+      "drawWidth": 288,
+      "drawHeight": 288,
+      "skills": [
+        {
+          "slot": 1,
+          "name": "Thorn Swipe",
+          "type": "damage",
+          "hurtTriggerBufferSeconds": 0.12,
+          "description": "Slashes one enemy with thorned vines and deals steady nature damage.",
+          "manaCost": 18,
+          "power": 35,
+          "cooldownTurns": 0,
+          "target": "single_enemy"
+        },
+        {
+          "slot": 2,
+          "name": "Wild Veil",
+          "type": "defense",
+          "description": "Cloaks the caster in living foliage that grants a shield and minor regeneration for 2 turns.",
+          "manaCost": 24,
+          "shieldValue": 22,
+          "healPerTurn": 7,
+          "durationTurns": 2,
+          "target": "self"
+        },
+        {
+          "slot": 3,
+          "name": "Bramble Shot",
+          "type": "debuff",
+          "description": "Fires seeded brambles across all enemies, dealing damage and lowering attack for 2 turns.",
+          "manaCost": 28,
+          "power": 27,
+          "attackDownPercent": 16,
+          "durationTurns": 2,
+          "target": "all_enemies"
+        }
+      ],
+      "sprites": {
+        "skill1": "src/assets/spritesheet/Nature Wizard/Attack_1-Sheet.png",
+        "skill2": "src/assets/spritesheet/Nature Wizard/Disguise-Sheet.png",
+        "skill3": "src/assets/spritesheet/Nature Wizard/Shot-Sheet.png",
+        "idle": "src/assets/spritesheet/Nature Wizard/Idle-Sheet.png",
+        "death": "src/assets/spritesheet/Nature Wizard/Dead-Sheet.png",
+        "hurt": "src/assets/spritesheet/Nature Wizard/Hurt-Sheet.png"
+      }
+    },
+    {
       "id": "storm_weaver",
       "name": "Storm Weaver",
       "backstory": "An ex-battle scholar who fused weather runes with battlefield tactics. He manipulates lightning pressure to break enemy formations and sustain allies.",

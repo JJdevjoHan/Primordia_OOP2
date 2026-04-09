@@ -817,13 +817,31 @@ public class GamePanel extends JPanel {
             if (resource == null) { System.err.println("Missing sprite sheet: " + animation.sheetPath); return frames; }
             BufferedImage sheet = ImageIO.read(resource);
             if (sheet == null)   { System.err.println("Could not decode sprite sheet: " + animation.sheetPath); return frames; }
-            int columns = sheet.getWidth()  / animation.frameWidth;
-            int rows    = sheet.getHeight() / animation.frameHeight;
+            int frameWidth = animation.frameWidth;
+            int frameHeight = animation.frameHeight;
+            int columns = sheet.getWidth()  / frameWidth;
+            int rows    = sheet.getHeight() / frameHeight;
+
+            if (columns <= 0 || rows <= 0) {
+                // Support sheets that use a different square frame size (e.g., 96x96).
+                int inferredSize = sheet.getHeight();
+                if (inferredSize > 0 && sheet.getWidth() % inferredSize == 0) {
+                    frameWidth = inferredSize;
+                    frameHeight = inferredSize;
+                    columns = sheet.getWidth() / frameWidth;
+                    rows = sheet.getHeight() / frameHeight;
+                }
+            }
+
             for (int row = 0; row < rows; row++)
                 for (int col = 0; col < columns; col++)
                     frames.add(sheet.getSubimage(
-                            col * animation.frameWidth, row * animation.frameHeight,
-                            animation.frameWidth, animation.frameHeight));
+                            col * frameWidth, row * frameHeight,
+                            frameWidth, frameHeight));
+
+            if (frames.isEmpty()) {
+                frames.add(sheet);
+            }
         } catch (Exception e) { System.err.println("Failed to load sprite sheet: " + e.getMessage()); }
         return frames;
     }
@@ -1050,6 +1068,8 @@ public class GamePanel extends JPanel {
                 CharacterDataLoader.loadCharacterConfigs("/assets/data/characters.json");
         List<CharacterDef> defs = new ArrayList<>();
         for (CharacterDataLoader.CharacterConfig config : configs) {
+            int drawWidth = config.drawWidth > 0 ? config.drawWidth : DEFAULT_DRAW_WIDTH;
+            int drawHeight = config.drawHeight > 0 ? config.drawHeight : DEFAULT_DRAW_HEIGHT;
             defs.add(new CharacterDef(
                     config.name, config.backstory,
                     config.skill1Name, config.skill2Name, config.skill3Name,
@@ -1062,7 +1082,7 @@ public class GamePanel extends JPanel {
                     new CharacterDef.AnimationDef(config.idleSpritePath,  DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_IDLE_DELAY_MS),
                     new CharacterDef.AnimationDef(config.hurtSpritePath,  DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_HURT_DELAY_MS),
                     new CharacterDef.AnimationDef(config.deathSpritePath, DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_DEAD_DELAY_MS),
-                    DEFAULT_DRAW_WIDTH, DEFAULT_DRAW_HEIGHT));
+                    drawWidth, drawHeight));
         }
         if (!defs.isEmpty()) return List.copyOf(defs);
 
