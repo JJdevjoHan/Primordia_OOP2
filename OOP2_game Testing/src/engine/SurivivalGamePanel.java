@@ -489,8 +489,11 @@ public class SurivivalGamePanel extends JPanel {
             g2.drawImage(playerHurtFrames.get(playerHurtFrameIndex),
                     p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
         } else if (isPlayerSkillAnimating && !activePlayerSkillFrames.isEmpty()) {
-            g2.drawImage(activePlayerSkillFrames.get(playerSkillFrameIndex),
-                    p1SpriteX + activePlayerSkillOffsetX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
+            BufferedImage skillFrame = activePlayerSkillFrames.get(playerSkillFrameIndex);
+            int skillDrawHeight = getPlayerDrawHeight();
+            int skillDrawWidth = getSkillDrawWidth(skillFrame, skillDrawHeight, getPlayerDrawWidth());
+            g2.drawImage(skillFrame,
+                p1SpriteX + activePlayerSkillOffsetX, p1SpriteY, skillDrawWidth, skillDrawHeight, this);
         } else if (!playerFrames.isEmpty()) {
             g2.drawImage(playerFrames.get(playerFrameIndex),
                     p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
@@ -505,9 +508,12 @@ public class SurivivalGamePanel extends JPanel {
             g2.drawImage(enemyHurtFrames.get(enemyHurtFrameIndex),
                     p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
         } else if (isEnemySkillAnimating && !activeEnemySkillFrames.isEmpty()) {
-            g2.drawImage(activeEnemySkillFrames.get(enemySkillFrameIndex),
-                    p2SpriteX + getEnemyDrawWidth() + activeEnemySkillOffsetX, p2SpriteY,
-                    -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
+            BufferedImage skillFrame = activeEnemySkillFrames.get(enemySkillFrameIndex);
+            int skillDrawHeight = getEnemyDrawHeight();
+            int skillDrawWidth = getSkillDrawWidth(skillFrame, skillDrawHeight, getEnemyDrawWidth());
+            g2.drawImage(skillFrame,
+                p2SpriteX + skillDrawWidth + activeEnemySkillOffsetX, p2SpriteY,
+                -skillDrawWidth, skillDrawHeight, this);
         } else if (!enemyFrames.isEmpty()) {
             g2.drawImage(enemyFrames.get(enemyFrameIndex),
                     p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
@@ -883,6 +889,11 @@ public class SurivivalGamePanel extends JPanel {
     private int getEnemyDrawWidth()   { return currentEnemyDef  != null ? currentEnemyDef.drawWidth   : DEFAULT_DRAW_WIDTH;  }
     private int getEnemyDrawHeight()  { return currentEnemyDef  != null ? currentEnemyDef.drawHeight  : DEFAULT_DRAW_HEIGHT; }
 
+    private int getSkillDrawWidth(BufferedImage frame, int targetHeight, int fallbackWidth) {
+        if (frame == null || frame.getHeight() <= 0 || targetHeight <= 0) return fallbackWidth;
+        return Math.max(1, Math.round((float) frame.getWidth() * targetHeight / frame.getHeight()));
+    }
+
     private void loadMapBackground(Document document, String tmxResourcePath, URL tmxUrl) {
         NodeList imageNodes = document.getElementsByTagName("image");
         if (imageNodes.getLength() == 0) return;
@@ -993,10 +1004,27 @@ public class SurivivalGamePanel extends JPanel {
         for (int skillID = 1; skillID <= 3; skillID++) {
             String path = def.getSkillSpritePath(skillID);
             if (path == null || path.isBlank()) { animations.add(List.of()); continue; }
+            int frameWidth = getSkillFrameWidth(def, skillID);
+            int frameHeight = getSkillFrameHeight(def, skillID);
             animations.add(loadAnimationFrames(
-                    new CharacterDef.AnimationDef(path, DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_SKILL_DELAY_MS)));
+                    new CharacterDef.AnimationDef(path, frameWidth, frameHeight, DEFAULT_SKILL_DELAY_MS)));
         }
         return animations;
+    }
+
+    private int getSkillFrameWidth(CharacterDef def, int skillID) {
+        if (def != null && "Wind Wizard".equals(def.name)) {
+            if (skillID == 2) return 200;
+            if (skillID == 3) return 288;
+        }
+        return DEFAULT_FRAME_SIZE;
+    }
+
+    private int getSkillFrameHeight(CharacterDef def, int skillID) {
+        if (def != null && "Wind Wizard".equals(def.name) && (skillID == 2 || skillID == 3)) {
+            return 128;
+        }
+        return DEFAULT_FRAME_SIZE;
     }
 
     private List<BufferedImage> loadAnimationFrames(CharacterDef.AnimationDef animation) {
@@ -1306,6 +1334,36 @@ public class SurivivalGamePanel extends JPanel {
                         new CharacterDef.AnimationDef("/assets/spritesheet/Idk Magician/Idle.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_IDLE_DELAY_MS),
                         new CharacterDef.AnimationDef("/assets/spritesheet/Idk Magician/Hurt.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_HURT_DELAY_MS),
                         new CharacterDef.AnimationDef("/assets/spritesheet/Idk Magician/Dead.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_DEAD_DELAY_MS),
+                        DEFAULT_DRAW_WIDTH, DEFAULT_DRAW_HEIGHT),
+                    new CharacterDef("Water Wizard",
+                        "A tidebound mage who shapes pressure, mist, and currents into disciplined battlefield control. He wears foes down with forceful strikes and relentless flow.",
+                        "Tidal Blade", "Barrier Surge", "Undertow Hex",
+                        "Slices one enemy with a pressurized water blade that deals steady damage.",
+                        "Raises a flowing shield that softens incoming damage for 2 turns.",
+                        "Whips up a dragging current that lowers all enemies' attack for 2 turns.",
+                        "damage", "defense", "debuff",
+                        "/assets/spritesheet/Water Wizard/Attack-Sheet.png",
+                        "/assets/spritesheet/Water Wizard/Charge-Sheet.png",
+                        "/assets/spritesheet/Water Wizard/Attack2-Sheet.png",
+                        0, 0, 0, 0.14, 0.0, 0.0,
+                        new CharacterDef.AnimationDef("/assets/spritesheet/Water Wizard/Idle-Sheet.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_IDLE_DELAY_MS),
+                        new CharacterDef.AnimationDef("/assets/spritesheet/Water Wizard/Hurt-Sheet.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_HURT_DELAY_MS),
+                        new CharacterDef.AnimationDef("/assets/spritesheet/Water Wizard/Dead-Sheet.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_DEAD_DELAY_MS),
+                        DEFAULT_DRAW_WIDTH, DEFAULT_DRAW_HEIGHT),
+                    new CharacterDef("Wind Wizard",
+                        "A sky runner who bends pressure and razor gusts into elegant battlefield control. She dances through combat, striking fast and breaking enemy rhythm.",
+                        "Gale Cut", "Cyclone Guard", "Tempest Lash",
+                        "Cuts through one enemy with a razor gust that deals quick damage.",
+                        "Wraps the caster in a spinning wind barrier that reduces incoming damage for 2 turns.",
+                        "Unleashes a sweeping gale that lowers all enemies' attack for 2 turns.",
+                        "damage", "defense", "debuff",
+                        "/assets/spritesheet/Wind WIzard/Attack1-Sheet.png",
+                        "/assets/spritesheet/Wind WIzard/Attack2-Sheet.png",
+                        "/assets/spritesheet/Wind WIzard/Attack3-Sheet.png",
+                        0, 0, 0, 0.12, 0.0, 0.0,
+                        new CharacterDef.AnimationDef("/assets/spritesheet/Wind WIzard/Idle-Sheet.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_IDLE_DELAY_MS),
+                        new CharacterDef.AnimationDef("/assets/spritesheet/Wind WIzard/Hurt-Sheet.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_HURT_DELAY_MS),
+                        new CharacterDef.AnimationDef("/assets/spritesheet/Wind WIzard/Dead-Sheet.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_DEAD_DELAY_MS),
                         DEFAULT_DRAW_WIDTH, DEFAULT_DRAW_HEIGHT));
     }
 }
