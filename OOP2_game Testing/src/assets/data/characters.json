@@ -335,6 +335,8 @@
       "weakness": ["Earth", "Ice"],
       "hp": 128,
       "mana": 138,
+      "drawWidth": 620,
+      "drawHeight": 620,
       "skills": [
         {
           "slot": 1,

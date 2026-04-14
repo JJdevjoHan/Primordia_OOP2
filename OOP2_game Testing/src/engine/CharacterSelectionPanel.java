@@ -21,6 +21,9 @@ public class CharacterSelectionPanel extends JPanel {
     private static final int GRID_ROWS = 2;
     private static final int GRID_SLOTS = GRID_COLUMNS * GRID_ROWS;
     private static final int DEFAULT_FRAME_DELAY_MS = 120;
+    private static final int PREVIEW_INSET_PX = 12;
+    private static final int GRID_INSET_PX = 2;
+    private static final int FEET_MARGIN_PX = 3;
 
     private final GameWindow window;
     private final List<CharacterDef> characters;
@@ -30,6 +33,7 @@ public class CharacterSelectionPanel extends JPanel {
     private final Map<Integer, BufferedImage> thumbnailCache = new HashMap<>();
 
     private List<BufferedImage> previewFrames = List.of();
+    private Rectangle previewBounds = null;
     private int previewFrameIndex = 0;
     private Timer previewTimer;
 
@@ -74,6 +78,8 @@ public class CharacterSelectionPanel extends JPanel {
         previewFrameIndex = 0;
         if (!characters.isEmpty()) {
             setFocusedIndex(0);
+        } else {
+            previewBounds = null;
         }
         SwingUtilities.invokeLater(this::requestFocusInWindow);
         repaint();
@@ -123,6 +129,7 @@ public class CharacterSelectionPanel extends JPanel {
         focusedIndex = newIndex;
         CharacterDef selected = characters.get(focusedIndex);
         previewFrames = loadAnimationFrames(selected.idleAnimation);
+        previewBounds = getCombinedOpaqueBounds(previewFrames);
         previewFrameIndex = 0;
         restartPreviewTimer(selected.idleAnimation.frameDelayMs);
     }
@@ -326,23 +333,11 @@ public class CharacterSelectionPanel extends JPanel {
             return;
         }
 
-        CharacterDef selected = characters.get(focusedIndex);
         BufferedImage frame = previewFrames.isEmpty() ? null : previewFrames.get(previewFrameIndex);
         if (frame == null) {
             return;
         }
-
-        int drawW = selected.drawWidth;
-        int drawH = selected.drawHeight;
-
-        double scale = Math.min((double) spriteAreaW / drawW, (double) spriteAreaH / drawH);
-        int scaledW = (int) Math.round(drawW * scale);
-        int scaledH = (int) Math.round(drawH * scale);
-
-        int drawX = spriteAreaX + (spriteAreaW - scaledW) / 2;
-        int drawY = spriteAreaY + (spriteAreaH - scaledH) / 2;
-
-        g2.drawImage(frame, drawX, drawY, scaledW, scaledH, this);
+        drawFittedSprite(g2, frame, spriteAreaX, spriteAreaY, spriteAreaW, spriteAreaH, 0.70, previewBounds, PREVIEW_INSET_PX, true);
     }
 
     private void paintGridPanel(Graphics2D g2, Rectangle panel) {
@@ -397,12 +392,7 @@ public class CharacterSelectionPanel extends JPanel {
                 BufferedImage thumb = getThumbnail(i);
                 if (thumb != null) {
                     int imageAreaH = cellH - 30;
-                    double scale = Math.min((double) (cellW - 12) / thumb.getWidth(), (double) (imageAreaH - 10) / thumb.getHeight());
-                    int scaledW = (int) Math.round(thumb.getWidth() * scale);
-                    int scaledH = (int) Math.round(thumb.getHeight() * scale);
-                    int imageX = cellX + (cellW - scaledW) / 2;
-                    int imageY = cellY + (imageAreaH - scaledH) / 2 + 4;
-                    g2.drawImage(thumb, imageX, imageY, scaledW, scaledH, this);
+                    drawFittedSprite(g2, thumb, cellX + 6, cellY + 4, cellW - 12, imageAreaH - 2, 0.84, null, GRID_INSET_PX, true);
                 }
             } else {
                 g2.setFont(bodyFont.deriveFont(Font.BOLD, 18f));
@@ -514,4 +504,125 @@ public class CharacterSelectionPanel extends JPanel {
 
         return y;
     }
+
+    private void drawFittedSprite(Graphics2D g2,
+                                  BufferedImage image,
+                                  int areaX,
+                                  int areaY,
+                                  int areaW,
+                                  int areaH,
+                                  double fillRatio) {
+        drawFittedSprite(g2, image, areaX, areaY, areaW, areaH, fillRatio, null, 0, false);
+    }
+
+    private void drawFittedSprite(Graphics2D g2,
+                                  BufferedImage image,
+                                  int areaX,
+                                  int areaY,
+                                  int areaW,
+                                  int areaH,
+                                  double fillRatio,
+                                  Rectangle sourceBounds,
+                                  int insetPx,
+                                  boolean alignFeetToBottom) {
+        if (image == null || areaW <= 0 || areaH <= 0) {
+            return;
+        }
+
+        int safeInset = Math.max(0, insetPx);
+        int innerX = areaX + safeInset;
+        int innerY = areaY + safeInset;
+        int innerW = Math.max(1, areaW - (safeInset * 2));
+        int innerH = Math.max(1, areaH - (safeInset * 2));
+
+        Rectangle bounds = sourceBounds != null ? sourceBounds : getOpaqueBounds(image);
+        int sourceX = bounds.x;
+        int sourceY = bounds.y;
+        int sourceW = Math.max(1, bounds.width);
+        int sourceH = Math.max(1, bounds.height);
+
+        double scale = Math.min(
+            (innerW * fillRatio) / sourceW,
+            (innerH * fillRatio) / sourceH
+        );
+
+        int targetW = Math.max(1, (int) Math.round(sourceW * scale));
+        int targetH = Math.max(1, (int) Math.round(sourceH * scale));
+        int targetX = innerX + (innerW - targetW) / 2;
+        int targetY = alignFeetToBottom
+            ? (innerY + innerH - targetH - FEET_MARGIN_PX)
+            : (innerY + (innerH - targetH) / 2);
+
+        g2.drawImage(
+            image,
+            targetX,
+            targetY,
+            targetX + targetW,
+            targetY + targetH,
+            sourceX,
+            sourceY,
+            sourceX + sourceW,
+            sourceY + sourceH,
+            this
+        );
+    }
+
+    private Rectangle getCombinedOpaqueBounds(List<BufferedImage> frames) {
+        if (frames == null || frames.isEmpty()) {
+            return null;
+        }
+
+        int minX = Integer.MAX_VALUE;
+        int minY = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE;
+        int maxY = Integer.MIN_VALUE;
+
+        for (BufferedImage frame : frames) {
+            if (frame == null) {
+                continue;
+            }
+            Rectangle bounds = getOpaqueBounds(frame);
+            minX = Math.min(minX, bounds.x);
+            minY = Math.min(minY, bounds.y);
+            maxX = Math.max(maxX, bounds.x + bounds.width - 1);
+            maxY = Math.max(maxY, bounds.y + bounds.height - 1);
+        }
+
+        if (maxX < minX || maxY < minY) {
+            BufferedImage first = frames.get(0);
+            if (first == null) {
+                return null;
+            }
+            return new Rectangle(0, 0, first.getWidth(), first.getHeight());
+        }
+
+        return new Rectangle(minX, minY, (maxX - minX) + 1, (maxY - minY) + 1);
+    }
+
+    private Rectangle getOpaqueBounds(BufferedImage image) {
+        int minX = image.getWidth();
+        int minY = image.getHeight();
+        int maxX = -1;
+        int maxY = -1;
+
+        for (int y = 0; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) {
+                int alpha = (image.getRGB(x, y) >>> 24) & 0xff;
+                if (alpha == 0) {
+                    continue;
+                }
+                if (x < minX) minX = x;
+                if (y < minY) minY = y;
+                if (x > maxX) maxX = x;
+                if (y > maxY) maxY = y;
+            }
+        }
+
+        if (maxX < minX || maxY < minY) {
+            return new Rectangle(0, 0, image.getWidth(), image.getHeight());
+        }
+
+        return new Rectangle(minX, minY, (maxX - minX) + 1, (maxY - minY) + 1);
+    }
+
 }

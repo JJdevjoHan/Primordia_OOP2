@@ -38,6 +38,10 @@ public class SurivivalGamePanel extends JPanel {
     private static final int DEFAULT_SKILL_DELAY_MS   = 90;
     private static final int DEFAULT_HURT_DELAY_MS    = 90;
     private static final int POST_ATTACK_HURT_MS      = 600;
+    private static final int BARS_TOP_Y               = 84;
+    private static final int WIND_SKILL2_P2_LEFT_NUDGE_X = 60;
+    private static final int WIND_SKILL3_FEET_OFFSET_Y   = 0;
+    private static final double WIND_SKILL3_SCALE        = 1.18;
     private static final int DARK_WIZARD_PROJECTILE_DRAW_SIZE       = 144;
     private static final int DARK_WIZARD_PROJECTILE_VERTICAL_OFFSET = 50;
     private static final int DARK_WIZARD_PROJECTILE_SPEED           = 44;
@@ -495,9 +499,6 @@ public class SurivivalGamePanel extends JPanel {
             g2.drawImage(playerFrames.get(playerFrameIndex),
                 p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
             }
-            drawCenteredSkillFrame(g2, activePlayerSkillFrames.get(playerSkillFrameIndex),
-                p2SpriteX + 70, p2SpriteY,
-                    getEnemyDrawWidth(), getEnemyDrawHeight(), true);
         } else if (isPlayerSkillAnimating && !activePlayerSkillFrames.isEmpty()) {
             BufferedImage skillFrame = activePlayerSkillFrames.get(playerSkillFrameIndex);
             int skillDrawHeight = getPlayerDrawHeight();
@@ -522,19 +523,32 @@ public class SurivivalGamePanel extends JPanel {
             g2.drawImage(enemyFrames.get(enemyFrameIndex),
                 p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
             }
-            drawCenteredSkillFrame(g2, activeEnemySkillFrames.get(enemySkillFrameIndex),
-                p1SpriteX - 70, p1SpriteY,
-                    getPlayerDrawWidth(), getPlayerDrawHeight(), false);
         } else if (isEnemySkillAnimating && !activeEnemySkillFrames.isEmpty()) {
             BufferedImage skillFrame = activeEnemySkillFrames.get(enemySkillFrameIndex);
             int skillDrawHeight = getEnemyDrawHeight();
             int skillDrawWidth = getSkillDrawWidth(skillFrame, skillDrawHeight, getEnemyDrawWidth());
+            int enemySkillDrawX = p2SpriteX + skillDrawWidth + activeEnemySkillOffsetX;
+            if (isWindWizardSkill2(false)) {
+                enemySkillDrawX -= WIND_SKILL2_P2_LEFT_NUDGE_X;
+            }
             g2.drawImage(skillFrame,
-                p2SpriteX + skillDrawWidth + activeEnemySkillOffsetX, p2SpriteY,
+                enemySkillDrawX, p2SpriteY,
                 -skillDrawWidth, skillDrawHeight, this);
         } else if (!enemyFrames.isEmpty()) {
             g2.drawImage(enemyFrames.get(enemyFrameIndex),
                     p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
+        }
+
+        // Wind skill 3 overlay is drawn last so it appears above both characters.
+        if (isWindWizardAttack3(true) && !activePlayerSkillFrames.isEmpty()) {
+            drawAnchoredSkillFrame(g2, activePlayerSkillFrames.get(playerSkillFrameIndex),
+                getEnemyFeetAnchorX(), getEnemyFeetAnchorY(),
+                getPlayerDrawWidth(), getPlayerDrawHeight(), true);
+        }
+        if (isWindWizardAttack3(false) && !activeEnemySkillFrames.isEmpty()) {
+            drawAnchoredSkillFrame(g2, activeEnemySkillFrames.get(enemySkillFrameIndex),
+                getPlayerFeetAnchorX(), getPlayerFeetAnchorY(),
+                getEnemyDrawWidth(), getEnemyDrawHeight(), false);
         }
 
         // Projectile
@@ -861,17 +875,21 @@ public class SurivivalGamePanel extends JPanel {
         if (p1HPLabel != null) p1HPLabel.setBounds(0, 0, 0, 0);
         if (p2HPLabel != null) p2HPLabel.setBounds(0, 0, 0, 0);
 
+        int panelH = Math.max(getHeight(), screenHeight);
+        int hpY = Math.max(0, Math.min(BARS_TOP_Y, panelH - ((barH * 2) + gap + 10)));
+        int mpY = hpY + barH + gap;
+
         // Skill buttons
         if (p1ButtonPanel != null) p1ButtonPanel.setBounds(feetX1 - btnW / 2, feetY1 + gap + barH + gap + barH + gap, btnW, btnH);
         if (p2ButtonPanel != null) p2ButtonPanel.setBounds(feetX2 - btnW / 2, feetY2 + gap + barH + gap + barH + gap, btnW, btnH);
 
         // HP bars — stacked above character feet
-        if (p1HealthBar != null) p1HealthBar.setBounds(feetX1 - barW / 2, p1SpriteY - 20 - barH - gap, barW, barH);
-        if (p2HealthBar != null) p2HealthBar.setBounds(feetX2 - barW / 2, p2SpriteY - 20 - barH - gap, barW, barH);
+        if (p1HealthBar != null) p1HealthBar.setBounds(feetX1 - barW / 2, hpY, barW, barH);
+        if (p2HealthBar != null) p2HealthBar.setBounds(feetX2 - barW / 2, hpY, barW, barH);
 
         // MP bars — directly below HP bars
-        if (p1MpBar != null) p1MpBar.setBounds(feetX1 - barW / 2, p1SpriteY - 20, barW, barH);
-        if (p2MpBar != null) p2MpBar.setBounds(feetX2 - barW / 2, p2SpriteY - 20, barW, barH);
+        if (p1MpBar != null) p1MpBar.setBounds(feetX1 - barW / 2, mpY, barW, barH);
+        if (p2MpBar != null) p2MpBar.setBounds(feetX2 - barW / 2, mpY, barW, barH);
 
         if (scoreLabel != null && gameMode == GameMode.SURVIVAL)
             scoreLabel.setBounds(screenWidth - 220, 60, 200, 30);
@@ -1139,23 +1157,78 @@ public class SurivivalGamePanel extends JPanel {
         return actor != null && "Wind Wizard".equalsIgnoreCase(actor.name) && activeSkillID == 3 && !frames.isEmpty();
     }
 
-    private void drawCenteredSkillFrame(Graphics2D g2,
+    private boolean isWindWizardSkill2(boolean isPlayerOne) {
+        CharacterDef actor = isPlayerOne ? currentPlayerDef : currentEnemyDef;
+        int activeSkillID = isPlayerOne ? activePlayerSkillID : activeEnemySkillID;
+        return actor != null && "Wind Wizard".equalsIgnoreCase(actor.name) && activeSkillID == 2;
+    }
+
+    private void drawAnchoredSkillFrame(Graphics2D g2,
                                         BufferedImage frame,
-                                        int spriteX,
-                                        int spriteY,
-                                        int spriteWidth,
-                                        int spriteHeight,
+                                        int targetFeetX,
+                                        int targetFeetY,
+                        int skillMaxDrawWidth,
+                                        int skillDrawHeight,
                                         boolean mirror) {
         if (frame == null) return;
-        int drawHeight = spriteHeight;
-        int drawWidth = getSkillDrawWidth(frame, drawHeight, spriteWidth);
-        int x = spriteX + (spriteWidth - drawWidth) / 2;
-        int y = spriteY + (spriteHeight - drawHeight) / 2;
+        int sourceX = 0;
+        int sourceY = 0;
+        int sourceW = Math.max(1, frame.getWidth());
+        int sourceH = Math.max(1, frame.getHeight());
+        double scale = Math.min(
+            Math.max(1, skillMaxDrawWidth) / (double) sourceW,
+            Math.max(1, skillDrawHeight) / (double) sourceH
+        ) * WIND_SKILL3_SCALE;
+        int drawWidth = Math.max(1, (int) Math.round(sourceW * scale));
+        int drawHeight = Math.max(1, (int) Math.round(sourceH * scale));
+        int x = targetFeetX - (drawWidth / 2);
+        int y = targetFeetY - drawHeight + WIND_SKILL3_FEET_OFFSET_Y;
         if (mirror) {
-            g2.drawImage(frame, x + drawWidth, y, x, y + drawHeight, 0, 0, frame.getWidth(), frame.getHeight(), this);
+            g2.drawImage(frame, x + drawWidth, y, x, y + drawHeight,
+                    sourceX, sourceY, sourceX + sourceW, sourceY + sourceH, this);
         } else {
-            g2.drawImage(frame, x, y, drawWidth, drawHeight, this);
+            g2.drawImage(frame, x, y, x + drawWidth, y + drawHeight,
+                    sourceX, sourceY, sourceX + sourceW, sourceY + sourceH, this);
         }
+    }
+
+    private int getPlayerFeetAnchorX() {
+        return scaleMapXToPanel(p1SpawnFeetMapX);
+    }
+
+    private int getPlayerFeetAnchorY() {
+        return scaleMapYToPanel(p1SpawnFeetMapY);
+    }
+
+    private int getEnemyFeetAnchorX() {
+        return scaleMapXToPanel(p2SpawnFeetMapX);
+    }
+
+    private int getEnemyFeetAnchorY() {
+        return scaleMapYToPanel(p2SpawnFeetMapY);
+    }
+
+    private Rectangle getOpaqueBounds(BufferedImage image) {
+        int minX = image.getWidth();
+        int minY = image.getHeight();
+        int maxX = -1;
+        int maxY = -1;
+
+        for (int y = 0; y < image.getHeight(); y++) {
+            for (int x = 0; x < image.getWidth(); x++) {
+                int alpha = (image.getRGB(x, y) >>> 24) & 0xff;
+                if (alpha == 0) continue;
+                if (x < minX) minX = x;
+                if (y < minY) minY = y;
+                if (x > maxX) maxX = x;
+                if (y > maxY) maxY = y;
+            }
+        }
+
+        if (maxX < minX || maxY < minY) {
+            return new Rectangle(0, 0, image.getWidth(), image.getHeight());
+        }
+        return new Rectangle(minX, minY, (maxX - minX) + 1, (maxY - minY) + 1);
     }
 
 
