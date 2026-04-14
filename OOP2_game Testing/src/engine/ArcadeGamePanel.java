@@ -79,6 +79,8 @@ public class ArcadeGamePanel extends JPanel {
     private List<BufferedImage>       activeEnemySkillFrames  = List.of();
     private int   playerSkillFrameIndex = 0;
     private int   enemySkillFrameIndex  = 0;
+    private int   activePlayerSkillID   = 0;
+    private int   activeEnemySkillID    = 0;
     private Timer playerSkillTimer;
     private Timer enemySkillTimer;
     private boolean isPlayerSkillAnimating = false;
@@ -409,6 +411,14 @@ public class ArcadeGamePanel extends JPanel {
         } else if (isPlayerHurtAnimating && !playerHurtFrames.isEmpty()) {
             g2.drawImage(playerHurtFrames.get(playerHurtFrameIndex),
                     p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
+        } else if (isWindWizardAttack3(true)) {
+            if (!playerFrames.isEmpty()) {
+            g2.drawImage(playerFrames.get(playerFrameIndex),
+                p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
+            }
+            drawCenteredSkillFrame(g2, activePlayerSkillFrames.get(playerSkillFrameIndex),
+                p2SpriteX + 70, p2SpriteY,
+                    getEnemyDrawWidth(), getEnemyDrawHeight(), true);
         } else if (isPlayerSkillAnimating && !activePlayerSkillFrames.isEmpty()) {
             BufferedImage skillFrame = activePlayerSkillFrames.get(playerSkillFrameIndex);
             int skillDrawHeight = getPlayerDrawHeight();
@@ -428,6 +438,14 @@ public class ArcadeGamePanel extends JPanel {
         } else if (isEnemyHurtAnimating && !enemyHurtFrames.isEmpty()) {
             g2.drawImage(enemyHurtFrames.get(enemyHurtFrameIndex),
                     p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
+        } else if (isWindWizardAttack3(false)) {
+            if (!enemyFrames.isEmpty()) {
+            g2.drawImage(enemyFrames.get(enemyFrameIndex),
+                p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
+            }
+            drawCenteredSkillFrame(g2, activeEnemySkillFrames.get(enemySkillFrameIndex),
+                p1SpriteX - 70, p1SpriteY,
+                    getPlayerDrawWidth(), getPlayerDrawHeight(), false);
         } else if (isEnemySkillAnimating && !activeEnemySkillFrames.isEmpty()) {
             BufferedImage skillFrame = activeEnemySkillFrames.get(enemySkillFrameIndex);
             int skillDrawHeight = getEnemyDrawHeight();
@@ -906,6 +924,7 @@ public class ArcadeGamePanel extends JPanel {
             activePlayerSkillFrames  = frames;
             playerSkillFrameIndex    = 0;
             isPlayerSkillAnimating   = true;
+            activePlayerSkillID      = skillID;
             activePlayerSkillOffsetX = currentPlayerDef != null ? currentPlayerDef.getSkillForwardOffsetX(skillID) : 0;
             playerSkillTimer = new Timer(DEFAULT_SKILL_DELAY_MS, null);
             playerSkillTimer.addActionListener(e -> {
@@ -919,6 +938,7 @@ public class ArcadeGamePanel extends JPanel {
             activeEnemySkillFrames  = frames;
             enemySkillFrameIndex    = 0;
             isEnemySkillAnimating   = true;
+            activeEnemySkillID      = skillID;
             activeEnemySkillOffsetX = -(currentEnemyDef != null ? currentEnemyDef.getSkillForwardOffsetX(skillID) : 0);
             enemySkillTimer = new Timer(DEFAULT_SKILL_DELAY_MS, null);
             enemySkillTimer.addActionListener(e -> {
@@ -934,11 +954,37 @@ public class ArcadeGamePanel extends JPanel {
         if (isPlayerOne) {
             if (playerSkillTimer != null) { playerSkillTimer.stop(); playerSkillTimer = null; }
             isPlayerSkillAnimating = false; playerSkillFrameIndex = 0;
-            activePlayerSkillOffsetX = 0;   activePlayerSkillFrames = List.of();
+            activePlayerSkillID = 0;        activePlayerSkillOffsetX = 0;   activePlayerSkillFrames = List.of();
         } else {
             if (enemySkillTimer != null)  { enemySkillTimer.stop();  enemySkillTimer  = null; }
             isEnemySkillAnimating = false;  enemySkillFrameIndex = 0;
-            activeEnemySkillOffsetX = 0;    activeEnemySkillFrames = List.of();
+            activeEnemySkillID = 0;         activeEnemySkillOffsetX = 0;    activeEnemySkillFrames = List.of();
+        }
+    }
+
+    private boolean isWindWizardAttack3(boolean isPlayerOne) {
+        CharacterDef actor = isPlayerOne ? currentPlayerDef : currentEnemyDef;
+        int activeSkillID = isPlayerOne ? activePlayerSkillID : activeEnemySkillID;
+        List<BufferedImage> frames = isPlayerOne ? activePlayerSkillFrames : activeEnemySkillFrames;
+        return actor != null && "Wind Wizard".equalsIgnoreCase(actor.name) && activeSkillID == 3 && !frames.isEmpty();
+    }
+
+    private void drawCenteredSkillFrame(Graphics2D g2,
+                                        BufferedImage frame,
+                                        int spriteX,
+                                        int spriteY,
+                                        int spriteWidth,
+                                        int spriteHeight,
+                                        boolean mirror) {
+        if (frame == null) return;
+        int drawHeight = spriteHeight;
+        int drawWidth = getSkillDrawWidth(frame, drawHeight, spriteWidth);
+        int x = spriteX + (spriteWidth - drawWidth) / 2;
+        int y = spriteY + (spriteHeight - drawHeight) / 2;
+        if (mirror) {
+            g2.drawImage(frame, x + drawWidth, y, x, y + drawHeight, 0, 0, frame.getWidth(), frame.getHeight(), this);
+        } else {
+            g2.drawImage(frame, x, y, drawWidth, drawHeight, this);
         }
     }
 
