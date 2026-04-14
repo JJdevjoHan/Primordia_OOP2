@@ -45,6 +45,7 @@ public class ArcadeGamePanel extends JPanel {
     private static final int DEFAULT_SKILL_DELAY_MS = 90;
     private static final int DEFAULT_HURT_DELAY_MS  = 90;
     private static final int POST_ATTACK_HURT_MS    = 600;
+    private static final int BARS_TOP_Y             = 84;
 
     private static final int DARK_WIZARD_PROJECTILE_DRAW_SIZE       = 144;
     private static final int DARK_WIZARD_PROJECTILE_VERTICAL_OFFSET = 50;
@@ -700,11 +701,15 @@ public class ArcadeGamePanel extends JPanel {
         if (p1HPLabel != null) p1HPLabel.setBounds(0, 0, 0, 0);
         if (p2HPLabel != null) p2HPLabel.setBounds(0, 0, 0, 0);
 
-        if (p1HealthBar != null) p1HealthBar.setBounds(feetX1 - barW / 2, p1SpriteY - 20 - barH - gap, barW, barH);
-        if (p2HealthBar != null) p2HealthBar.setBounds(feetX2 - barW / 2, p2SpriteY - 20 - barH - gap, barW, barH);
+        int panelH = Math.max(getHeight(), screenHeight);
+        int hpY = Math.max(0, Math.min(BARS_TOP_Y, panelH - ((barH * 2) + gap + 10)));
+        int mpY = hpY + barH + gap;
 
-        if (p1MpBar != null) p1MpBar.setBounds(feetX1 - barW / 2, p1SpriteY - 20, barW, barH);
-        if (p2MpBar != null) p2MpBar.setBounds(feetX2 - barW / 2, p2SpriteY - 20, barW, barH);
+        if (p1HealthBar != null) p1HealthBar.setBounds(feetX1 - barW / 2, hpY, barW, barH);
+        if (p2HealthBar != null) p2HealthBar.setBounds(feetX2 - barW / 2, hpY, barW, barH);
+
+        if (p1MpBar != null) p1MpBar.setBounds(feetX1 - barW / 2, mpY, barW, barH);
+        if (p2MpBar != null) p2MpBar.setBounds(feetX2 - barW / 2, mpY, barW, barH);
 
         if (p1ButtonPanel != null) p1ButtonPanel.setBounds(feetX1 - btnW / 2, feetY1 + gap + barH + gap + barH + gap, btnW, btnH);
         if (p2ButtonPanel != null) p2ButtonPanel.setBounds(feetX2 - btnW / 2, feetY2 + gap + barH + gap + barH + gap, btnW, btnH);
