@@ -13,6 +13,8 @@ public class GameModeSelector extends JPanel {
 
     private final int screenWidth = 1536;
 
+    //DON'T TOUCH SA TALIG GAMITON PAKO NI PAGHIMO OG LAIN EFFECTS - Mike
+    SoundManager gameModeAudio = new SoundManager();
     public GameModeSelector(GameWindow window) {
 
         this.window = window;
@@ -95,4 +97,6 @@ public class GameModeSelector extends JPanel {
             g.drawImage(background,0,0,getWidth(),getHeight(),this);
         }
     }
+
+
 }

@@ -6,6 +6,7 @@
     "Water": ["Thunder", "Nature"],
     "Nature": ["Fire", "Ice"],
     "Thunder": ["Earth"],
+    "Wind": ["Earth", "Ice"],
     "Light": ["Dark"],
     "Dark": ["Light"],
     "Earth": ["Nature", "Water"],
@@ -276,55 +277,107 @@
       }
     },
     {
-      "id": "storm_weaver",
-      "name": "Storm Weaver",
-      "backstory": "An ex-battle scholar who fused weather runes with battlefield tactics. He manipulates lightning pressure to break enemy formations and sustain allies.",
-      "elementType": "Thunder",
-      "weakness": ["Earth"],
-      "hp": 132,
-      "mana": 135,
+      "id": "water_wizard",
+      "name": "Water Wizard",
+      "backstory": "A tidebound mage who shapes pressure, mist, and currents into disciplined battlefield control. He wears foes down with forceful strikes and relentless flow.",
+      "elementType": "Water",
+      "weakness": ["Thunder", "Nature"],
+      "hp": 140,
+      "mana": 134,
       "skills": [
         {
           "slot": 1,
-          "name": "Chain Spark",
+          "name": "Tidal Blade",
           "type": "damage",
-          "hurtTriggerBufferSeconds": 0.2,
-          "description": "Launches chained sparks that strike one enemy with high burst damage.",
-          "manaCost": 21,
+          "hurtTriggerBufferSeconds": 0.14,
+          "description": "Slices one enemy with a pressurized water blade that deals steady damage.",
+          "manaCost": 19,
           "power": 36,
           "cooldownTurns": 0,
           "target": "single_enemy"
         },
         {
           "slot": 2,
-          "name": "Static Guard",
+          "name": "Barrier Surge",
           "type": "defense",
-          "description": "Builds a static barrier that reduces incoming damage and reflects minor magic damage for 2 turns.",
-          "manaCost": 25,
-          "shieldValue": 24,
-          "reflectPercent": 15,
+          "description": "Raises a flowing shield that softens incoming damage for 2 turns.",
+          "manaCost": 24,
+          "shieldValue": 27,
           "durationTurns": 2,
           "target": "self"
         },
         {
           "slot": 3,
-          "name": "Tempest Bind",
+          "name": "Undertow Hex",
           "type": "debuff",
-          "description": "Pins all enemies in a turbulent field, lowering speed and attack for 2 turns.",
-          "manaCost": 29,
-          "power": 26,
-          "attackDownPercent": 15,
+          "description": "Whips up a dragging current that lowers all enemies' attack for 2 turns.",
+          "manaCost": 28,
+          "power": 25,
+          "attackDownPercent": 18,
           "durationTurns": 2,
           "target": "all_enemies"
         }
       ],
       "sprites": {
-        "skill1": "src/assets/spritesheet/Idk Magician/Attack_1.png",
-        "skill2": "src/assets/spritesheet/Idk Magician/Charge_2.png",
-        "skill3": "src/assets/spritesheet/Idk Magician/Attack_2.png",
-        "idle": "src/assets/spritesheet/Idk Magician/Idle.png",
-        "death": "src/assets/spritesheet/Idk Magician/Dead.png",
-        "hurt": "src/assets/spritesheet/Idk Magician/Hurt.png"
+        "skill1": "src/assets/spritesheet/Water Wizard/Attack-Sheet.png",
+        "skill2": "src/assets/spritesheet/Water Wizard/Charge-Sheet.png",
+        "skill3": "src/assets/spritesheet/Water Wizard/Attack2-Sheet.png",
+        "idle": "src/assets/spritesheet/Water Wizard/Idle-Sheet.png",
+        "death": "src/assets/spritesheet/Water Wizard/Dead-Sheet.png",
+        "hurt": "src/assets/spritesheet/Water Wizard/Hurt-Sheet.png"
+      }
+    },
+    {
+      "id": "wind_wizard",
+      "name": "Wind Wizard",
+      "backstory": "A sky runner who bends pressure and razor gusts into elegant battlefield control. She dances through combat, striking fast and breaking enemy rhythm.",
+      "elementType": "Wind",
+      "weakness": ["Earth", "Ice"],
+      "hp": 128,
+      "mana": 138,
+      "drawWidth": 620,
+      "drawHeight": 620,
+      "skills": [
+        {
+          "slot": 1,
+          "name": "Gale Cut",
+          "type": "damage",
+          "hurtTriggerBufferSeconds": 0.12,
+          "description": "Cuts through one enemy with a razor gust that deals quick damage.",
+          "manaCost": 18,
+          "power": 35,
+          "cooldownTurns": 0,
+          "target": "single_enemy"
+        },
+        {
+          "slot": 2,
+          "name": "Cyclone Guard",
+          "type": "defense",
+          "description": "Wraps the caster in a spinning wind barrier that reduces incoming damage for 2 turns.",
+          "manaCost": 23,
+          "shieldValue": 25,
+          "durationTurns": 2,
+          "target": "self"
+        },
+        {
+          "slot": 3,
+          "name": "Tempest Lash",
+          "type": "debuff",
+          "description": "Unleashes a sweeping gale that lowers all enemies' attack for 2 turns.",
+          "manaCost": 29,
+          "power": 27,
+          "attackDownPercent": 17,
+          "durationTurns": 2,
+          "target": "all_enemies"
+        }
+      ],
+      "sprites": {
+        "skill1": "src/assets/spritesheet/Wind WIzard/Attack1-Sheet.png",
+        "skill2": "src/assets/spritesheet/Wind WIzard/Attack2-Sheet.png",
+        "skill3": "src/assets/spritesheet/Wind WIzard/Attack3-Sheet.png",
+        "idle": "src/assets/spritesheet/Wind WIzard/Idle-Sheet.png",
+        "death": "src/assets/spritesheet/Wind WIzard/Dead-Sheet.png",
+        "hurt": "src/assets/spritesheet/Wind WIzard/Hurt-Sheet.png"
       }
     },
     {

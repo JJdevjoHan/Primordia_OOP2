@@ -1,5 +1,7 @@
 package engine;
 
+
+//Mag add rakog comments ari guys ugma duka na
 import javax.swing.*;
 import java.awt.*;
 
@@ -7,6 +9,7 @@ public class GameWindow extends JFrame {
 
     private CardLayout layout;
     private JPanel container;
+    private final SoundManager menuBGM = new SoundManager();
 
     public GameWindow() {
 
@@ -31,7 +34,7 @@ public class GameWindow extends JFrame {
         pack();
         setLocationRelativeTo(null);
         setVisible(true);
-
+        playMenuMusic(6);
         layout.show(container, "INTRO");
     }
 
@@ -51,7 +54,7 @@ public class GameWindow extends JFrame {
     public void showArcadeGamePanel(){ layout.show(container,"ARCADE"); }
 
     public void showCharacterSelection(GameMode mode) {
-
+        stopMenuMusic();
         CharacterSelectionPanel panel = new CharacterSelectionPanel(this, mode);
 
         container.add(panel, "CHAR_SELECT");
@@ -111,5 +114,17 @@ public class GameWindow extends JFrame {
         container.revalidate();
         container.repaint();
         arcade.requestFocusInWindow();
+    }
+
+    public void playMenuMusic(int i) {
+        menuBGM.setFile(i);
+        menuBGM.play();
+        menuBGM.loop();
+    }
+
+    public void stopMenuMusic() {
+        if (menuBGM != null) {
+            menuBGM.stop();
+        }
     }
 }
