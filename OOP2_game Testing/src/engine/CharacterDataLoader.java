@@ -40,6 +40,9 @@ public final class CharacterDataLoader {
         public final String idleSpritePath;
         public final String hurtSpritePath;
         public final String deathSpritePath;
+        public final CharacterDef.ProjectileDef skill1Projectile;
+        public final CharacterDef.ProjectileDef skill2Projectile;
+        public final CharacterDef.ProjectileDef skill3Projectile;
 
         public CharacterConfig(
             String name,
@@ -66,7 +69,10 @@ public final class CharacterDataLoader {
             int drawHeight,
             String idleSpritePath,
             String hurtSpritePath,
-            String deathSpritePath
+            String deathSpritePath,
+            CharacterDef.ProjectileDef skill1Projectile,
+            CharacterDef.ProjectileDef skill2Projectile,
+            CharacterDef.ProjectileDef skill3Projectile
         ) {
             this.name = name;
             this.backstory = backstory;
@@ -93,6 +99,9 @@ public final class CharacterDataLoader {
             this.idleSpritePath = idleSpritePath;
             this.hurtSpritePath = hurtSpritePath;
             this.deathSpritePath = deathSpritePath;
+            this.skill1Projectile = skill1Projectile;
+            this.skill2Projectile = skill2Projectile;
+            this.skill3Projectile = skill3Projectile;
         }
     }
 
@@ -133,6 +142,9 @@ public final class CharacterDataLoader {
                 String skill1Type = getSkillType(skills, 0, "damage");
                 String skill2Type = getSkillType(skills, 1, "defense");
                 String skill3Type = getSkillType(skills, 2, "damage");
+                CharacterDef.ProjectileDef skill1Projectile = getSkillProjectile(skills, 0);
+                CharacterDef.ProjectileDef skill2Projectile = getSkillProjectile(skills, 1);
+                CharacterDef.ProjectileDef skill3Projectile = getSkillProjectile(skills, 2);
 
                 String skill1SpritePath = normalizeResourcePath(toStringValue(sprites.get("skill1")));
                 String skill2SpritePath = normalizeResourcePath(toStringValue(sprites.get("skill2")));
@@ -178,7 +190,10 @@ public final class CharacterDataLoader {
                     drawHeight,
                     idleSpritePath,
                     hurtSpritePath,
-                    deathSpritePath
+                    deathSpritePath,
+                    skill1Projectile,
+                    skill2Projectile,
+                    skill3Projectile
                 ));
             }
 
@@ -207,6 +222,47 @@ public final class CharacterDataLoader {
         return (value == null || value.isBlank()) ? fallback : value;
     }
 
+    private static CharacterDef.ProjectileDef getSkillProjectile(List<?> skills, int index) {
+        if (skills.size() <= index || !(skills.get(index) instanceof Map<?, ?> skillMap)) return null;
+        Map<?, ?> projectileMap = asMap(skillMap.get("projectile"));
+        if (projectileMap.isEmpty()) return null;
+
+        String sheetPath = normalizeResourcePath(toStringValue(projectileMap.get("sprite")));
+        if (sheetPath == null || sheetPath.isBlank()) return null;
+
+        int frameWidth = getMapInt(projectileMap, "frameWidth", 64);
+        int frameHeight = getMapInt(projectileMap, "frameHeight", 64);
+        int drawWidth = getMapInt(projectileMap, "drawWidth", frameWidth);
+        int drawHeight = getMapInt(projectileMap, "drawHeight", frameHeight);
+        int speed = getMapInt(projectileMap, "speed", 44);
+        int verticalOffset = getMapInt(projectileMap, "verticalOffset", 0);
+        int spawnOffsetX = getMapInt(projectileMap, "spawnOffsetX", 0);
+        boolean beam = getMapBoolean(projectileMap, "beam", false);
+        boolean startDuringCast = getMapBoolean(projectileMap, "startDuringCast", false);
+        boolean anchorOnTarget = getMapBoolean(projectileMap, "anchorOnTarget", false);
+        int loopStartFrame = getMapInt(projectileMap, "loopStartFrame", 0);
+        int loopEndFrame = getMapInt(projectileMap, "loopEndFrame", 0);
+        int impactStartFrame = getMapInt(projectileMap, "impactStartFrame", 0);
+        int impactEndFrame = getMapInt(projectileMap, "impactEndFrame", 0);
+
+        return new CharacterDef.ProjectileDef(
+                sheetPath,
+                Math.max(1, frameWidth),
+                Math.max(1, frameHeight),
+                Math.max(1, drawWidth),
+                Math.max(1, drawHeight),
+                Math.max(1, speed),
+            verticalOffset,
+            spawnOffsetX,
+            beam,
+            startDuringCast,
+            anchorOnTarget,
+            Math.max(0, loopStartFrame),
+            Math.max(0, loopEndFrame),
+            Math.max(0, impactStartFrame),
+            Math.max(0, impactEndFrame));
+    }
+
     private static List<?> asList(Object value) {
         return value instanceof List<?> list ? list : List.of();
     }
@@ -232,6 +288,34 @@ public final class CharacterDataLoader {
             }
         }
         return 0;
+    }
+
+    private static int getMapInt(Map<?, ?> map, String key, int fallback) {
+        Object raw = map.get(key);
+        if (raw instanceof Number number) {
+            return number.intValue();
+        }
+        if (raw != null) {
+            try {
+                return Integer.parseInt(String.valueOf(raw));
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        }
+        return fallback;
+    }
+
+    private static boolean getMapBoolean(Map<?, ?> map, String key, boolean fallback) {
+        Object raw = map.get(key);
+        if (raw instanceof Boolean b) {
+            return b;
+        }
+        if (raw != null) {
+            String text = String.valueOf(raw).trim();
+            if ("true".equalsIgnoreCase(text)) return true;
+            if ("false".equalsIgnoreCase(text)) return false;
+        }
+        return fallback;
     }
 
     private static int getSkillForwardOffsetX(Map<?, ?> skillOffsets, String skillKey) {
