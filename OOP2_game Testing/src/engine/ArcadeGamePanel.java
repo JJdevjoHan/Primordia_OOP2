@@ -413,10 +413,7 @@ public class ArcadeGamePanel extends JPanel {
             g2.drawImage(playerHurtFrames.get(playerHurtFrameIndex),
                     p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
         } else if (isWindWizardAttack3(true)) {
-            if (!playerFrames.isEmpty()) {
-            g2.drawImage(playerFrames.get(playerFrameIndex),
-                p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
-            }
+            // Wind Wizard skill 3 hides the caster while the animation plays.
             drawCenteredSkillFrame(g2, activePlayerSkillFrames.get(playerSkillFrameIndex),
                 p2SpriteX + 70, p2SpriteY,
                     getEnemyDrawWidth(), getEnemyDrawHeight(), true);
@@ -440,10 +437,7 @@ public class ArcadeGamePanel extends JPanel {
             g2.drawImage(enemyHurtFrames.get(enemyHurtFrameIndex),
                     p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
         } else if (isWindWizardAttack3(false)) {
-            if (!enemyFrames.isEmpty()) {
-            g2.drawImage(enemyFrames.get(enemyFrameIndex),
-                p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
-            }
+            // Wind Wizard skill 3 hides the caster while the animation plays.
             drawCenteredSkillFrame(g2, activeEnemySkillFrames.get(enemySkillFrameIndex),
                 p1SpriteX - 70, p1SpriteY,
                     getPlayerDrawWidth(), getPlayerDrawHeight(), false);
