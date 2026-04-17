@@ -47,9 +47,9 @@ public class ArcadeGamePanel extends JPanel {
     private static final int POST_ATTACK_HURT_MS    = 600;
     private static final int BARS_TOP_Y             = 84;
 
-    private static final int DARK_WIZARD_PROJECTILE_DRAW_SIZE       = 144;
-    private static final int DARK_WIZARD_PROJECTILE_VERTICAL_OFFSET = 50;
-    private static final int DARK_WIZARD_PROJECTILE_SPEED           = 44;
+    private static final int DEFAULT_PROJECTILE_DRAW_SIZE       = 144;
+    private static final int DEFAULT_PROJECTILE_VERTICAL_OFFSET = 50;
+    private static final int DEFAULT_PROJECTILE_SPEED           = 44;
 
     private static final int MAX_MP            = 100;
     private static final int MP_REGEN_PER_TURN = 10;
@@ -94,7 +94,15 @@ public class ArcadeGamePanel extends JPanel {
     private int     projectileFrameIndex  = 0;
     private int     projectileX           = 0;
     private int     projectileY           = 0;
+    private int     projectileDrawWidth   = DEFAULT_PROJECTILE_DRAW_SIZE;
+    private int     projectileDrawHeight  = DEFAULT_PROJECTILE_DRAW_SIZE;
+    private int     projectileSpeed       = DEFAULT_PROJECTILE_SPEED;
     private int     projectileDirection   = 1;
+    private boolean projectileInImpactPhase = false;
+    private int     projectileLoopStartIndex = 0;
+    private int     projectileLoopEndIndex = 0;
+    private int     projectileImpactStartIndex = -1;
+    private int     projectileImpactEndIndex = -1;
     private boolean projectileIsPlayerOne = true;
     private Timer   projectileTimer;
     private boolean isProjectileAnimating = false;
@@ -416,12 +424,9 @@ public class ArcadeGamePanel extends JPanel {
         } else if (isPlayerHurtAnimating && !playerHurtFrames.isEmpty()) {
             g2.drawImage(playerHurtFrames.get(playerHurtFrameIndex),
                     p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
-        } else if (isWindWizardAttack3(true)) {
-            // Wind Wizard skill 3 hides the caster while the animation plays.
-            drawCenteredSkillFrame(g2, activePlayerSkillFrames.get(playerSkillFrameIndex),
-                p2SpriteX + 70, p2SpriteY,
-                    getEnemyDrawWidth(), getEnemyDrawHeight(), true);
-        } else if (isPlayerSkillAnimating && !activePlayerSkillFrames.isEmpty()) {
+        } else if (isTargetOverlayAttack3(true) && shouldHideCasterDuringOverlaySkill3(true)) {
+            // Wind Wizard skill 3 hides the caster while the target overlay animation plays.
+        } else if (isPlayerSkillAnimating && !activePlayerSkillFrames.isEmpty() && !isTargetOverlayAttack3(true)) {
             BufferedImage skillFrame = activePlayerSkillFrames.get(playerSkillFrameIndex);
             int skillDrawHeight = getPlayerDrawHeight();
             int skillDrawWidth = getSkillDrawWidth(skillFrame, skillDrawHeight, getPlayerDrawWidth());
@@ -440,12 +445,9 @@ public class ArcadeGamePanel extends JPanel {
         } else if (isEnemyHurtAnimating && !enemyHurtFrames.isEmpty()) {
             g2.drawImage(enemyHurtFrames.get(enemyHurtFrameIndex),
                     p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
-        } else if (isWindWizardAttack3(false)) {
-            // Wind Wizard skill 3 hides the caster while the animation plays.
-            drawCenteredSkillFrame(g2, activeEnemySkillFrames.get(enemySkillFrameIndex),
-                p1SpriteX - 70, p1SpriteY,
-                    getPlayerDrawWidth(), getPlayerDrawHeight(), false);
-        } else if (isEnemySkillAnimating && !activeEnemySkillFrames.isEmpty()) {
+        } else if (isTargetOverlayAttack3(false) && shouldHideCasterDuringOverlaySkill3(false)) {
+            // Wind Wizard skill 3 hides the caster while the target overlay animation plays.
+        } else if (isEnemySkillAnimating && !activeEnemySkillFrames.isEmpty() && !isTargetOverlayAttack3(false)) {
             BufferedImage skillFrame = activeEnemySkillFrames.get(enemySkillFrameIndex);
             int skillDrawHeight = getEnemyDrawHeight();
             int skillDrawWidth = getSkillDrawWidth(skillFrame, skillDrawHeight, getEnemyDrawWidth());
@@ -457,11 +459,22 @@ public class ArcadeGamePanel extends JPanel {
                     p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
         }
 
+        if (isTargetOverlayAttack3(true) && !activePlayerSkillFrames.isEmpty()) {
+            drawCenteredSkillFrame(g2, activePlayerSkillFrames.get(playerSkillFrameIndex),
+                p2SpriteX + 70, p2SpriteY,
+                    getEnemyDrawWidth(), getEnemyDrawHeight(), true);
+        }
+        if (isTargetOverlayAttack3(false) && !activeEnemySkillFrames.isEmpty()) {
+            drawCenteredSkillFrame(g2, activeEnemySkillFrames.get(enemySkillFrameIndex),
+                p1SpriteX - 70, p1SpriteY,
+                    getPlayerDrawWidth(), getPlayerDrawHeight(), false);
+        }
+
         // Projectile
         if (isProjectileAnimating && !activeProjectileFrames.isEmpty()) {
             BufferedImage frame = activeProjectileFrames.get(projectileFrameIndex);
             if (frame != null) {
-                int dw = DARK_WIZARD_PROJECTILE_DRAW_SIZE, dh = DARK_WIZARD_PROJECTILE_DRAW_SIZE;
+                int dw = projectileDrawWidth, dh = projectileDrawHeight;
                 if (projectileIsPlayerOne)
                     g2.drawImage(frame, projectileX, projectileY, projectileX + dw, projectileY + dh,
                             0, 0, frame.getWidth(), frame.getHeight(), this);
@@ -565,9 +578,10 @@ public class ArcadeGamePanel extends JPanel {
         boolean actingP1         = isP1Turn;
         CharacterDef actor       = actingP1 ? currentPlayerDef : currentEnemyDef;
         boolean isDamageSkill    = actor != null && "damage".equalsIgnoreCase(actor.getSkillType(skillID));
-        boolean isDarkWizardProj = actor != null
-                && "Dark Wizard".equalsIgnoreCase(actor.name)
-                && (skillID == 2 || skillID == 3);
+        CharacterDef.ProjectileDef projectileDef = actor != null ? actor.getSkillProjectile(skillID) : null;
+        boolean hasProjectileAnimation = projectileDef != null;
+        boolean startProjectileDuringCast = hasProjectileAnimation && projectileDef.startDuringCast;
+        boolean holdCastUntilProjectileDone = hasProjectileAnimation && projectileDef.beam && !startProjectileDuringCast;
 
         if (isP1Turn) {
             switch (skillID) {
@@ -585,11 +599,30 @@ public class ArcadeGamePanel extends JPanel {
 
         spendAndRegenMP(actingP1, skillID);
 
-        if (isDamageSkill)    scheduleHurtTimeline(actingP1, skillID);
-        if (isDarkWizardProj) startProjectileAnimation(actingP1, skillID);
-        else                  stopProjectileAnimation();
+        if (isDamageSkill && !hasProjectileAnimation) {
+            scheduleHurtTimeline(actingP1, skillID);
+        }
 
-        playSkillAnimation(actingP1, skillID, null);
+        if (hasProjectileAnimation) {
+            if (startProjectileDuringCast) {
+                startProjectileAnimation(
+                        actingP1,
+                        skillID,
+                        isDamageSkill ? () -> startDelayedHurt(!actingP1, 0, POST_ATTACK_HURT_MS) : null,
+                        null);
+                playSkillAnimation(actingP1, skillID, false, null);
+            } else {
+                playSkillAnimation(actingP1, skillID, holdCastUntilProjectileDone, () ->
+                        startProjectileAnimation(
+                                actingP1,
+                                skillID,
+                                isDamageSkill ? () -> startDelayedHurt(!actingP1, 0, POST_ATTACK_HURT_MS) : null,
+                                holdCastUntilProjectileDone ? () -> stopSkillAnimation(actingP1) : null));
+            }
+        } else {
+            stopProjectileAnimation();
+            playSkillAnimation(actingP1, skillID, false, null);
+        }
 
         isP1Turn = !isP1Turn;
         updateGameState();
@@ -915,6 +948,10 @@ public class ArcadeGamePanel extends JPanel {
     }
 
     private void playSkillAnimation(boolean isPlayerOne, int skillID, Runnable onCastFinished) {
+        playSkillAnimation(isPlayerOne, skillID, false, onCastFinished);
+    }
+
+    private void playSkillAnimation(boolean isPlayerOne, int skillID, boolean holdLastFrame, Runnable onCastFinished) {
         if (skillID < 1 || skillID > 3) return;
         Runnable callback = onCastFinished != null ? onCastFinished : () -> {};
         List<List<BufferedImage>> source = isPlayerOne ? playerSkillAnimations : enemySkillAnimations;
@@ -932,7 +969,15 @@ public class ArcadeGamePanel extends JPanel {
             playerSkillTimer = new Timer(DEFAULT_SKILL_DELAY_MS, null);
             playerSkillTimer.addActionListener(e -> {
                 if (playerSkillFrameIndex < activePlayerSkillFrames.size() - 1) playerSkillFrameIndex++;
-                else { stopSkillAnimation(true); callback.run(); }
+                else {
+                    if (holdLastFrame) {
+                        if (playerSkillTimer != null) { playerSkillTimer.stop(); playerSkillTimer = null; }
+                        callback.run();
+                    } else {
+                        stopSkillAnimation(true);
+                        callback.run();
+                    }
+                }
                 repaint();
             });
             playerSkillTimer.start();
@@ -946,7 +991,15 @@ public class ArcadeGamePanel extends JPanel {
             enemySkillTimer = new Timer(DEFAULT_SKILL_DELAY_MS, null);
             enemySkillTimer.addActionListener(e -> {
                 if (enemySkillFrameIndex < activeEnemySkillFrames.size() - 1) enemySkillFrameIndex++;
-                else { stopSkillAnimation(false); callback.run(); }
+                else {
+                    if (holdLastFrame) {
+                        if (enemySkillTimer != null) { enemySkillTimer.stop(); enemySkillTimer = null; }
+                        callback.run();
+                    } else {
+                        stopSkillAnimation(false);
+                        callback.run();
+                    }
+                }
                 repaint();
             });
             enemySkillTimer.start();
@@ -972,6 +1025,14 @@ public class ArcadeGamePanel extends JPanel {
         return actor != null && "Wind Wizard".equalsIgnoreCase(actor.name) && activeSkillID == 3 && !frames.isEmpty();
     }
 
+    private boolean isTargetOverlayAttack3(boolean isPlayerOne) {
+        return isWindWizardAttack3(isPlayerOne);
+    }
+
+    private boolean shouldHideCasterDuringOverlaySkill3(boolean isPlayerOne) {
+        return isWindWizardAttack3(isPlayerOne);
+    }
+
     private void drawCenteredSkillFrame(Graphics2D g2,
                                         BufferedImage frame,
                                         int spriteX,
@@ -991,12 +1052,13 @@ public class ArcadeGamePanel extends JPanel {
         }
     }
 
-    private void startProjectileAnimation(boolean isPlayerOne, int skillID) {
-        if (skillID != 2 && skillID != 3) return;
+    private void startProjectileAnimation(boolean isPlayerOne, int skillID, Runnable onImpactStart, Runnable onComplete) {
         CharacterDef actor = isPlayerOne ? currentPlayerDef : currentEnemyDef;
-        if (actor == null || !"Dark Wizard".equalsIgnoreCase(actor.name)) return;
-        List<BufferedImage> frames = loadDarkWizardProjectileFrames(skillID);
-        if (frames.isEmpty()) return;
+        if (actor == null) { if (onComplete != null) onComplete.run(); return; }
+        CharacterDef.ProjectileDef projectileDef = actor.getSkillProjectile(skillID);
+        if (projectileDef == null) { if (onComplete != null) onComplete.run(); return; }
+        List<BufferedImage> frames = loadProjectileFrames(projectileDef);
+        if (frames.isEmpty()) { if (onComplete != null) onComplete.run(); return; }
         stopProjectileAnimation();
         int aX = isPlayerOne ? p1SpriteX : p2SpriteX;
         int aY = isPlayerOne ? p1SpriteY : p2SpriteY;
@@ -1004,49 +1066,143 @@ public class ArcadeGamePanel extends JPanel {
         int aH = isPlayerOne ? getPlayerDrawHeight() : getEnemyDrawHeight();
         int tX = isPlayerOne ? p2SpriteX : p1SpriteX;
         int tW = isPlayerOne ? getEnemyDrawWidth()   : getPlayerDrawWidth();
-        int pW = DARK_WIZARD_PROJECTILE_DRAW_SIZE;
-        int pH = DARK_WIZARD_PROJECTILE_DRAW_SIZE;
+        int pW = Math.max(1, projectileDef.drawWidth);
+        int pH = Math.max(1, projectileDef.drawHeight);
+        int verticalOffset = projectileDef.verticalOffset;
         projectileDirection   = aX <= tX ? 1 : -1;
+        int horizontalSpawnOffset = projectileDef.spawnOffsetX * projectileDirection;
         projectileIsPlayerOne = isPlayerOne;
-        projectileX           = aX + (aW / 2) - (pW / 2);
-        projectileY           = aY + (aH / 2) - (pH / 2) + DARK_WIZARD_PROJECTILE_VERTICAL_OFFSET;
+        projectileDrawWidth   = pW;
+        projectileDrawHeight  = pH;
+        projectileSpeed       = Math.max(1, projectileDef.speed);
+        if (projectileDef.anchorOnTarget) {
+            int targetFeetX = tX + (tW / 2);
+            int targetFeetY = (isPlayerOne ? p2SpriteY : p1SpriteY) + (isPlayerOne ? getEnemyDrawHeight() : getPlayerDrawHeight());
+            projectileX = targetFeetX - (pW / 2) + projectileDef.spawnOffsetX;
+            projectileY = targetFeetY - pH + verticalOffset;
+        } else {
+            projectileX = aX + (aW / 2) - (pW / 2) + horizontalSpawnOffset;
+            projectileY = aY + (aH / 2) - (pH / 2) + verticalOffset;
+        }
         activeProjectileFrames = frames;
+        int totalFrames = frames.size();
+        projectileLoopStartIndex = toValidFrameIndex(projectileDef.loopStartFrame, totalFrames, 0);
+        projectileLoopEndIndex = toValidFrameIndex(projectileDef.loopEndFrame, totalFrames, totalFrames - 1);
+        if (projectileLoopEndIndex < projectileLoopStartIndex) {
+            projectileLoopEndIndex = projectileLoopStartIndex;
+        }
+        projectileImpactStartIndex = toValidFrameIndex(projectileDef.impactStartFrame, totalFrames, -1);
+        projectileImpactEndIndex = toValidFrameIndex(projectileDef.impactEndFrame, totalFrames, -1);
+        if (projectileImpactStartIndex >= 0 && projectileImpactEndIndex >= 0
+                && projectileImpactEndIndex < projectileImpactStartIndex) {
+            projectileImpactEndIndex = projectileImpactStartIndex;
+        }
+        projectileInImpactPhase = false;
         projectileFrameIndex  = 0;
         isProjectileAnimating = true;
+        if (projectileDef.beam && onImpactStart != null) {
+            onImpactStart.run();
+        }
         int stopBoundary = projectileDirection > 0
                 ? (tX + (tW / 2)) - (pW / 2)
                 : (tX + (tW / 2)) + (pW / 2);
         projectileTimer = new Timer(DEFAULT_SKILL_DELAY_MS, null);
         projectileTimer.addActionListener(e -> {
-            if (!isProjectileAnimating || activeProjectileFrames.isEmpty()) { stopProjectileAnimation(); return; }
-            projectileFrameIndex = (projectileFrameIndex + 1) % activeProjectileFrames.size();
-            projectileX += projectileDirection * DARK_WIZARD_PROJECTILE_SPEED;
-            if ((projectileDirection > 0 && projectileX >= stopBoundary)
-                    || (projectileDirection < 0 && projectileX <= stopBoundary))
+            if (!isProjectileAnimating || activeProjectileFrames.isEmpty()) {
                 stopProjectileAnimation();
+                if (onComplete != null) onComplete.run();
+                return;
+            }
+
+            if (projectileDef.beam) {
+                if (projectileFrameIndex < activeProjectileFrames.size() - 1) {
+                    projectileFrameIndex++;
+                } else {
+                    stopProjectileAnimation();
+                    if (onComplete != null) onComplete.run();
+                }
+                repaint();
+                return;
+            }
+
+            if (!projectileInImpactPhase) {
+                if (projectileFrameIndex < projectileLoopStartIndex) {
+                    projectileFrameIndex++;
+                } else {
+                    if (projectileFrameIndex < projectileLoopEndIndex) {
+                        projectileFrameIndex++;
+                    } else {
+                        projectileFrameIndex = projectileLoopStartIndex;
+                    }
+                }
+
+                projectileX += projectileDirection * projectileSpeed;
+                boolean reachedTarget = (projectileDirection > 0 && projectileX >= stopBoundary)
+                        || (projectileDirection < 0 && projectileX <= stopBoundary);
+                if (reachedTarget) {
+                    projectileX = stopBoundary;
+                    if (projectileImpactStartIndex >= 0 && projectileImpactEndIndex >= 0) {
+                        if (onImpactStart != null) {
+                            onImpactStart.run();
+                        }
+                        projectileInImpactPhase = true;
+                        projectileFrameIndex = projectileImpactStartIndex;
+                    } else {
+                        if (onImpactStart != null) {
+                            onImpactStart.run();
+                        }
+                        stopProjectileAnimation();
+                        if (onComplete != null) onComplete.run();
+                    }
+                }
+            } else {
+                if (projectileFrameIndex < projectileImpactEndIndex) {
+                    projectileFrameIndex++;
+                } else {
+                    stopProjectileAnimation();
+                    if (onComplete != null) onComplete.run();
+                }
+            }
             repaint();
         });
         projectileTimer.start();
     }
 
-    private List<BufferedImage> loadDarkWizardProjectileFrames(int skillID) {
-        String sheetPath = switch (skillID) {
-            case 2 -> "/assets/spritesheet/Dark Wizard/Fire_1-Sheet.png";
-            case 3 -> "/assets/spritesheet/Dark Wizard/Fire_2-Sheet.png";
-            default -> null;
-        };
-        if (sheetPath == null) return List.of();
-        List<BufferedImage> cached = projectileAnimationCache.get(sheetPath);
+    private int toValidFrameIndex(int oneBasedFrame, int totalFrames, int fallback) {
+        if (oneBasedFrame <= 0) return fallback;
+        int index = oneBasedFrame - 1;
+        return (index >= 0 && index < totalFrames) ? index : fallback;
+    }
+
+    private List<BufferedImage> loadProjectileFrames(CharacterDef.ProjectileDef projectileDef) {
+        String sheetPath = projectileDef.sheetPath;
+        if (sheetPath == null || sheetPath.isBlank()) return List.of();
+
+        String cacheKey = sheetPath + "|" + projectileDef.frameWidth + "x" + projectileDef.frameHeight;
+        List<BufferedImage> cached = projectileAnimationCache.get(cacheKey);
         if (cached != null) return cached;
+
         List<BufferedImage> frames = loadAnimationFrames(
-                new CharacterDef.AnimationDef(sheetPath, 64, 64, DEFAULT_SKILL_DELAY_MS));
-        projectileAnimationCache.put(sheetPath, frames);
+                new CharacterDef.AnimationDef(
+                        sheetPath,
+                        Math.max(1, projectileDef.frameWidth),
+                        Math.max(1, projectileDef.frameHeight),
+                        DEFAULT_SKILL_DELAY_MS));
+        projectileAnimationCache.put(cacheKey, frames);
         return frames;
     }
 
     private void stopProjectileAnimation() {
         if (projectileTimer != null) { projectileTimer.stop(); projectileTimer = null; }
         isProjectileAnimating = false; projectileFrameIndex = 0;
+        projectileDrawWidth = DEFAULT_PROJECTILE_DRAW_SIZE;
+        projectileDrawHeight = DEFAULT_PROJECTILE_DRAW_SIZE;
+        projectileSpeed = DEFAULT_PROJECTILE_SPEED;
+        projectileInImpactPhase = false;
+        projectileLoopStartIndex = 0;
+        projectileLoopEndIndex = 0;
+        projectileImpactStartIndex = -1;
+        projectileImpactEndIndex = -1;
         projectileX = 0; projectileY = 0; projectileDirection = 1;
         projectileIsPlayerOne = true;   activeProjectileFrames = List.of();
     }
@@ -1178,6 +1334,7 @@ public class ArcadeGamePanel extends JPanel {
                     new CharacterDef.AnimationDef(config.idleSpritePath,  DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_IDLE_DELAY_MS),
                     new CharacterDef.AnimationDef(config.hurtSpritePath,  DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_HURT_DELAY_MS),
                     new CharacterDef.AnimationDef(config.deathSpritePath, DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_DEAD_DELAY_MS),
+                    config.skill1Projectile, config.skill2Projectile, config.skill3Projectile,
                     drawWidth, drawHeight));
         }
         if (!defs.isEmpty()) return List.copyOf(defs);
@@ -1221,12 +1378,15 @@ public class ArcadeGamePanel extends JPanel {
                         "Whips up a dragging current that lowers all enemies' attack for 2 turns.",
                         "damage", "defense", "debuff",
                         "/assets/spritesheet/Water Wizard/Attack-Sheet.png",
-                        "/assets/spritesheet/Water Wizard/Charge-Sheet.png",
                         "/assets/spritesheet/Water Wizard/Attack2-Sheet.png",
+                        "/assets/spritesheet/Water Wizard/Attack3-Sheet.png",
                         0, 0, 0, 0.14, 0.0, 0.0,
                         new CharacterDef.AnimationDef("/assets/spritesheet/Water Wizard/Idle-Sheet.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_IDLE_DELAY_MS),
                         new CharacterDef.AnimationDef("/assets/spritesheet/Water Wizard/Hurt-Sheet.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_HURT_DELAY_MS),
                         new CharacterDef.AnimationDef("/assets/spritesheet/Water Wizard/Dead-Sheet.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_DEAD_DELAY_MS),
+                        new CharacterDef.ProjectileDef("/assets/spritesheet/Water Wizard/Charge-Sheet.png", 128, 128, 144, 144, 44, 50),
+                        new CharacterDef.ProjectileDef("/assets/spritesheet/Water Wizard/Charge2-Sheet.png", 72, 72, 144, 144, 44, 50),
+                        null,
                         DEFAULT_DRAW_WIDTH, DEFAULT_DRAW_HEIGHT),
                     new CharacterDef("Wind Wizard",
                         "A sky runner who bends pressure and razor gusts into elegant battlefield control. She dances through combat, striking fast and breaking enemy rhythm.",
