@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class CharacterSelectionPanel extends JPanel {
+public class CharacterSelectionPanel extends JPanel implements Runnable{
     private static final int SCREEN_WIDTH = 1536;
     private static final int SCREEN_HEIGHT = 896;
     private static final int GRID_COLUMNS = 4;
@@ -46,11 +46,16 @@ public class CharacterSelectionPanel extends JPanel {
     private final Font bodyFont = FontManager.getFont(22f).deriveFont(Font.PLAIN);
     private final Font labelFont = FontManager.getFont(24f).deriveFont(Font.BOLD);
 
+    //variables for sound effects and bgm
+    private int selectionSoundIndex = 2;
+    private final SoundManager bgmCharacterSelection = new SoundManager();
+    private final SoundManager playerSelection = new SoundManager();
+
     public CharacterSelectionPanel(GameWindow window, GameMode mode) {
         this.window = window;
         this.selectedMode = mode;
         this.characters = GamePanel.ALL_CHARACTERS;
-
+        playMusic(0);
         setPreferredSize(new Dimension(SCREEN_WIDTH, SCREEN_HEIGHT));
         setFocusable(true);
 
@@ -135,26 +140,42 @@ public class CharacterSelectionPanel extends JPanel {
     }
 
     private void confirmSelection() {
-
         switch (selectedMode) {
-
             case PVP -> {
                 if (selectingPlayerOne) {
                     playerOneIndex = focusedIndex;
                     selectingPlayerOne = false;
+                    playSE(1);
                     return;
                 }
+                selectionSoundIndex = 2;
+                startPlay();
                 window.startPvPMatch(playerOneIndex, focusedIndex);
             }
 
             case SURVIVAL -> {
+                selectionSoundIndex = 4;
+                startPlay();
                 window.startSurvivalMatch(focusedIndex);
             }
 
             case ARCADE -> {
+                selectionSoundIndex = 3;
+                startPlay();
                 window.startArcadeMatch(focusedIndex);
             }
         }
+    }
+
+    private void startPlay() {
+        Thread t = new Thread(this);
+        t.start();
+        try {
+            t.join();
+        } catch (InterruptedException e) {
+            System.out.println("Audio Thread Interrupted");
+        }
+        stopMusic();
     }
 
     private void restartPreviewTimer(int frameDelayMs) {
@@ -625,4 +646,36 @@ public class CharacterSelectionPanel extends JPanel {
         return new Rectangle(minX, minY, (maxX - minX) + 1, (maxY - minY) + 1);
     }
 
+    //PLAYS THE MUSIC
+    public void playMusic(int i) {
+        bgmCharacterSelection.setFile(i);
+        bgmCharacterSelection.play();
+        bgmCharacterSelection.loop();
+    }
+
+    //STOPS THE MUSIC
+    public void stopMusic() {
+        if(bgmCharacterSelection!=null){
+            bgmCharacterSelection.stop();
+        }
+
+    }
+
+    public void playSE(int i) {
+        playerSelection.setFile(i);
+        playerSelection.play();
+    }
+
+
+    //The purpose of this is if di ta mo gamit og pause ang "Player 2" audio kay di pahuman naa na sa gameplay, which is why na ato ipause para walay molapas sa gameplay na audio
+    @Override
+    public void run() {
+        playerSelection.setFile(selectionSoundIndex);
+        playerSelection.play();
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
 }

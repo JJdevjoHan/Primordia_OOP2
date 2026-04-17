@@ -14,6 +14,7 @@ public class IntroPanel extends JPanel {
     private final int screenWidth = tileSize * 12;
     private final int screenHeight = tileSize * 7;
 
+    private final SoundManager sound = new SoundManager();
     public IntroPanel(GameWindow window) {
 
         this.window = window;
@@ -81,7 +82,12 @@ public class IntroPanel extends JPanel {
         });
 
         Toolkit.getDefaultToolkit().beep();
-        startButton.addActionListener(e -> window.showMenu());
+        startButton.addActionListener(e -> {
+
+            sound.setFile(8);
+            sound.play();
+            window.showMenu();
+        });
 
         add(startButton);
     }

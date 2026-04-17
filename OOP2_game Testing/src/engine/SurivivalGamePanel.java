@@ -164,6 +164,8 @@ public class SurivivalGamePanel extends JPanel {
     private GameWindow   window;
     private RoundManager roundManager;
 
+    private final SoundManager survivalBGM = new SoundManager();
+
     public SurivivalGamePanel() {
         this(new GameWindow(), 0, 1, GameMode.PVP, BotAI.Difficulty.NORMAL);
     }
@@ -319,6 +321,8 @@ public class SurivivalGamePanel extends JPanel {
         repositionUI();
         updateGameState();
         roundManager.startMatch();
+        survivalBGM.setFile(9);
+        survivalBGM.play();
     }
 
     private static int mpCostFor(int skillID) {
