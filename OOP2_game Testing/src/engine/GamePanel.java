@@ -137,6 +137,9 @@ public class GamePanel extends JPanel {
     private int p1MP = MAX_MP, p2MP = MAX_MP;
     private boolean isP1Turn = true;
 
+    private final SoundManager bgmMainGamePlay = new SoundManager();
+    private final SoundManager sfx = new SoundManager();
+
     private int    turnSecondsLeft = TURN_TIME_SECONDS;
     private Timer  countdownTimer;
     private JLabel countdownLabel;
@@ -283,6 +286,7 @@ public class GamePanel extends JPanel {
         repositionUI();
         updateGameState();
         roundManager.startMatch();
+        playMusic(7);
     }
 
     @Override
@@ -1291,4 +1295,25 @@ public class GamePanel extends JPanel {
                         new CharacterDef.AnimationDef("/assets/spritesheet/Wind WIzard/Dead-Sheet.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_DEAD_DELAY_MS),
                         DEFAULT_DRAW_WIDTH, DEFAULT_DRAW_HEIGHT));
     }
+
+    //PLAYS THE MUSIC
+    public void playMusic(int i) {
+        bgmMainGamePlay.setFile(i);
+        bgmMainGamePlay.play();
+        bgmMainGamePlay.loop();
+    }
+
+    //STOPS THE MUSIC
+    public void stopMusic() {
+        if(bgmMainGamePlay !=null){
+            bgmMainGamePlay.stop();
+        }
+
+    }
+
+    public void playSE(int i) {
+        sfx.setFile(i);
+        sfx.play();
+    }
+
 }
