@@ -43,6 +43,7 @@ public final class CharacterDataLoader {
         public final CharacterDef.ProjectileDef skill1Projectile;
         public final CharacterDef.ProjectileDef skill2Projectile;
         public final CharacterDef.ProjectileDef skill3Projectile;
+        public final CharacterDef.DefenseFormDef defenseForm;
 
         public CharacterConfig(
             String name,
@@ -72,7 +73,8 @@ public final class CharacterDataLoader {
             String deathSpritePath,
             CharacterDef.ProjectileDef skill1Projectile,
             CharacterDef.ProjectileDef skill2Projectile,
-            CharacterDef.ProjectileDef skill3Projectile
+            CharacterDef.ProjectileDef skill3Projectile,
+            CharacterDef.DefenseFormDef defenseForm
         ) {
             this.name = name;
             this.backstory = backstory;
@@ -102,6 +104,7 @@ public final class CharacterDataLoader {
             this.skill1Projectile = skill1Projectile;
             this.skill2Projectile = skill2Projectile;
             this.skill3Projectile = skill3Projectile;
+            this.defenseForm = defenseForm;
         }
     }
 
@@ -145,6 +148,7 @@ public final class CharacterDataLoader {
                 CharacterDef.ProjectileDef skill1Projectile = getSkillProjectile(skills, 0);
                 CharacterDef.ProjectileDef skill2Projectile = getSkillProjectile(skills, 1);
                 CharacterDef.ProjectileDef skill3Projectile = getSkillProjectile(skills, 2);
+                CharacterDef.DefenseFormDef defenseForm = getDefenseForm(characterMap);
 
                 String skill1SpritePath = normalizeResourcePath(toStringValue(sprites.get("skill1")));
                 String skill2SpritePath = normalizeResourcePath(toStringValue(sprites.get("skill2")));
@@ -193,7 +197,8 @@ public final class CharacterDataLoader {
                     deathSpritePath,
                     skill1Projectile,
                     skill2Projectile,
-                    skill3Projectile
+                    skill3Projectile,
+                    defenseForm
                 ));
             }
 
@@ -227,6 +232,12 @@ public final class CharacterDataLoader {
         Map<?, ?> projectileMap = asMap(skillMap.get("projectile"));
         if (projectileMap.isEmpty()) return null;
 
+        return parseProjectileDef(projectileMap);
+    }
+
+    private static CharacterDef.ProjectileDef parseProjectileDef(Map<?, ?> projectileMap) {
+        if (projectileMap.isEmpty()) return null;
+
         String sheetPath = normalizeResourcePath(toStringValue(projectileMap.get("sprite")));
         if (sheetPath == null || sheetPath.isBlank()) return null;
 
@@ -239,6 +250,7 @@ public final class CharacterDataLoader {
         int spawnOffsetX = getMapInt(projectileMap, "spawnOffsetX", 0);
         boolean beam = getMapBoolean(projectileMap, "beam", false);
         boolean startDuringCast = getMapBoolean(projectileMap, "startDuringCast", false);
+        boolean anchorOnTargetCenter = getMapBoolean(projectileMap, "anchorOnTargetCenter", false);
         boolean anchorOnTarget = getMapBoolean(projectileMap, "anchorOnTarget", false);
         int loopStartFrame = getMapInt(projectileMap, "loopStartFrame", 0);
         int loopEndFrame = getMapInt(projectileMap, "loopEndFrame", 0);
@@ -256,12 +268,46 @@ public final class CharacterDataLoader {
             spawnOffsetX,
             beam,
             startDuringCast,
+            anchorOnTargetCenter,
             anchorOnTarget,
             Math.max(0, loopStartFrame),
             Math.max(0, loopEndFrame),
             Math.max(0, impactStartFrame),
             Math.max(0, impactEndFrame));
     }
+
+            private static CharacterDef.DefenseFormDef getDefenseForm(Map<?, ?> characterMap) {
+            Map<?, ?> defenseFormMap = asMap(characterMap.get("defenseForm"));
+            if (defenseFormMap.isEmpty()) return null;
+
+            int toggleSkillSlot = Math.max(1, getMapInt(defenseFormMap, "toggleSkillSlot", 3));
+            int altSkillSlot = Math.max(1, getMapInt(defenseFormMap, "altSkillSlot", 1));
+            int enterFreezeFrame = Math.max(1, getMapInt(defenseFormMap, "enterFreezeFrame", 5));
+            int exitStartFrame = Math.max(1, getMapInt(defenseFormMap, "exitStartFrame", 6));
+
+            String altSkillSprite = normalizeResourcePath(toStringValue(defenseFormMap.get("altSkillSprite")));
+            int altSkillFrameWidth = Math.max(1, getMapInt(defenseFormMap, "altSkillFrameWidth", 128));
+            int altSkillFrameHeight = Math.max(1, getMapInt(defenseFormMap, "altSkillFrameHeight", 128));
+            CharacterDef.AnimationDef altSkillAnimation = null;
+            if (altSkillSprite != null && !altSkillSprite.isBlank()) {
+                altSkillAnimation = new CharacterDef.AnimationDef(
+                    altSkillSprite,
+                    altSkillFrameWidth,
+                    altSkillFrameHeight,
+                    90);
+            }
+
+            CharacterDef.ProjectileDef altSkillProjectile = parseProjectileDef(asMap(defenseFormMap.get("altSkillProjectile")));
+            if (altSkillAnimation == null && altSkillProjectile == null) return null;
+
+            return new CharacterDef.DefenseFormDef(
+                toggleSkillSlot,
+                altSkillSlot,
+                enterFreezeFrame,
+                exitStartFrame,
+                altSkillAnimation,
+                altSkillProjectile);
+            }
 
     private static List<?> asList(Object value) {
         return value instanceof List<?> list ? list : List.of();

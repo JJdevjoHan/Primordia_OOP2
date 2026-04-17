@@ -46,6 +46,13 @@ public class ArcadeGamePanel extends JPanel {
     private static final int DEFAULT_HURT_DELAY_MS  = 90;
     private static final int POST_ATTACK_HURT_MS    = 600;
     private static final int BARS_TOP_Y             = 84;
+    private static final int NATURE_FORM_FREEZE_FRAME_ONE_BASED = 5;
+    private static final int NATURE_FORM_RELEASE_START_FRAME_ONE_BASED = 6;
+    private static final String NATURE_SHOT_SHEET_PATH = "/src/assets/spritesheet/Nature Wizard/Shot-Sheet.png";
+    private static final String NATURE_DART_SHEET_PATH = "/src/assets/spritesheet/Nature Wizard/Dart.png";
+    private static final int NATURE_ALT_FRAME_SIZE = 128;
+    private static final int NATURE_DART_DRAW_SIZE = 144;
+    private static final int NATURE_DART_SPAWN_OFFSET_X = 80;
 
     private static final int DEFAULT_PROJECTILE_DRAW_SIZE       = 144;
     private static final int DEFAULT_PROJECTILE_VERTICAL_OFFSET = 50;
@@ -88,6 +95,8 @@ public class ArcadeGamePanel extends JPanel {
     private boolean isEnemySkillAnimating  = false;
     private int activePlayerSkillOffsetX   = 0;
     private int activeEnemySkillOffsetX    = 0;
+    private boolean isPlayerNatureDefenseForm = false;
+    private boolean isEnemyNatureDefenseForm = false;
 
     private final Map<String, List<BufferedImage>> projectileAnimationCache = new HashMap<>();
     private List<BufferedImage> activeProjectileFrames = List.of();
@@ -432,6 +441,14 @@ public class ArcadeGamePanel extends JPanel {
             int skillDrawWidth = getSkillDrawWidth(skillFrame, skillDrawHeight, getPlayerDrawWidth());
             g2.drawImage(skillFrame,
                 p1SpriteX + activePlayerSkillOffsetX, p1SpriteY, skillDrawWidth, skillDrawHeight, this);
+        } else if (isPlayerNatureDefenseForm) {
+            BufferedImage stanceFrame = getNatureDefensePoseFrame(true);
+            if (stanceFrame != null) {
+                int stanceDrawHeight = getPlayerDrawHeight();
+                int stanceDrawWidth = getSkillDrawWidth(stanceFrame, stanceDrawHeight, getPlayerDrawWidth());
+                g2.drawImage(stanceFrame,
+                        p1SpriteX, p1SpriteY, stanceDrawWidth, stanceDrawHeight, this);
+            }
         } else if (!playerFrames.isEmpty()) {
             g2.drawImage(playerFrames.get(playerFrameIndex),
                     p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
@@ -454,6 +471,15 @@ public class ArcadeGamePanel extends JPanel {
             g2.drawImage(skillFrame,
                 p2SpriteX + skillDrawWidth + activeEnemySkillOffsetX, p2SpriteY,
                 -skillDrawWidth, skillDrawHeight, this);
+        } else if (isEnemyNatureDefenseForm) {
+            BufferedImage stanceFrame = getNatureDefensePoseFrame(false);
+            if (stanceFrame != null) {
+                int stanceDrawHeight = getEnemyDrawHeight();
+                int stanceDrawWidth = getSkillDrawWidth(stanceFrame, stanceDrawHeight, getEnemyDrawWidth());
+                g2.drawImage(stanceFrame,
+                        p2SpriteX + stanceDrawWidth, p2SpriteY,
+                        -stanceDrawWidth, stanceDrawHeight, this);
+            }
         } else if (!enemyFrames.isEmpty()) {
             g2.drawImage(enemyFrames.get(enemyFrameIndex),
                     p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
@@ -517,6 +543,8 @@ public class ArcadeGamePanel extends JPanel {
         CharacterDef enemyDef  = ALL_CHARACTERS.get(enemyIdx);
         currentPlayerDef = playerDef;
         currentEnemyDef  = enemyDef;
+        isPlayerNatureDefenseForm = false;
+        isEnemyNatureDefenseForm = false;
 
         refreshSkillButtonLabels();
         updateP1DrawFromSpawn();
@@ -577,8 +605,16 @@ public class ArcadeGamePanel extends JPanel {
 
         boolean actingP1         = isP1Turn;
         CharacterDef actor       = actingP1 ? currentPlayerDef : currentEnemyDef;
+        CharacterDef.DefenseFormDef defenseForm = actor != null ? actor.defenseForm : null;
+        boolean isDefenseFormToggleSkill = defenseForm != null && skillID == defenseForm.toggleSkillSlot;
+        boolean isDefenseFormAltSkill = defenseForm != null
+                && skillID == defenseForm.altSkillSlot
+                && isNatureDefenseFormActive(actingP1);
         boolean isDamageSkill    = actor != null && "damage".equalsIgnoreCase(actor.getSkillType(skillID));
         CharacterDef.ProjectileDef projectileDef = actor != null ? actor.getSkillProjectile(skillID) : null;
+        if (isDefenseFormAltSkill) {
+            projectileDef = buildDefenseFormAltProjectileDef(defenseForm);
+        }
         boolean hasProjectileAnimation = projectileDef != null;
         boolean startProjectileDuringCast = hasProjectileAnimation && projectileDef.startDuringCast;
         boolean holdCastUntilProjectileDone = hasProjectileAnimation && projectileDef.beam && !startProjectileDuringCast;
@@ -603,21 +639,39 @@ public class ArcadeGamePanel extends JPanel {
             scheduleHurtTimeline(actingP1, skillID);
         }
 
-        if (hasProjectileAnimation) {
+        CharacterDef.ProjectileDef activeProjectileDef = projectileDef;
+        if (isDefenseFormToggleSkill) {
+            stopProjectileAnimation();
+            if (isNatureDefenseFormActive(actingP1)) {
+                playNatureDefenseFormExitAnimation(actingP1, defenseForm);
+            } else {
+                playNatureDefenseFormEnterAnimation(actingP1, defenseForm);
+            }
+        } else if (hasProjectileAnimation) {
             if (startProjectileDuringCast) {
                 startProjectileAnimation(
                         actingP1,
                         skillID,
+                        activeProjectileDef,
                         isDamageSkill ? () -> startDelayedHurt(!actingP1, 0, POST_ATTACK_HURT_MS) : null,
                         null);
-                playSkillAnimation(actingP1, skillID, false, null);
+                if (isDefenseFormAltSkill) {
+                    playNatureFormSkill1CastAnimation(actingP1, defenseForm, null);
+                } else {
+                    playSkillAnimation(actingP1, skillID, false, null);
+                }
             } else {
-                playSkillAnimation(actingP1, skillID, holdCastUntilProjectileDone, () ->
-                        startProjectileAnimation(
-                                actingP1,
-                                skillID,
-                                isDamageSkill ? () -> startDelayedHurt(!actingP1, 0, POST_ATTACK_HURT_MS) : null,
-                                holdCastUntilProjectileDone ? () -> stopSkillAnimation(actingP1) : null));
+                Runnable spawnProjectile = () -> startProjectileAnimation(
+                        actingP1,
+                        skillID,
+                        activeProjectileDef,
+                        isDamageSkill ? () -> startDelayedHurt(!actingP1, 0, POST_ATTACK_HURT_MS) : null,
+                        holdCastUntilProjectileDone ? () -> stopSkillAnimation(actingP1) : null);
+                if (isDefenseFormAltSkill) {
+                    playNatureFormSkill1CastAnimation(actingP1, defenseForm, spawnProjectile);
+                } else {
+                    playSkillAnimation(actingP1, skillID, holdCastUntilProjectileDone, spawnProjectile);
+                }
             }
         } else {
             stopProjectileAnimation();
@@ -1018,6 +1072,221 @@ public class ArcadeGamePanel extends JPanel {
         }
     }
 
+    private boolean isNatureDefenseFormActive(boolean isPlayerOne) {
+        return isPlayerOne ? isPlayerNatureDefenseForm : isEnemyNatureDefenseForm;
+    }
+
+    private void setNatureDefenseFormActive(boolean isPlayerOne, boolean active) {
+        if (isPlayerOne) {
+            isPlayerNatureDefenseForm = active;
+        } else {
+            isEnemyNatureDefenseForm = active;
+        }
+    }
+
+    private CharacterDef.DefenseFormDef getDefenseFormConfig(boolean isPlayerOne) {
+        CharacterDef actor = isPlayerOne ? currentPlayerDef : currentEnemyDef;
+        return actor != null ? actor.defenseForm : null;
+    }
+
+    private BufferedImage getNatureDefensePoseFrame(boolean isPlayerOne) {
+        CharacterDef.DefenseFormDef defenseForm = getDefenseFormConfig(isPlayerOne);
+        if (defenseForm == null) return null;
+        List<List<BufferedImage>> source = isPlayerOne ? playerSkillAnimations : enemySkillAnimations;
+        if (defenseForm.toggleSkillSlot < 1 || defenseForm.toggleSkillSlot > source.size()) return null;
+        List<BufferedImage> frames = source.get(defenseForm.toggleSkillSlot - 1);
+        if (frames == null || frames.isEmpty()) return null;
+        int freezeIndex = Math.max(0, Math.min(frames.size() - 1, defenseForm.enterFreezeFrame - 1));
+        return frames.get(freezeIndex);
+    }
+
+    private void playNatureDefenseFormEnterAnimation(boolean isPlayerOne, CharacterDef.DefenseFormDef defenseForm) {
+        if (defenseForm == null) return;
+        List<List<BufferedImage>> source = isPlayerOne ? playerSkillAnimations : enemySkillAnimations;
+        if (defenseForm.toggleSkillSlot < 1 || defenseForm.toggleSkillSlot > source.size()) {
+            setNatureDefenseFormActive(isPlayerOne, true);
+            repaint();
+            return;
+        }
+        List<BufferedImage> frames = source.get(defenseForm.toggleSkillSlot - 1);
+        if (frames == null || frames.isEmpty()) {
+            setNatureDefenseFormActive(isPlayerOne, true);
+            repaint();
+            return;
+        }
+
+        stopSkillAnimation(isPlayerOne);
+        int freezeIndex = Math.max(0, Math.min(frames.size() - 1, defenseForm.enterFreezeFrame - 1));
+
+        if (isPlayerOne) {
+            activePlayerSkillFrames = frames;
+            playerSkillFrameIndex = 0;
+            isPlayerSkillAnimating = true;
+            activePlayerSkillID = defenseForm.toggleSkillSlot;
+            activePlayerSkillOffsetX = currentPlayerDef != null ? currentPlayerDef.getSkillForwardOffsetX(defenseForm.toggleSkillSlot) : 0;
+            playerSkillTimer = new Timer(DEFAULT_SKILL_DELAY_MS, null);
+            playerSkillTimer.addActionListener(e -> {
+                if (playerSkillFrameIndex < freezeIndex) {
+                    playerSkillFrameIndex++;
+                } else {
+                    stopSkillAnimation(true);
+                    setNatureDefenseFormActive(true, true);
+                }
+                repaint();
+            });
+            playerSkillTimer.start();
+        } else {
+            activeEnemySkillFrames = frames;
+            enemySkillFrameIndex = 0;
+            isEnemySkillAnimating = true;
+            activeEnemySkillID = defenseForm.toggleSkillSlot;
+            activeEnemySkillOffsetX = -(currentEnemyDef != null ? currentEnemyDef.getSkillForwardOffsetX(defenseForm.toggleSkillSlot) : 0);
+            enemySkillTimer = new Timer(DEFAULT_SKILL_DELAY_MS, null);
+            enemySkillTimer.addActionListener(e -> {
+                if (enemySkillFrameIndex < freezeIndex) {
+                    enemySkillFrameIndex++;
+                } else {
+                    stopSkillAnimation(false);
+                    setNatureDefenseFormActive(false, true);
+                }
+                repaint();
+            });
+            enemySkillTimer.start();
+        }
+    }
+
+    private void playNatureDefenseFormExitAnimation(boolean isPlayerOne, CharacterDef.DefenseFormDef defenseForm) {
+        if (defenseForm == null) return;
+        List<List<BufferedImage>> source = isPlayerOne ? playerSkillAnimations : enemySkillAnimations;
+        if (defenseForm.toggleSkillSlot < 1 || defenseForm.toggleSkillSlot > source.size()) {
+            setNatureDefenseFormActive(isPlayerOne, false);
+            repaint();
+            return;
+        }
+        List<BufferedImage> frames = source.get(defenseForm.toggleSkillSlot - 1);
+        if (frames == null || frames.isEmpty()) {
+            setNatureDefenseFormActive(isPlayerOne, false);
+            repaint();
+            return;
+        }
+
+        stopSkillAnimation(isPlayerOne);
+        int startIndex = Math.max(0, Math.min(frames.size() - 1, defenseForm.exitStartFrame - 1));
+
+        if (isPlayerOne) {
+            activePlayerSkillFrames = frames;
+            playerSkillFrameIndex = startIndex;
+            isPlayerSkillAnimating = true;
+            activePlayerSkillID = defenseForm.toggleSkillSlot;
+            activePlayerSkillOffsetX = currentPlayerDef != null ? currentPlayerDef.getSkillForwardOffsetX(defenseForm.toggleSkillSlot) : 0;
+            playerSkillTimer = new Timer(DEFAULT_SKILL_DELAY_MS, null);
+            playerSkillTimer.addActionListener(e -> {
+                if (playerSkillFrameIndex < activePlayerSkillFrames.size() - 1) {
+                    playerSkillFrameIndex++;
+                } else {
+                    stopSkillAnimation(true);
+                    setNatureDefenseFormActive(true, false);
+                }
+                repaint();
+            });
+            playerSkillTimer.start();
+        } else {
+            activeEnemySkillFrames = frames;
+            enemySkillFrameIndex = startIndex;
+            isEnemySkillAnimating = true;
+            activeEnemySkillID = defenseForm.toggleSkillSlot;
+            activeEnemySkillOffsetX = -(currentEnemyDef != null ? currentEnemyDef.getSkillForwardOffsetX(defenseForm.toggleSkillSlot) : 0);
+            enemySkillTimer = new Timer(DEFAULT_SKILL_DELAY_MS, null);
+            enemySkillTimer.addActionListener(e -> {
+                if (enemySkillFrameIndex < activeEnemySkillFrames.size() - 1) {
+                    enemySkillFrameIndex++;
+                } else {
+                    stopSkillAnimation(false);
+                    setNatureDefenseFormActive(false, false);
+                }
+                repaint();
+            });
+            enemySkillTimer.start();
+        }
+    }
+
+    private void playNatureFormSkill1CastAnimation(boolean isPlayerOne, CharacterDef.DefenseFormDef defenseForm, Runnable onCastFinished) {
+        List<BufferedImage> frames = loadNatureShotFrames(defenseForm);
+        if (frames.isEmpty()) {
+            int fallbackSkillSlot = defenseForm != null ? defenseForm.altSkillSlot : 1;
+            playSkillAnimation(isPlayerOne, fallbackSkillSlot, false, onCastFinished);
+            return;
+        }
+
+        Runnable callback = onCastFinished != null ? onCastFinished : () -> {};
+        if (isPlayerOne) {
+            stopSkillAnimation(true);
+            activePlayerSkillFrames = frames;
+            playerSkillFrameIndex = 0;
+            isPlayerSkillAnimating = true;
+            int altSkillSlot = defenseForm != null ? defenseForm.altSkillSlot : 1;
+            activePlayerSkillID = altSkillSlot;
+            activePlayerSkillOffsetX = currentPlayerDef != null ? currentPlayerDef.getSkillForwardOffsetX(altSkillSlot) : 0;
+            playerSkillTimer = new Timer(DEFAULT_SKILL_DELAY_MS, null);
+            playerSkillTimer.addActionListener(e -> {
+                if (playerSkillFrameIndex < activePlayerSkillFrames.size() - 1) {
+                    playerSkillFrameIndex++;
+                } else {
+                    stopSkillAnimation(true);
+                    callback.run();
+                }
+                repaint();
+            });
+            playerSkillTimer.start();
+        } else {
+            stopSkillAnimation(false);
+            activeEnemySkillFrames = frames;
+            enemySkillFrameIndex = 0;
+            isEnemySkillAnimating = true;
+            int altSkillSlot = defenseForm != null ? defenseForm.altSkillSlot : 1;
+            activeEnemySkillID = altSkillSlot;
+            activeEnemySkillOffsetX = -(currentEnemyDef != null ? currentEnemyDef.getSkillForwardOffsetX(altSkillSlot) : 0);
+            enemySkillTimer = new Timer(DEFAULT_SKILL_DELAY_MS, null);
+            enemySkillTimer.addActionListener(e -> {
+                if (enemySkillFrameIndex < activeEnemySkillFrames.size() - 1) {
+                    enemySkillFrameIndex++;
+                } else {
+                    stopSkillAnimation(false);
+                    callback.run();
+                }
+                repaint();
+            });
+            enemySkillTimer.start();
+        }
+    }
+
+    private List<BufferedImage> loadNatureShotFrames(CharacterDef.DefenseFormDef defenseForm) {
+        if (defenseForm == null || defenseForm.altSkillAnimation == null) return List.of();
+        String sheetPath = defenseForm.altSkillAnimation.sheetPath;
+        int frameWidth = Math.max(1, defenseForm.altSkillAnimation.frameWidth);
+        int frameHeight = Math.max(1, defenseForm.altSkillAnimation.frameHeight);
+        List<BufferedImage> frames = loadAnimationFrames(
+                new CharacterDef.AnimationDef(
+                        sheetPath,
+                        frameWidth,
+                        frameHeight,
+                        DEFAULT_SKILL_DELAY_MS));
+        if (!frames.isEmpty()) return frames;
+
+        frames = loadAnimationFrames(
+                new CharacterDef.AnimationDef(
+                        sheetPath,
+                        64,
+                        64,
+                        DEFAULT_SKILL_DELAY_MS));
+        return frames;
+    }
+
+    private CharacterDef.ProjectileDef buildDefenseFormAltProjectileDef(CharacterDef.DefenseFormDef defenseForm) {
+        if (defenseForm == null) return null;
+        return defenseForm.altSkillProjectile;
+    }
+
     private boolean isWindWizardAttack3(boolean isPlayerOne) {
         CharacterDef actor = isPlayerOne ? currentPlayerDef : currentEnemyDef;
         int activeSkillID = isPlayerOne ? activePlayerSkillID : activeEnemySkillID;
@@ -1052,10 +1321,10 @@ public class ArcadeGamePanel extends JPanel {
         }
     }
 
-    private void startProjectileAnimation(boolean isPlayerOne, int skillID, Runnable onImpactStart, Runnable onComplete) {
+    private void startProjectileAnimation(boolean isPlayerOne, int skillID, CharacterDef.ProjectileDef overrideProjectileDef, Runnable onImpactStart, Runnable onComplete) {
         CharacterDef actor = isPlayerOne ? currentPlayerDef : currentEnemyDef;
         if (actor == null) { if (onComplete != null) onComplete.run(); return; }
-        CharacterDef.ProjectileDef projectileDef = actor.getSkillProjectile(skillID);
+        CharacterDef.ProjectileDef projectileDef = overrideProjectileDef != null ? overrideProjectileDef : actor.getSkillProjectile(skillID);
         if (projectileDef == null) { if (onComplete != null) onComplete.run(); return; }
         List<BufferedImage> frames = loadProjectileFrames(projectileDef);
         if (frames.isEmpty()) { if (onComplete != null) onComplete.run(); return; }
@@ -1075,7 +1344,12 @@ public class ArcadeGamePanel extends JPanel {
         projectileDrawWidth   = pW;
         projectileDrawHeight  = pH;
         projectileSpeed       = Math.max(1, projectileDef.speed);
-        if (projectileDef.anchorOnTarget) {
+        if (projectileDef.anchorOnTargetCenter) {
+            int targetCenterX = tX + (tW / 2);
+            int targetCenterY = (isPlayerOne ? p2SpriteY : p1SpriteY) + ((isPlayerOne ? getEnemyDrawHeight() : getPlayerDrawHeight()) / 2);
+            projectileX = targetCenterX - (pW / 2) + projectileDef.spawnOffsetX;
+            projectileY = targetCenterY - (pH / 2) + verticalOffset;
+        } else if (projectileDef.anchorOnTarget) {
             int targetFeetX = tX + (tW / 2);
             int targetFeetY = (isPlayerOne ? p2SpriteY : p1SpriteY) + (isPlayerOne ? getEnemyDrawHeight() : getPlayerDrawHeight());
             projectileX = targetFeetX - (pW / 2) + projectileDef.spawnOffsetX;
@@ -1335,6 +1609,7 @@ public class ArcadeGamePanel extends JPanel {
                     new CharacterDef.AnimationDef(config.hurtSpritePath,  DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_HURT_DELAY_MS),
                     new CharacterDef.AnimationDef(config.deathSpritePath, DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_DEAD_DELAY_MS),
                     config.skill1Projectile, config.skill2Projectile, config.skill3Projectile,
+                    config.defenseForm,
                     drawWidth, drawHeight));
         }
         if (!defs.isEmpty()) return List.copyOf(defs);

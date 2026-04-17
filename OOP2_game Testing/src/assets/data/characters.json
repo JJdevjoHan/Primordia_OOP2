@@ -232,12 +232,44 @@
       "mana": 126,
       "drawWidth": 288,
       "drawHeight": 288,
+      "defenseForm": {
+        "toggleSkillSlot": 3,
+        "altSkillSlot": 1,
+        "enterFreezeFrame": 5,
+        "exitStartFrame": 6,
+        "altSkillSprite": "src/assets/spritesheet/Nature Wizard/Shot-Sheet.png",
+        "altSkillFrameWidth": 128,
+        "altSkillFrameHeight": 128,
+        "altSkillProjectile": {
+          "sprite": "src/assets/spritesheet/Nature Wizard/Dart.png",
+          "frameWidth": 6,
+          "frameHeight": 6,
+          "drawWidth": 30,
+          "drawHeight": 30,
+          "speed": 44,
+          "verticalOffset": 60,
+          "spawnOffsetX": 70
+        }
+      },
       "skills": [
         {
           "slot": 1,
           "name": "Thorn Swipe",
           "type": "damage",
           "hurtTriggerBufferSeconds": 0.12,
+          "projectile": {
+            "sprite": "src/assets/spritesheet/Nature Wizard/Charge-Sheet.png",
+            "frameWidth": 128,
+            "frameHeight": 128,
+            "drawWidth": 250,
+            "drawHeight": 250,
+            "speed": 44,
+            "verticalOffset": 0,
+            "spawnOffsetX": 0,
+            "beam": true,
+            "startDuringCast": true,
+            "anchorOnTarget": true
+          },
           "description": "Slashes one enemy with thorned vines and deals steady nature damage.",
           "manaCost": 18,
           "power": 35,
@@ -248,6 +280,19 @@
           "slot": 2,
           "name": "Wild Veil",
           "type": "defense",
+          "projectile": {
+            "sprite": "src/assets/spritesheet/Nature Wizard/Charge2-Sheet.png",
+            "frameWidth": 128,
+            "frameHeight": 128,
+            "drawWidth": 250,
+            "drawHeight": 250,
+            "speed": 44,
+            "verticalOffset": 20,
+            "spawnOffsetX": 0,
+            "beam": true,
+            "startDuringCast": true,
+            "anchorOnTargetCenter": true
+          },
           "description": "Cloaks the caster in living foliage that grants a shield and minor regeneration for 2 turns.",
           "manaCost": 24,
           "shieldValue": 22,
@@ -269,8 +314,8 @@
       ],
       "sprites": {
         "skill1": "src/assets/spritesheet/Nature Wizard/Attack_1-Sheet.png",
-        "skill2": "src/assets/spritesheet/Nature Wizard/Disguise-Sheet.png",
-        "skill3": "src/assets/spritesheet/Nature Wizard/Shot-Sheet.png",
+        "skill2": "src/assets/spritesheet/Nature Wizard/Attack_2-Sheet.png",
+        "skill3": "src/assets/spritesheet/Nature Wizard/Disguise-Sheet.png",
         "idle": "src/assets/spritesheet/Nature Wizard/Idle-Sheet.png",
         "death": "src/assets/spritesheet/Nature Wizard/Dead-Sheet.png",
         "hurt": "src/assets/spritesheet/Nature Wizard/Hurt-Sheet.png"

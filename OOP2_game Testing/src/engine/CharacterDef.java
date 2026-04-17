@@ -30,6 +30,7 @@ public class CharacterDef {
         public final int spawnOffsetX;
         public final boolean beam;
         public final boolean startDuringCast;
+        public final boolean anchorOnTargetCenter;
         public final boolean anchorOnTarget;
         public final int loopStartFrame;
         public final int loopEndFrame;
@@ -44,7 +45,7 @@ public class CharacterDef {
                              int speed,
                      int verticalOffset) {
                         this(sheetPath, frameWidth, frameHeight, drawWidth, drawHeight, speed, verticalOffset, 0,
-                false, false, false, 0, 0, 0, 0);
+                        false, false, false, false, 0, 0, 0, 0);
         }
 
                     public ProjectileDef(String sheetPath,
@@ -56,7 +57,7 @@ public class CharacterDef {
                                  int verticalOffset,
                                  int spawnOffsetX) {
                         this(sheetPath, frameWidth, frameHeight, drawWidth, drawHeight, speed, verticalOffset,
-                                spawnOffsetX, false, false, false, 0, 0, 0, 0);
+                                spawnOffsetX, false, false, false, false, 0, 0, 0, 0);
                     }
 
         public ProjectileDef(String sheetPath,
@@ -69,6 +70,7 @@ public class CharacterDef {
                                  int spawnOffsetX,
                              boolean beam,
                              boolean startDuringCast,
+                             boolean anchorOnTargetCenter,
                              boolean anchorOnTarget,
                              int loopStartFrame,
                              int loopEndFrame,
@@ -84,11 +86,35 @@ public class CharacterDef {
             this.spawnOffsetX = spawnOffsetX;
             this.beam = beam;
             this.startDuringCast = startDuringCast;
+            this.anchorOnTargetCenter = anchorOnTargetCenter;
             this.anchorOnTarget = anchorOnTarget;
             this.loopStartFrame = loopStartFrame;
             this.loopEndFrame = loopEndFrame;
             this.impactStartFrame = impactStartFrame;
             this.impactEndFrame = impactEndFrame;
+        }
+    }
+
+    public static class DefenseFormDef {
+        public final int toggleSkillSlot;
+        public final int altSkillSlot;
+        public final int enterFreezeFrame;
+        public final int exitStartFrame;
+        public final AnimationDef altSkillAnimation;
+        public final ProjectileDef altSkillProjectile;
+
+        public DefenseFormDef(int toggleSkillSlot,
+                              int altSkillSlot,
+                              int enterFreezeFrame,
+                              int exitStartFrame,
+                              AnimationDef altSkillAnimation,
+                              ProjectileDef altSkillProjectile) {
+            this.toggleSkillSlot = toggleSkillSlot;
+            this.altSkillSlot = altSkillSlot;
+            this.enterFreezeFrame = enterFreezeFrame;
+            this.exitStartFrame = exitStartFrame;
+            this.altSkillAnimation = altSkillAnimation;
+            this.altSkillProjectile = altSkillProjectile;
         }
     }
 
@@ -118,6 +144,7 @@ public class CharacterDef {
     public final ProjectileDef skill1Projectile;
     public final ProjectileDef skill2Projectile;
     public final ProjectileDef skill3Projectile;
+    public final DefenseFormDef defenseForm;
     public final int drawWidth;
     public final int drawHeight;
 
@@ -140,6 +167,7 @@ public class CharacterDef {
                     skill1HurtTriggerBufferSeconds, skill2HurtTriggerBufferSeconds, skill3HurtTriggerBufferSeconds,
                     idleAnimation, hurtAnimation, deadAnimation,
                     null, null, null,
+                    null,
                     drawWidth, drawHeight);
                 }
 
@@ -153,6 +181,7 @@ public class CharacterDef {
                         double skill1HurtTriggerBufferSeconds, double skill2HurtTriggerBufferSeconds, double skill3HurtTriggerBufferSeconds,
                         AnimationDef idleAnimation, AnimationDef hurtAnimation, AnimationDef deadAnimation,
                         ProjectileDef skill1Projectile, ProjectileDef skill2Projectile, ProjectileDef skill3Projectile,
+                        DefenseFormDef defenseForm,
                         int drawWidth, int drawHeight) {
         this.name = name;
         this.backstory = backstory == null ? "" : backstory;
@@ -180,8 +209,33 @@ public class CharacterDef {
         this.skill1Projectile = skill1Projectile;
         this.skill2Projectile = skill2Projectile;
         this.skill3Projectile = skill3Projectile;
+        this.defenseForm = defenseForm;
         this.drawWidth = drawWidth;
         this.drawHeight = drawHeight;
+    }
+
+    public CharacterDef(String name,
+                        String backstory,
+                        String skill1Name, String skill2Name, String skill3Name,
+                        String skill1Description, String skill2Description, String skill3Description,
+                        String skill1Type, String skill2Type, String skill3Type,
+                        String skill1SpritePath, String skill2SpritePath, String skill3SpritePath,
+                        int skill1ForwardOffsetX, int skill2ForwardOffsetX, int skill3ForwardOffsetX,
+                        double skill1HurtTriggerBufferSeconds, double skill2HurtTriggerBufferSeconds, double skill3HurtTriggerBufferSeconds,
+                        AnimationDef idleAnimation, AnimationDef hurtAnimation, AnimationDef deadAnimation,
+                        ProjectileDef skill1Projectile, ProjectileDef skill2Projectile, ProjectileDef skill3Projectile,
+                        int drawWidth, int drawHeight) {
+        this(name, backstory,
+                skill1Name, skill2Name, skill3Name,
+                skill1Description, skill2Description, skill3Description,
+                skill1Type, skill2Type, skill3Type,
+                skill1SpritePath, skill2SpritePath, skill3SpritePath,
+                skill1ForwardOffsetX, skill2ForwardOffsetX, skill3ForwardOffsetX,
+                skill1HurtTriggerBufferSeconds, skill2HurtTriggerBufferSeconds, skill3HurtTriggerBufferSeconds,
+                idleAnimation, hurtAnimation, deadAnimation,
+                skill1Projectile, skill2Projectile, skill3Projectile,
+                null,
+                drawWidth, drawHeight);
     }
 
     public String getSkillName(int skillID) {
