@@ -155,6 +155,8 @@ public class ArcadeGamePanel extends JPanel {
     private GameWindow   window;
     private RoundManager roundManager;
 
+    private final SoundManager arcadeBGM = new SoundManager();
+
     public ArcadeGamePanel() {
         this(new GameWindow(), 0, 1, GameMode.PVP, BotAI.Difficulty.NORMAL);
     }
@@ -270,6 +272,8 @@ public class ArcadeGamePanel extends JPanel {
         repositionUI();
         updateGameState();
         roundManager.startMatch();
+        arcadeBGM.setFile(10);
+        arcadeBGM.play();
     }
 
     @Override

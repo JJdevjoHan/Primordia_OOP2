@@ -13,8 +13,9 @@ public class GameModeSelector extends JPanel {
 
     private final int screenWidth = 1536;
 
-    //DON'T TOUCH SA TALIG GAMITON PAKO NI PAGHIMO OG LAIN EFFECTS - Mike
     SoundManager gameModeAudio = new SoundManager();
+    SoundManager sfx = new SoundManager();
+
     public GameModeSelector(GameWindow window) {
 
         this.window = window;
@@ -56,9 +57,21 @@ public class GameModeSelector extends JPanel {
         add(survival);
         add(arcade);
 
-        pvp.addActionListener(e -> window.showCharacterSelection(GameMode.PVP));
-        survival.addActionListener(e -> window.showCharacterSelection(GameMode.SURVIVAL));
-        arcade.addActionListener(e -> window.showCharacterSelection(GameMode.ARCADE));
+        pvp.addActionListener(e -> {
+            sfx.setFile(8);
+            sfx.play();
+            window.showCharacterSelection(GameMode.PVP);
+        });
+        survival.addActionListener(e -> {
+            sfx.setFile(8);
+            sfx.play();
+            window.showCharacterSelection(GameMode.SURVIVAL);
+        });
+        arcade.addActionListener(e -> {
+            sfx.setFile(8);
+            sfx.play();
+            window.showCharacterSelection(GameMode.ARCADE);
+        });
     }
 
     private JButton createRPGButton(String text){

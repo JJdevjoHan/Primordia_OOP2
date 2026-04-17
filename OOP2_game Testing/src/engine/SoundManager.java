@@ -28,6 +28,14 @@ public class SoundManager implements Runnable {
         soundURL[6] = getClass().getResource("/assets/SoundManager/BGM/gameMenu_fantasycraft.wav");
         //main Gameplay BGM
         soundURL[7] = getClass().getResource("/assets/SoundManager/BGM/mainGamePlay_DragonSmasher.wav");
+        //Click Button
+        soundURL[8] = getClass().getResource("/assets/SoundManager/MainMenuSFX/click_003.wav");
+        //Survival Mode - Knife to The Throat
+        soundURL[9] = getClass().getResource("/assets/SoundManager/BGM/arcadeMode_TheMagicWithin.wav");
+        //Arcade Mode - The Magic Within
+        soundURL[10] = getClass().getResource("/assets/SoundManager/BGM/survivalMode_KnifeToTheThroat.wav");
+
+
     }
 
     public void setFile(int i) {
