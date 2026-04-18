@@ -36,6 +36,13 @@ public class CharacterDef {
         public final int loopEndFrame;
         public final int impactStartFrame;
         public final int impactEndFrame;
+        public final String impactSheetPath;
+        public final int impactFrameWidth;
+        public final int impactFrameHeight;
+        public final int impactDrawWidth;
+        public final int impactDrawHeight;
+        public final boolean anchorImpactOnTargetCenter;
+        public final int animationFrameDelay;
 
         public ProjectileDef(String sheetPath,
                              int frameWidth,
@@ -45,7 +52,8 @@ public class CharacterDef {
                              int speed,
                      int verticalOffset) {
                         this(sheetPath, frameWidth, frameHeight, drawWidth, drawHeight, speed, verticalOffset, 0,
-                        false, false, false, false, 0, 0, 0, 0);
+                false, false, false, false, 0, 0, 0, 0,
+                null, 0, 0, 0, 0, false, 0);
         }
 
                     public ProjectileDef(String sheetPath,
@@ -57,8 +65,102 @@ public class CharacterDef {
                                  int verticalOffset,
                                  int spawnOffsetX) {
                         this(sheetPath, frameWidth, frameHeight, drawWidth, drawHeight, speed, verticalOffset,
-                                spawnOffsetX, false, false, false, false, 0, 0, 0, 0);
+                                spawnOffsetX, false, false, false, false, 0, 0, 0, 0,
+                                null, 0, 0, 0, 0, false, 0);
                     }
+
+        public ProjectileDef(String sheetPath,
+                             int frameWidth,
+                             int frameHeight,
+                             int drawWidth,
+                             int drawHeight,
+                             int speed,
+                             int verticalOffset,
+                             int spawnOffsetX,
+                             boolean beam,
+                             boolean startDuringCast,
+                             boolean anchorOnTargetCenter,
+                             boolean anchorOnTarget,
+                             int loopStartFrame,
+                             int loopEndFrame,
+                             int impactStartFrame,
+                             int impactEndFrame,
+                             String impactSheetPath,
+                             int impactFrameWidth,
+                             int impactFrameHeight,
+                             int impactDrawWidth,
+                             int impactDrawHeight) {
+            this.sheetPath = sheetPath;
+            this.frameWidth = frameWidth;
+            this.frameHeight = frameHeight;
+            this.drawWidth = drawWidth;
+            this.drawHeight = drawHeight;
+            this.speed = speed;
+            this.verticalOffset = verticalOffset;
+            this.spawnOffsetX = spawnOffsetX;
+            this.beam = beam;
+            this.startDuringCast = startDuringCast;
+            this.anchorOnTargetCenter = anchorOnTargetCenter;
+            this.anchorOnTarget = anchorOnTarget;
+            this.loopStartFrame = loopStartFrame;
+            this.loopEndFrame = loopEndFrame;
+            this.impactStartFrame = impactStartFrame;
+            this.impactEndFrame = impactEndFrame;
+            this.impactSheetPath = impactSheetPath;
+            this.impactFrameWidth = impactFrameWidth;
+            this.impactFrameHeight = impactFrameHeight;
+            this.impactDrawWidth = impactDrawWidth;
+            this.impactDrawHeight = impactDrawHeight;
+            this.anchorImpactOnTargetCenter = false;
+        }
+
+        public ProjectileDef(String sheetPath,
+                     int frameWidth,
+                     int frameHeight,
+                     int drawWidth,
+                     int drawHeight,
+                     int speed,
+                             int verticalOffset,
+                                 int spawnOffsetX,
+                             boolean beam,
+                             boolean startDuringCast,
+                             boolean anchorOnTargetCenter,
+                             boolean anchorOnTarget,
+                             int loopStartFrame,
+                             int loopEndFrame,
+                             int impactStartFrame,
+                             int impactEndFrame,
+                             String impactSheetPath,
+                             int impactFrameWidth,
+                             int impactFrameHeight,
+                             int impactDrawWidth,
+                             int impactDrawHeight,
+                             boolean anchorImpactOnTargetCenter,
+                             int animationFrameDelay) {
+            this.sheetPath = sheetPath;
+            this.frameWidth = frameWidth;
+            this.frameHeight = frameHeight;
+            this.drawWidth = drawWidth;
+            this.drawHeight = drawHeight;
+            this.speed = speed;
+            this.verticalOffset = verticalOffset;
+            this.spawnOffsetX = spawnOffsetX;
+            this.beam = beam;
+            this.startDuringCast = startDuringCast;
+            this.anchorOnTargetCenter = anchorOnTargetCenter;
+            this.anchorOnTarget = anchorOnTarget;
+            this.loopStartFrame = loopStartFrame;
+            this.loopEndFrame = loopEndFrame;
+            this.impactStartFrame = impactStartFrame;
+            this.impactEndFrame = impactEndFrame;
+            this.impactSheetPath = impactSheetPath;
+            this.impactFrameWidth = impactFrameWidth;
+            this.impactFrameHeight = impactFrameHeight;
+            this.impactDrawWidth = impactDrawWidth;
+            this.impactDrawHeight = impactDrawHeight;
+            this.anchorImpactOnTargetCenter = anchorImpactOnTargetCenter;
+            this.animationFrameDelay = animationFrameDelay;
+        }
 
         public ProjectileDef(String sheetPath,
                      int frameWidth,
@@ -76,22 +178,10 @@ public class CharacterDef {
                              int loopEndFrame,
                              int impactStartFrame,
                              int impactEndFrame) {
-            this.sheetPath = sheetPath;
-            this.frameWidth = frameWidth;
-            this.frameHeight = frameHeight;
-            this.drawWidth = drawWidth;
-            this.drawHeight = drawHeight;
-            this.speed = speed;
-            this.verticalOffset = verticalOffset;
-            this.spawnOffsetX = spawnOffsetX;
-            this.beam = beam;
-            this.startDuringCast = startDuringCast;
-            this.anchorOnTargetCenter = anchorOnTargetCenter;
-            this.anchorOnTarget = anchorOnTarget;
-            this.loopStartFrame = loopStartFrame;
-            this.loopEndFrame = loopEndFrame;
-            this.impactStartFrame = impactStartFrame;
-            this.impactEndFrame = impactEndFrame;
+            this(sheetPath, frameWidth, frameHeight, drawWidth, drawHeight, speed, verticalOffset, spawnOffsetX,
+                    beam, startDuringCast, anchorOnTargetCenter, anchorOnTarget,
+                    loopStartFrame, loopEndFrame, impactStartFrame, impactEndFrame,
+                    null, 0, 0, 0, 0, false, 0);
         }
     }
 
@@ -130,6 +220,7 @@ public class CharacterDef {
     public final String skill2Type;
     public final String skill3Type;
     public final String skill1SpritePath;
+    public final String skill1FollowUpSpritePath;
     public final String skill2SpritePath;
     public final String skill3SpritePath;
     public final int skill1ForwardOffsetX;
@@ -153,7 +244,7 @@ public class CharacterDef {
                         String skill1Name, String skill2Name, String skill3Name,
                         String skill1Description, String skill2Description, String skill3Description,
                         String skill1Type, String skill2Type, String skill3Type,
-                        String skill1SpritePath, String skill2SpritePath, String skill3SpritePath,
+                        String skill1SpritePath, String skill1FollowUpSpritePath, String skill2SpritePath, String skill3SpritePath,
                         int skill1ForwardOffsetX, int skill2ForwardOffsetX, int skill3ForwardOffsetX,
                         double skill1HurtTriggerBufferSeconds, double skill2HurtTriggerBufferSeconds, double skill3HurtTriggerBufferSeconds,
                         AnimationDef idleAnimation, AnimationDef hurtAnimation, AnimationDef deadAnimation,
@@ -162,7 +253,7 @@ public class CharacterDef {
                     skill1Name, skill2Name, skill3Name,
                     skill1Description, skill2Description, skill3Description,
                     skill1Type, skill2Type, skill3Type,
-                    skill1SpritePath, skill2SpritePath, skill3SpritePath,
+                    skill1SpritePath, skill1FollowUpSpritePath, skill2SpritePath, skill3SpritePath,
                     skill1ForwardOffsetX, skill2ForwardOffsetX, skill3ForwardOffsetX,
                     skill1HurtTriggerBufferSeconds, skill2HurtTriggerBufferSeconds, skill3HurtTriggerBufferSeconds,
                     idleAnimation, hurtAnimation, deadAnimation,
@@ -171,12 +262,35 @@ public class CharacterDef {
                     drawWidth, drawHeight);
                 }
 
-                public CharacterDef(String name,
+    public CharacterDef(String name,
                         String backstory,
                         String skill1Name, String skill2Name, String skill3Name,
                         String skill1Description, String skill2Description, String skill3Description,
                         String skill1Type, String skill2Type, String skill3Type,
                         String skill1SpritePath, String skill2SpritePath, String skill3SpritePath,
+                        int skill1ForwardOffsetX, int skill2ForwardOffsetX, int skill3ForwardOffsetX,
+                        double skill1HurtTriggerBufferSeconds, double skill2HurtTriggerBufferSeconds, double skill3HurtTriggerBufferSeconds,
+                        AnimationDef idleAnimation, AnimationDef hurtAnimation, AnimationDef deadAnimation,
+                        int drawWidth, int drawHeight) {
+        this(name, backstory,
+                skill1Name, skill2Name, skill3Name,
+                skill1Description, skill2Description, skill3Description,
+                skill1Type, skill2Type, skill3Type,
+                skill1SpritePath, null, skill2SpritePath, skill3SpritePath,
+                skill1ForwardOffsetX, skill2ForwardOffsetX, skill3ForwardOffsetX,
+                skill1HurtTriggerBufferSeconds, skill2HurtTriggerBufferSeconds, skill3HurtTriggerBufferSeconds,
+                idleAnimation, hurtAnimation, deadAnimation,
+                null, null, null,
+                null,
+                drawWidth, drawHeight);
+    }
+
+                public CharacterDef(String name,
+                        String backstory,
+                        String skill1Name, String skill2Name, String skill3Name,
+                        String skill1Description, String skill2Description, String skill3Description,
+                        String skill1Type, String skill2Type, String skill3Type,
+                        String skill1SpritePath, String skill1FollowUpSpritePath, String skill2SpritePath, String skill3SpritePath,
                         int skill1ForwardOffsetX, int skill2ForwardOffsetX, int skill3ForwardOffsetX,
                         double skill1HurtTriggerBufferSeconds, double skill2HurtTriggerBufferSeconds, double skill3HurtTriggerBufferSeconds,
                         AnimationDef idleAnimation, AnimationDef hurtAnimation, AnimationDef deadAnimation,
@@ -195,6 +309,7 @@ public class CharacterDef {
         this.skill2Type = skill2Type;
         this.skill3Type = skill3Type;
         this.skill1SpritePath = skill1SpritePath;
+        this.skill1FollowUpSpritePath = skill1FollowUpSpritePath;
         this.skill2SpritePath = skill2SpritePath;
         this.skill3SpritePath = skill3SpritePath;
         this.skill1ForwardOffsetX = skill1ForwardOffsetX;
@@ -219,7 +334,7 @@ public class CharacterDef {
                         String skill1Name, String skill2Name, String skill3Name,
                         String skill1Description, String skill2Description, String skill3Description,
                         String skill1Type, String skill2Type, String skill3Type,
-                        String skill1SpritePath, String skill2SpritePath, String skill3SpritePath,
+                        String skill1SpritePath, String skill1FollowUpSpritePath, String skill2SpritePath, String skill3SpritePath,
                         int skill1ForwardOffsetX, int skill2ForwardOffsetX, int skill3ForwardOffsetX,
                         double skill1HurtTriggerBufferSeconds, double skill2HurtTriggerBufferSeconds, double skill3HurtTriggerBufferSeconds,
                         AnimationDef idleAnimation, AnimationDef hurtAnimation, AnimationDef deadAnimation,
@@ -229,7 +344,7 @@ public class CharacterDef {
                 skill1Name, skill2Name, skill3Name,
                 skill1Description, skill2Description, skill3Description,
                 skill1Type, skill2Type, skill3Type,
-                skill1SpritePath, skill2SpritePath, skill3SpritePath,
+                    skill1SpritePath, skill1FollowUpSpritePath, skill2SpritePath, skill3SpritePath,
                 skill1ForwardOffsetX, skill2ForwardOffsetX, skill3ForwardOffsetX,
                 skill1HurtTriggerBufferSeconds, skill2HurtTriggerBufferSeconds, skill3HurtTriggerBufferSeconds,
                 idleAnimation, hurtAnimation, deadAnimation,
@@ -252,6 +367,13 @@ public class CharacterDef {
             case 1 -> skill1SpritePath;
             case 2 -> skill2SpritePath;
             case 3 -> skill3SpritePath;
+            default -> null;
+        };
+    }
+
+    public String getSkillFollowUpSpritePath(int skillID) {
+        return switch (skillID) {
+            case 1 -> skill1FollowUpSpritePath;
             default -> null;
         };
     }
