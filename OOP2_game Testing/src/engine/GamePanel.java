@@ -101,6 +101,7 @@ public class GamePanel extends JPanel {
     // Projectile animation state
     private final Map<String, List<BufferedImage>> projectileAnimationCache = new HashMap<>();
     private List<BufferedImage> activeProjectileFrames = List.of();
+    private List<BufferedImage> projectileImpactFrames = List.of();
     private int projectileFrameIndex = 0;
     private int projectileX = 0;
     private int projectileY = 0;
@@ -930,14 +931,29 @@ public class GamePanel extends JPanel {
     private List<List<BufferedImage>> loadSkillAnimations(CharacterDef def) {
         List<List<BufferedImage>> animations = new ArrayList<>();
         for (int skillID = 1; skillID <= 3; skillID++) {
-            String path = def.getSkillSpritePath(skillID);
-            if (path == null || path.isBlank()) { animations.add(List.of()); continue; }
-            int frameWidth = getSkillFrameWidth(def, skillID);
-            int frameHeight = getSkillFrameHeight(def, skillID);
-            animations.add(loadAnimationFrames(new CharacterDef.AnimationDef(
-                    path, frameWidth, frameHeight, DEFAULT_SKILL_DELAY_MS)));
+            animations.add(loadSkillAnimationFrames(def, skillID));
         }
         return animations;
+    }
+
+    private List<BufferedImage> loadSkillAnimationFrames(CharacterDef def, int skillID) {
+        String path = def.getSkillSpritePath(skillID);
+        if (path == null || path.isBlank()) {
+            return List.of();
+        }
+
+        int frameWidth = getSkillFrameWidth(def, skillID);
+        int frameHeight = getSkillFrameHeight(def, skillID);
+        List<BufferedImage> frames = new ArrayList<>(loadAnimationFrames(new CharacterDef.AnimationDef(
+                path, frameWidth, frameHeight, DEFAULT_SKILL_DELAY_MS)));
+
+        String followUpPath = def.getSkillFollowUpSpritePath(skillID);
+        if (skillID == 1 && followUpPath != null && !followUpPath.isBlank() && !followUpPath.equals(path)) {
+            frames.addAll(loadAnimationFrames(new CharacterDef.AnimationDef(
+                    followUpPath, frameWidth, frameHeight, DEFAULT_SKILL_DELAY_MS)));
+        }
+
+        return frames;
     }
 
     private int getSkillFrameWidth(CharacterDef def, int skillID) {
@@ -1374,6 +1390,7 @@ public class GamePanel extends JPanel {
         if (projectileDef == null) { if (onComplete != null) onComplete.run(); return; }
         List<BufferedImage> frames = loadProjectileFrames(projectileDef);
         if (frames.isEmpty()) { if (onComplete != null) onComplete.run(); return; }
+        List<BufferedImage> impactFrames = loadProjectileImpactFrames(projectileDef);
         stopProjectileAnimation();
         int attackerX      = isPlayerOne ? p1SpriteX : p2SpriteX;
         int attackerY      = isPlayerOne ? p1SpriteY : p2SpriteY;
@@ -1390,6 +1407,7 @@ public class GamePanel extends JPanel {
         projectileDrawWidth   = projW;
         projectileDrawHeight  = projH;
         projectileSpeed       = Math.max(1, projectileDef.speed);
+        projectileImpactFrames = impactFrames;
         if (projectileDef.anchorOnTargetCenter) {
             int targetCenterX = targetX + (targetWidth / 2);
             int targetCenterY = isPlayerOne ? p2SpriteY + (getEnemyDrawHeight() / 2) : p1SpriteY + (getPlayerDrawHeight() / 2);
@@ -1426,7 +1444,8 @@ public class GamePanel extends JPanel {
         int stopBoundary = projectileDirection > 0
                 ? (targetX + (targetWidth / 2)) - (projW / 2)
                 : (targetX + (targetWidth / 2)) + (projW / 2);
-        projectileTimer = new Timer(DEFAULT_SKILL_DELAY_MS, null);
+        int animationDelay = projectileDef.animationFrameDelay > 0 ? projectileDef.animationFrameDelay : DEFAULT_SKILL_DELAY_MS;
+        projectileTimer = new Timer(animationDelay, null);
         projectileTimer.addActionListener(e -> {
             if (!isProjectileAnimating || activeProjectileFrames.isEmpty()) {
                 stopProjectileAnimation();
@@ -1461,12 +1480,23 @@ public class GamePanel extends JPanel {
                         || (projectileDirection < 0 && projectileX <= stopBoundary);
                 if (reachedTarget) {
                     projectileX = stopBoundary;
-                    if (projectileImpactStartIndex >= 0 && projectileImpactEndIndex >= 0) {
+                    if (!projectileImpactFrames.isEmpty()) {
                         if (onImpactStart != null) {
                             onImpactStart.run();
                         }
                         projectileInImpactPhase = true;
-                        projectileFrameIndex = projectileImpactStartIndex;
+                        activeProjectileFrames = projectileImpactFrames;
+                        projectileFrameIndex = 0;
+                        projectileDrawWidth = projectileDef.impactDrawWidth > 0 ? projectileDef.impactDrawWidth : projW;
+                        projectileDrawHeight = projectileDef.impactDrawHeight > 0 ? projectileDef.impactDrawHeight : projH;
+                        
+                        // If impact should be anchored on target center, reposition it
+                        if (projectileDef.anchorImpactOnTargetCenter) {
+                            int targetCenterX = stopBoundary;
+                            int targetCenterY = isPlayerOne ? p2SpriteY + (getEnemyDrawHeight() / 2) : p1SpriteY + (getPlayerDrawHeight() / 2);
+                            projectileX = targetCenterX - (projectileDrawWidth / 2);
+                            projectileY = targetCenterY - (projectileDrawHeight / 2);
+                        }
                     } else {
                         if (onImpactStart != null) {
                             onImpactStart.run();
@@ -1476,7 +1506,7 @@ public class GamePanel extends JPanel {
                     }
                 }
             } else {
-                if (projectileFrameIndex < projectileImpactEndIndex) {
+                if (projectileFrameIndex < activeProjectileFrames.size() - 1) {
                     projectileFrameIndex++;
                 } else {
                     stopProjectileAnimation();
@@ -1512,6 +1542,26 @@ public class GamePanel extends JPanel {
         return frames;
     }
 
+    private List<BufferedImage> loadProjectileImpactFrames(CharacterDef.ProjectileDef projectileDef) {
+        String impactSheetPath = projectileDef.impactSheetPath;
+        if (impactSheetPath == null || impactSheetPath.isBlank()) return List.of();
+
+        int frameWidth = projectileDef.impactFrameWidth > 0 ? projectileDef.impactFrameWidth : projectileDef.frameWidth;
+        int frameHeight = projectileDef.impactFrameHeight > 0 ? projectileDef.impactFrameHeight : projectileDef.frameHeight;
+        String cacheKey = impactSheetPath + "|" + frameWidth + "x" + frameHeight;
+        List<BufferedImage> cached = projectileAnimationCache.get(cacheKey);
+        if (cached != null) return cached;
+
+        List<BufferedImage> frames = loadAnimationFrames(
+                new CharacterDef.AnimationDef(
+                        impactSheetPath,
+                        Math.max(1, frameWidth),
+                        Math.max(1, frameHeight),
+                        DEFAULT_SKILL_DELAY_MS));
+        projectileAnimationCache.put(cacheKey, frames);
+        return frames;
+    }
+
     private void stopProjectileAnimation() {
         if (projectileTimer != null) { projectileTimer.stop(); projectileTimer = null; }
         isProjectileAnimating = false; projectileFrameIndex = 0;
@@ -1519,6 +1569,7 @@ public class GamePanel extends JPanel {
         projectileDrawHeight = DEFAULT_PROJECTILE_DRAW_SIZE;
         projectileSpeed = DEFAULT_PROJECTILE_SPEED;
         projectileInImpactPhase = false;
+        projectileImpactFrames = List.of();
         projectileLoopStartIndex = 0;
         projectileLoopEndIndex = 0;
         projectileImpactStartIndex = -1;
@@ -1647,7 +1698,7 @@ public class GamePanel extends JPanel {
                     config.skill1Name, config.skill2Name, config.skill3Name,
                     config.skill1Description, config.skill2Description, config.skill3Description,
                     config.skill1Type, config.skill2Type, config.skill3Type,
-                    config.skill1SpritePath, config.skill2SpritePath, config.skill3SpritePath,
+                    config.skill1SpritePath, config.skill1FollowUpSpritePath, config.skill2SpritePath, config.skill3SpritePath,
                     config.skill1ForwardOffsetX, config.skill2ForwardOffsetX, config.skill3ForwardOffsetX,
                     config.skill1HurtTriggerBufferSeconds, config.skill2HurtTriggerBufferSeconds,
                     config.skill3HurtTriggerBufferSeconds,
@@ -1698,7 +1749,7 @@ public class GamePanel extends JPanel {
                         "Raises a flowing shield that softens incoming damage for 2 turns.",
                         "Whips up a dragging current that lowers all enemies' attack for 2 turns.",
                         "damage", "defense", "debuff",
-                        "/assets/spritesheet/Water Wizard/Attack-Sheet.png",
+                        "/assets/spritesheet/Water Wizard/Attack-Sheet.png", "",
                         "/assets/spritesheet/Water Wizard/Attack2-Sheet.png",
                         "/assets/spritesheet/Water Wizard/Attack3-Sheet.png",
                         0, 0, 0, 0.14, 0.0, 0.0,

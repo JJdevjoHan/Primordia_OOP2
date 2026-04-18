@@ -27,6 +27,7 @@ public final class CharacterDataLoader {
         public final String skill2Type;
         public final String skill3Type;
         public final String skill1SpritePath;
+        public final String skill1FollowUpSpritePath;
         public final String skill2SpritePath;
         public final String skill3SpritePath;
         public final int skill1ForwardOffsetX;
@@ -58,6 +59,7 @@ public final class CharacterDataLoader {
             String skill2Type,
             String skill3Type,
             String skill1SpritePath,
+            String skill1FollowUpSpritePath,
             String skill2SpritePath,
             String skill3SpritePath,
             int skill1ForwardOffsetX,
@@ -88,6 +90,7 @@ public final class CharacterDataLoader {
             this.skill2Type = skill2Type;
             this.skill3Type = skill3Type;
             this.skill1SpritePath = skill1SpritePath;
+            this.skill1FollowUpSpritePath = skill1FollowUpSpritePath;
             this.skill2SpritePath = skill2SpritePath;
             this.skill3SpritePath = skill3SpritePath;
             this.skill1ForwardOffsetX = skill1ForwardOffsetX;
@@ -151,6 +154,7 @@ public final class CharacterDataLoader {
                 CharacterDef.DefenseFormDef defenseForm = getDefenseForm(characterMap);
 
                 String skill1SpritePath = normalizeResourcePath(toStringValue(sprites.get("skill1")));
+                String skill1FollowUpSpritePath = normalizeResourcePath(toStringValue(sprites.get("skill1FollowUp")));
                 String skill2SpritePath = normalizeResourcePath(toStringValue(sprites.get("skill2")));
                 String skill3SpritePath = normalizeResourcePath(toStringValue(sprites.get("skill3")));
                 int skill1ForwardOffsetX = getSkillForwardOffsetX(skillOffsets, "skill1");
@@ -182,6 +186,7 @@ public final class CharacterDataLoader {
                     skill2Type,
                     skill3Type,
                     skill1SpritePath,
+                    skill1FollowUpSpritePath,
                     skill2SpritePath,
                     skill3SpritePath,
                     skill1ForwardOffsetX,
@@ -256,6 +261,13 @@ public final class CharacterDataLoader {
         int loopEndFrame = getMapInt(projectileMap, "loopEndFrame", 0);
         int impactStartFrame = getMapInt(projectileMap, "impactStartFrame", 0);
         int impactEndFrame = getMapInt(projectileMap, "impactEndFrame", 0);
+        String impactSheetPath = normalizeResourcePath(toStringValue(projectileMap.get("impactSprite")));
+        int impactFrameWidth = getMapInt(projectileMap, "impactFrameWidth", 0);
+        int impactFrameHeight = getMapInt(projectileMap, "impactFrameHeight", 0);
+        int impactDrawWidth = getMapInt(projectileMap, "impactDrawWidth", 0);
+        int impactDrawHeight = getMapInt(projectileMap, "impactDrawHeight", 0);
+        boolean anchorImpactOnTargetCenter = getMapBoolean(projectileMap, "anchorImpactOnTargetCenter", false);
+        int animationFrameDelay = getMapInt(projectileMap, "animationFrameDelay", 0);
 
         return new CharacterDef.ProjectileDef(
                 sheetPath,
@@ -273,7 +285,14 @@ public final class CharacterDataLoader {
             Math.max(0, loopStartFrame),
             Math.max(0, loopEndFrame),
             Math.max(0, impactStartFrame),
-            Math.max(0, impactEndFrame));
+                Math.max(0, impactEndFrame),
+                impactSheetPath,
+                Math.max(0, impactFrameWidth),
+                Math.max(0, impactFrameHeight),
+                Math.max(0, impactDrawWidth),
+                Math.max(0, impactDrawHeight),
+                anchorImpactOnTargetCenter,
+                Math.max(0, animationFrameDelay));
     }
 
             private static CharacterDef.DefenseFormDef getDefenseForm(Map<?, ?> characterMap) {
