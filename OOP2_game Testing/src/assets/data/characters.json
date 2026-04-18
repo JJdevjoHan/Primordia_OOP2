@@ -133,6 +133,19 @@
           "slot": 1,
           "name": "Blaze Saber",
           "type": "damage",
+          "projectile": {
+            "sprite": "src/assets/spritesheet/Fire Wizard/Charge2-Sheet.png",
+            "frameWidth": 256,
+            "frameHeight": 256,
+            "drawWidth": 420,
+            "drawHeight": 420,
+            "speed": 44,
+            "verticalOffset": 50,
+            "spawnOffsetX": 0,
+            "beam": true,
+            "startDuringCast": true,
+            "anchorOnTarget": true
+          },
           "hurtTriggerBufferSeconds": 0.12,
           "description": "Cuts through one enemy with a burning sword arc, dealing strong fire damage.",
           "manaCost": 20,
@@ -144,6 +157,16 @@
           "slot": 2,
           "name": "Heat Guard",
           "type": "defense",
+          "projectile": {
+            "sprite": "src/assets/spritesheet/Fire Wizard/Charge-Sheet.png",
+            "frameWidth": 64,
+            "frameHeight": 64,
+            "drawWidth": 160,
+            "drawHeight": 160,
+            "speed": 44,
+            "verticalOffset": 60,
+            "spawnOffsetX": 80
+          },
           "description": "Channels furnace heat into a barrier that absorbs damage for 2 turns.",
           "manaCost": 24,
           "shieldValue": 26,
@@ -164,8 +187,8 @@
       ],
       "sprites": {
         "skill1": "src/assets/spritesheet/Fire Wizard/Fire_sword-Sheet.png",
-        "skill2": "src/assets/spritesheet/Fire Wizard/Charge-Sheet.png",
-        "skill3": "src/assets/spritesheet/Fire Wizard/Fireball-Sheet.png",
+        "skill2": "src/assets/spritesheet/Fire Wizard/Fireball-Sheet.png",
+        "skill3": "src/assets/spritesheet/Fire Wizard/Flame_jet-Sheet.png",
         "idle": "src/assets/spritesheet/Fire Wizard/Idle-Sheet.png",
         "death": "src/assets/spritesheet/Fire Wizard/Dead-Sheet.png",
         "hurt": "src/assets/spritesheet/Fire Wizard/Hurt-Sheet.png"
