@@ -1497,6 +1497,17 @@ public class GamePanel extends JPanel {
                             projectileX = targetCenterX - (projectileDrawWidth / 2);
                             projectileY = targetCenterY - (projectileDrawHeight / 2);
                         }
+                    } else if (projectileImpactStartIndex >= 0) {
+                        if (onImpactStart != null) {
+                            onImpactStart.run();
+                        }
+                        projectileInImpactPhase = true;
+                        int startIndex = Math.max(0, Math.min(activeProjectileFrames.size() - 1, projectileImpactStartIndex));
+                        projectileFrameIndex = startIndex;
+                        int impactEnd = projectileImpactEndIndex >= startIndex
+                                ? projectileImpactEndIndex
+                                : activeProjectileFrames.size() - 1;
+                        projectileImpactEndIndex = Math.min(activeProjectileFrames.size() - 1, impactEnd);
                     } else {
                         if (onImpactStart != null) {
                             onImpactStart.run();
@@ -1506,7 +1517,10 @@ public class GamePanel extends JPanel {
                     }
                 }
             } else {
-                if (projectileFrameIndex < activeProjectileFrames.size() - 1) {
+                int impactEndIndex = projectileImpactFrames.isEmpty() && projectileImpactEndIndex >= 0
+                        ? Math.min(projectileImpactEndIndex, activeProjectileFrames.size() - 1)
+                        : activeProjectileFrames.size() - 1;
+                if (projectileFrameIndex < impactEndIndex) {
                     projectileFrameIndex++;
                 } else {
                     stopProjectileAnimation();
