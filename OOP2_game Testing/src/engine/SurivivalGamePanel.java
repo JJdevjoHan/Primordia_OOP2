@@ -784,13 +784,19 @@ public class SurivivalGamePanel extends JPanel {
                 playNatureDefenseFormEnterAnimation(actingPlayerOne, defenseForm);
             }
         } else if (hasProjectileAnimation) {
+            int projectileSpawnFrame = getProjectileSpawnFrame(actor, skillID);
             if (startProjectileDuringCast) {
-                startProjectileAnimation(
+                Runnable spawnProjectile = () -> startProjectileAnimation(
                         actingPlayerOne,
                         skillID,
                         activeProjectileDef,
                         isDamageSkill ? () -> startDelayedHurt(!actingPlayerOne, 0, POST_ATTACK_HURT_MS) : null,
                         null);
+                if (projectileSpawnFrame > 1) {
+                    scheduleProjectileSpawnAtCastFrame(projectileSpawnFrame, spawnProjectile);
+                } else {
+                    spawnProjectile.run();
+                }
                 if (isDefenseFormAltSkill) {
                     playNatureFormSkill1CastAnimation(actingPlayerOne, defenseForm, null);
                 } else {
@@ -806,7 +812,12 @@ public class SurivivalGamePanel extends JPanel {
                 if (isDefenseFormAltSkill) {
                     playNatureFormSkill1CastAnimation(actingPlayerOne, defenseForm, spawnProjectile);
                 } else {
-                    playSkillAnimation(actingPlayerOne, skillID, holdCastUntilProjectileDone, spawnProjectile);
+                    if (projectileSpawnFrame > 1) {
+                        playSkillAnimation(actingPlayerOne, skillID, holdCastUntilProjectileDone, null);
+                        scheduleProjectileSpawnAtCastFrame(projectileSpawnFrame, spawnProjectile);
+                    } else {
+                        playSkillAnimation(actingPlayerOne, skillID, holdCastUntilProjectileDone, spawnProjectile);
+                    }
                 }
             }
         } else {
@@ -1797,6 +1808,23 @@ public class SurivivalGamePanel extends JPanel {
         List<BufferedImage> frames = source.get(skillID - 1);
         int frameCount = (frames == null || frames.isEmpty()) ? 1 : frames.size();
         return frameCount * DEFAULT_SKILL_DELAY_MS;
+    }
+
+    private int getProjectileSpawnFrame(CharacterDef actor, int skillID) {
+        if (actor == null) return -1;
+        if ("Dark Wizard".equalsIgnoreCase(actor.name)) {
+            if (skillID == 1) return 9;
+            if (skillID == 2) return 7;
+        }
+        return -1;
+    }
+
+    private void scheduleProjectileSpawnAtCastFrame(int frameOneBased, Runnable spawnProjectile) {
+        if (spawnProjectile == null) return;
+        int delayMs = Math.max(0, frameOneBased - 1) * DEFAULT_SKILL_DELAY_MS;
+        Timer spawnDelayTimer = new Timer(delayMs, e -> spawnProjectile.run());
+        spawnDelayTimer.setRepeats(false);
+        spawnDelayTimer.start();
     }
 
     private void startDelayedHurt(boolean targetIsPlayer, int delayMs, int durationMs) {
