@@ -1,5 +1,7 @@
 package engine;
 
+import assets.Utility.CreditsButton;
+import assets.Utility.ExitButton;
 import assets.Utility.FontManager;
 
 import javax.swing.*;
@@ -10,6 +12,7 @@ public class GameModeSelector extends JPanel {
 
     private Image background;
     private final GameWindow window;
+    private JButton exitButton;
 
     private final int screenWidth = 1536;
 
@@ -28,6 +31,9 @@ public class GameModeSelector extends JPanel {
 
         //createTitle();
         createButtons();
+
+        exitButton = new ExitButton().createExitButton(this);
+        add(exitButton);
     }
 
     private void loadBackground() {
@@ -36,6 +42,15 @@ public class GameModeSelector extends JPanel {
 
         if(resource != null){
             background = new ImageIcon(resource).getImage();
+        }
+    }
+
+    @Override
+    public void doLayout() {
+        super.doLayout();
+        int margin = 20;
+        if (exitButton != null) {
+            exitButton.setBounds(getWidth() - 50 - margin, margin, 40, 40);
         }
     }
 

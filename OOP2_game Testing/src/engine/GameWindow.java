@@ -11,6 +11,7 @@ public class GameWindow extends JFrame {
     private JPanel container;
     private final SoundManager menuBGM = new SoundManager();
 
+
     public GameWindow() {
 
         layout = new CardLayout();
@@ -18,19 +19,24 @@ public class GameWindow extends JFrame {
 
         IntroPanel intro = new IntroPanel(this);
         GameModeSelector menu = new GameModeSelector(this);
+        CreditsPanel credits = new CreditsPanel(this);
 
         container.add(intro, "INTRO");
         container.add(menu, "MENU");
+        container.add(credits,"CREDITS");
 
         container.add(new JPanel(), "CHAR_SELECT");
         container.add(new JPanel(), "GAME");
         container.add(new JPanel(), "SURVIVAL");
+        container.add(new JPanel(),"ARCADE");
 
         add(container);
 
         setTitle("Primordia");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
+        setUndecorated(true); // removes title bar
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
         pack();
         setLocationRelativeTo(null);
         setVisible(true);
@@ -126,5 +132,9 @@ public class GameWindow extends JFrame {
         if (menuBGM != null) {
             menuBGM.stop();
         }
+    }
+
+    public void showCredits() {
+        layout.show(container,"CREDITS");
     }
 }

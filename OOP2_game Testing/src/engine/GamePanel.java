@@ -16,10 +16,7 @@ import java.nio.file.Paths;
 import javax.imageio.ImageIO;
 import javax.xml.parsers.DocumentBuilderFactory;
 
-import assets.Utility.BackButton;
-import assets.Utility.FontManager;
-import assets.Utility.GameBar;
-import assets.Utility.RoundManager;
+import assets.Utility.*;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -69,6 +66,8 @@ public class GamePanel extends JPanel {
 
     // Assets
     private Image backgroundImage;
+    private JButton exitButton;
+    private JButton backbutton;
 
     // Player animation state
     private List<BufferedImage> playerFrames = new ArrayList<>();
@@ -201,8 +200,11 @@ public class GamePanel extends JPanel {
         this.window = window;
         this.setLayout(null);
 
-        JButton backBtn = new BackButton().createBackButton(window, this);
-        add(backBtn);
+        backbutton = new BackButton().createBackButton(window, this);
+        add(backbutton);
+
+        exitButton = new ExitButton().createExitButton(this);
+        add(exitButton);
 
         loadMapData("/assets/maps/map1.tmx");
 
@@ -310,10 +312,17 @@ public class GamePanel extends JPanel {
     @Override
     public void doLayout() {
         super.doLayout();
+        int margin = 20;
         for (Component c : getComponents()) {
             if (c instanceof JButton && ((JButton) c).getText().equals("Back")) {
-                c.setBounds(getWidth() - 120, getHeight() - 70, 100, 40);
+                int fromBottom = 100; // increase this to move button higher
+                int fromRight = 120;  // increase this to move button more to the left
+                c.setBounds(getWidth() - fromRight, getHeight() - fromBottom, 100, 40);
             }
+        }
+
+        if (exitButton != null) {
+            exitButton.setBounds(getWidth() - 50 - margin, margin, 40, 40);
         }
     }
 
