@@ -1452,8 +1452,8 @@ public class ArcadeGamePanel extends JPanel {
                         projectileInImpactPhase = true;
                         activeProjectileFrames = projectileImpactFrames;
                         projectileFrameIndex = 0;
-                        projectileDrawWidth = projectileDef.impactDrawWidth > 0 ? projectileDef.impactDrawWidth : projW;
-                        projectileDrawHeight = projectileDef.impactDrawHeight > 0 ? projectileDef.impactDrawHeight : projH;
+                        projectileDrawWidth = projectileDef.impactDrawWidth > 0 ? projectileDef.impactDrawWidth : pW;
+                        projectileDrawHeight = projectileDef.impactDrawHeight > 0 ? projectileDef.impactDrawHeight : pH;
                         
                         // If impact should be anchored on target center, reposition it
                         if (projectileDef.anchorImpactOnTargetCenter) {
@@ -1745,7 +1745,7 @@ public class ArcadeGamePanel extends JPanel {
                         "Raises a flowing shield that softens incoming damage for 2 turns.",
                         "Whips up a dragging current that lowers all enemies' attack for 2 turns.",
                         "damage", "defense", "debuff",
-                        "/assets/spritesheet/Water Wizard/Attack-Sheet.png",
+                        "/assets/spritesheet/Water Wizard/Attack-Sheet.png", "",
                         "/assets/spritesheet/Water Wizard/Attack2-Sheet.png",
                         "/assets/spritesheet/Water Wizard/Attack3-Sheet.png",
                         0, 0, 0, 0.14, 0.0, 0.0,
@@ -1754,6 +1754,7 @@ public class ArcadeGamePanel extends JPanel {
                         new CharacterDef.AnimationDef("/assets/spritesheet/Water Wizard/Dead-Sheet.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_DEAD_DELAY_MS),
                         new CharacterDef.ProjectileDef("/assets/spritesheet/Water Wizard/Charge-Sheet.png", 128, 128, 144, 144, 44, 50),
                         new CharacterDef.ProjectileDef("/assets/spritesheet/Water Wizard/Charge2-Sheet.png", 72, 72, 144, 144, 44, 50),
+                        null,
                         null,
                         DEFAULT_DRAW_WIDTH, DEFAULT_DRAW_HEIGHT),
                     new CharacterDef("Wind Wizard",

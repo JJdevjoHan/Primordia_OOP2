@@ -112,6 +112,7 @@ public class CharacterDef {
             this.impactDrawWidth = impactDrawWidth;
             this.impactDrawHeight = impactDrawHeight;
             this.anchorImpactOnTargetCenter = false;
+            this.animationFrameDelay = 0;
         }
 
         public ProjectileDef(String sheetPath,
