@@ -16,10 +16,7 @@ import java.nio.file.Paths;
 import javax.imageio.ImageIO;
 import javax.xml.parsers.DocumentBuilderFactory;
 
-import assets.Utility.BackButton;
-import assets.Utility.FontManager;
-import assets.Utility.GameBar;
-import assets.Utility.RoundManager;
+import assets.Utility.*;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -181,6 +178,8 @@ public class SurivivalGamePanel extends JPanel {
 
     private GameWindow   window;
     private RoundManager roundManager;
+    private JButton backbutton;
+    private JButton exitButton;
 
     private final SoundManager survivalBGM = new SoundManager();
 
@@ -209,8 +208,12 @@ public class SurivivalGamePanel extends JPanel {
 
         this.setLayout(null);
 
-        JButton backBtn = new BackButton().createBackButton(window, this);
-        add(backBtn);
+        backbutton = new BackButton().createBackButton(window, this);
+        add(backbutton);
+
+        exitButton = new ExitButton().createExitButton(this);
+        add(exitButton);
+
 
         loadMapData("/assets/maps/map1.tmx");
 
@@ -453,10 +456,15 @@ public class SurivivalGamePanel extends JPanel {
     @Override
     public void doLayout() {
         super.doLayout();
+        int margin = 20;
         for (Component c : getComponents()) {
             if (c instanceof JButton && ((JButton) c).getText().equals("Back")) {
                 c.setBounds(getWidth() - 120, getHeight() - 70, 100, 40);
             }
+        }
+
+        if (exitButton != null) {
+            exitButton.setBounds(getWidth() - 50 - margin, margin, 40, 40);
         }
     }
 
