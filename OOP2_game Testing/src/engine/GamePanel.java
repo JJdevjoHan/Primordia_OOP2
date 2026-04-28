@@ -1801,6 +1801,7 @@ public class GamePanel extends JPanel {
                         new CharacterDef.ProjectileDef("/assets/spritesheet/Water Wizard/Charge-Sheet.png", 128, 128, 144, 144, 44, 50),
                         new CharacterDef.ProjectileDef("/assets/spritesheet/Water Wizard/Charge2-Sheet.png", 72, 72, 144, 144, 44, 50),
                         null,
+                        null,
                         DEFAULT_DRAW_WIDTH, DEFAULT_DRAW_HEIGHT),
                     new CharacterDef("Wind Wizard",
                         "A sky runner who bends pressure and razor gusts into elegant battlefield control. She dances through combat, striking fast and breaking enemy rhythm.",
