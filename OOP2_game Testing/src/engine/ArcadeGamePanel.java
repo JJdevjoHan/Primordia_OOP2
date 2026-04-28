@@ -525,8 +525,8 @@ public class ArcadeGamePanel extends JPanel {
                 document.getDocumentElement().normalize();
                 loadMapDimensions(document);
                 loadMapBackground(document, tmxResourcePath, tmxUrl);
-                loadSpawnPoint(document, "spawnPlayer",  true);
-                loadSpawnPoint(document, "spawnPlayer2", false);
+                loadSpawnPoint(document, "Spawn_Player1",  true);
+                loadSpawnPoint(document, "Spawn_Player2", false);
             }
         } catch (Exception e) { System.err.println("Failed to load TMX: " + e.getMessage()); }
     }

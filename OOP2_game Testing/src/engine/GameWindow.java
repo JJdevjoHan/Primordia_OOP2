@@ -4,12 +4,14 @@ package engine;
 //Mag add rakog comments ari guys ugma duka na
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.KeyEvent;
 
 public class GameWindow extends JFrame {
 
     private CardLayout layout;
     private JPanel container;
     private final SoundManager menuBGM = new SoundManager();
+    private boolean isFullscreen = true;
 
     public GameWindow() {
 
@@ -30,10 +32,20 @@ public class GameWindow extends JFrame {
 
         setTitle("Primordia");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setResizable(false);
-        pack();
-        setLocationRelativeTo(null);
+        setUndecorated(true);
+        setResizable(true);
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
+        setFocusable(true);
+        
         setVisible(true);
+
+        // Global ESC handler: catches Esc regardless of focused component
+        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(e -> {
+            if (e.getID() == KeyEvent.KEY_PRESSED && e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                SwingUtilities.invokeLater(this::toggleFullscreen);
+            }
+            return false; // don't consume - allow other components to see the key
+        });
         playMenuMusic(6);
         layout.show(container, "INTRO");
     }
@@ -127,4 +139,25 @@ public class GameWindow extends JFrame {
             menuBGM.stop();
         }
     }
+
+    private void toggleFullscreen() {
+        // Toggle between undecorated (borderless) fullscreen and decorated fullscreen.
+        if (isFullscreen) {
+            // currently borderless fullscreen -> switch to decorated fullscreen
+            dispose();
+            setUndecorated(false);
+            setVisible(true);
+            setExtendedState(JFrame.MAXIMIZED_BOTH);
+            isFullscreen = false;
+        } else {
+            // currently decorated -> switch to borderless fullscreen
+            dispose();
+            setUndecorated(true);
+            setVisible(true);
+            setExtendedState(JFrame.MAXIMIZED_BOTH);
+            isFullscreen = true;
+        }
+    }
+
+    
 }
