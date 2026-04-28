@@ -61,6 +61,7 @@ public class GamePanel extends JPanel {
 
     private int mapPixelWidth = screenWidth;
     private int mapPixelHeight = screenHeight;
+    
 
     public static final List<CharacterDef> ALL_CHARACTERS = loadCharacterDefs();
 
@@ -277,6 +278,8 @@ public class GamePanel extends JPanel {
 
                     isP1Turn = true;
                     updateGameState();
+                    // Ensure idle animations resume after a death/round transition
+                    ensureIdleTimers();
                     repaint();
                 },
 
@@ -561,8 +564,8 @@ public class GamePanel extends JPanel {
                 document.getDocumentElement().normalize();
                 loadMapDimensions(document);
                 loadMapBackground(document, tmxResourcePath, tmxUrl);
-                loadSpawnPoint(document, "spawnPlayer",  true);
-                loadSpawnPoint(document, "spawnPlayer2", false);
+                loadSpawnPoint(document, "Spawn_Player1",  true);
+                loadSpawnPoint(document, "Spawn_Player2", false);
             }
         } catch (Exception e) { System.err.println("Failed to load TMX map data: " + e.getMessage()); }
     }
@@ -777,6 +780,30 @@ public class GamePanel extends JPanel {
         System.out.println("P2: " + roundManager.getWinPips(false));
     }
 
+    private void ensureIdleTimers() {
+        if (!playerFrames.isEmpty()) {
+            if (playerTimer == null) {
+                int delay = currentPlayerDef != null ? currentPlayerDef.idleAnimation.frameDelayMs : DEFAULT_IDLE_DELAY_MS;
+                playerTimer = new Timer(delay, e -> {
+                    playerFrameIndex = (playerFrameIndex + 1) % playerFrames.size();
+                    repaint();
+                });
+            }
+            if (!playerTimer.isRunning()) playerTimer.start();
+        }
+
+        if (!enemyFrames.isEmpty()) {
+            if (enemyTimer == null) {
+                int delay = currentEnemyDef != null ? currentEnemyDef.idleAnimation.frameDelayMs : DEFAULT_IDLE_DELAY_MS;
+                enemyTimer = new Timer(delay, e -> {
+                    enemyFrameIndex = (enemyFrameIndex + 1) % enemyFrames.size();
+                    repaint();
+                });
+            }
+            if (!enemyTimer.isRunning()) enemyTimer.start();
+        }
+    }
+
 
     private void repositionUI() {
         int feetX1 = p1SpriteX + getPlayerDrawWidth() / 2;
@@ -904,6 +931,8 @@ public class GamePanel extends JPanel {
         if (widthInTiles  > 0 && tileWidth  > 0) mapPixelWidth  = widthInTiles  * tileWidth;
         if (heightInTiles > 0 && tileHeight > 0) mapPixelHeight = heightInTiles * tileHeight;
     }
+
+    
 
     private int scaleMapXToPanel(int mapX) {
         if (mapPixelWidth <= 0) return mapX;
