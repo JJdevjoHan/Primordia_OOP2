@@ -25,11 +25,6 @@ public class GameWindow extends JFrame {
         container.add(menu, "MENU");
         container.add(credits,"CREDITS");
 
-        container.add(new JPanel(), "CHAR_SELECT");
-        container.add(new JPanel(), "GAME");
-        container.add(new JPanel(), "SURVIVAL");
-        container.add(new JPanel(),"ARCADE");
-
         add(container);
 
         setTitle("Primordia");
@@ -68,7 +63,7 @@ public class GameWindow extends JFrame {
 
         container.revalidate();
         container.repaint();
-        panel.requestFocusInWindow();
+        SwingUtilities.invokeLater(panel::requestFocusInWindow);
     }
 
     public void startPvPMatch(int p1, int p2) {
@@ -80,7 +75,7 @@ public class GameWindow extends JFrame {
 
         container.revalidate();
         container.repaint();
-        panel.requestFocusInWindow();
+        SwingUtilities.invokeLater(panel::requestFocusInWindow);
     }
 
     public void startSurvivalMatch(int playerIndex) {
@@ -100,7 +95,7 @@ public class GameWindow extends JFrame {
 
         container.revalidate();
         container.repaint();
-        surivivalGamePanel.requestFocusInWindow();
+        SwingUtilities.invokeLater(surivivalGamePanel::requestFocusInWindow);
     }
 
     public void startArcadeMatch(int playerIndex) {
@@ -119,7 +114,7 @@ public class GameWindow extends JFrame {
 
         container.revalidate();
         container.repaint();
-        arcade.requestFocusInWindow();
+        SwingUtilities.invokeLater(arcade::requestFocusInWindow);
     }
 
     public void playMenuMusic(int i) {

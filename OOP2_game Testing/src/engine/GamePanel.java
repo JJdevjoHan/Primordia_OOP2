@@ -58,6 +58,11 @@ public class GamePanel extends JPanel {
 
     private static final int TURN_TIME_SECONDS = 10;
     private static final int TIMER_WARN_THRESHOLD = 3;
+    private static final int SKILL_PANEL_MIN_WIDTH = 720;
+    private static final int SKILL_PANEL_MAX_WIDTH = 920;
+    private static final int SKILL_PANEL_HEIGHT = 140;
+    private static final int SKILL_PANEL_BOTTOM_MARGIN = 80;
+    private static final int SKILL_PANEL_SIDE_MARGIN = 24;
 
     private int mapPixelWidth = screenWidth;
     private int mapPixelHeight = screenHeight;
@@ -163,9 +168,9 @@ public class GamePanel extends JPanel {
     private JLabel countdownLabel;
 
     // UI Elements
-    private JPanel p1ButtonPanel, p2ButtonPanel;
-    private final List<JButton> p1SkillButtons = new ArrayList<>();
-    private final List<JButton> p2SkillButtons = new ArrayList<>();
+    private JPanel skillButtonPanel;
+    private final List<JButton> skillButtons = new ArrayList<>();
+    private JLabel skillPanelTitle;
     private JLabel turnLabel, p1HPLabel, p2HPLabel;
 
     // HP bars
@@ -235,12 +240,9 @@ public class GamePanel extends JPanel {
         p2HPLabel.setVisible(false);
         this.add(p2HPLabel);
 
-        // Skill button panels
-        p1ButtonPanel = createSkillUI(p1SkillButtons);
-        this.add(p1ButtonPanel);
-
-        p2ButtonPanel = createSkillUI(p2SkillButtons);
-        this.add(p2ButtonPanel);
+        // Skill selection panel
+        skillButtonPanel = createSkillUI();
+        this.add(skillButtonPanel);
 
         // ── HP bars ───────────────────────────────────────────────────────────
         p1HealthBar = new GameBar(100, Color.GREEN, GameBar.BarType.HP);
@@ -301,11 +303,10 @@ public class GamePanel extends JPanel {
                     String msg = p1WonMatch ? "PLAYER 1 WINS MATCH!" : "PLAYER 2 WINS MATCH!";
                     turnLabel.setText(msg);
 
-                    p1ButtonPanel.setVisible(false);
-                    p2ButtonPanel.setVisible(false);
+                    skillButtonPanel.setVisible(false);
                 });
 
-        refreshSkillButtonLabels();
+        refreshSkillButtons();
         repositionUI();
         updateGameState();
         roundManager.startMatch();
@@ -355,15 +356,13 @@ public class GamePanel extends JPanel {
 
     /** Grey out skill buttons the active player can't currently afford. */
     private void refreshSkillButtonMPState() {
-        boolean actingP1 = isP1Turn;
-        List<JButton> activeButtons = actingP1 ? p1SkillButtons : p2SkillButtons;
-        int currentMP = actingP1 ? p1MP : p2MP;
+        int currentMP = isP1Turn ? p1MP : p2MP;
 
-        for (int i = 0; i < activeButtons.size(); i++) {
+        for (int i = 0; i < skillButtons.size(); i++) {
             int cost = mpCostFor(i + 1);
             boolean canAfford = currentMP >= cost;
-            activeButtons.get(i).setEnabled(canAfford);
-            activeButtons.get(i).setForeground(canAfford ? Color.BLACK : new Color(140, 140, 140));
+            skillButtons.get(i).setEnabled(canAfford);
+            skillButtons.get(i).setForeground(canAfford ? Color.BLACK : new Color(140, 140, 140));
         }
     }
 
@@ -433,24 +432,56 @@ public class GamePanel extends JPanel {
         return 0;
     }
 
-    private JPanel createSkillUI(List<JButton> buttonStore) {
-        JPanel panel = new JPanel(new GridLayout(1, 3, 4, 4));
-        panel.setOpaque(false);
+    private JPanel createSkillUI() {
+        JPanel panel = new JPanel(new BorderLayout(8, 8));
+        panel.setBackground(new Color(28, 23, 18, 235));
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(210, 184, 124), 3, true),
+                BorderFactory.createEmptyBorder(10, 10, 10, 10)));
+
+        skillPanelTitle = new JLabel("", SwingConstants.CENTER);
+        skillPanelTitle.setFont(FontManager.getFont(18).deriveFont(Font.BOLD));
+        skillPanelTitle.setForeground(new Color(255, 245, 220));
+        panel.add(skillPanelTitle, BorderLayout.NORTH);
+
+        JPanel grid = new JPanel(new GridLayout(1, 3, 8, 8));
+        grid.setOpaque(false);
 
         for (int i = 0; i < 3; i++) {
             JButton btn = new JButton("Skill " + (i + 1));
             btn.setFocusable(false);
-            btn.setFont(new Font("Arial", Font.BOLD, 10));
-            btn.setBackground(new Color(255, 255, 255, 180));
-            btn.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
+                btn.setFont(FontManager.getFont(15).deriveFont(Font.BOLD));
+            btn.setBackground(new Color(245, 245, 235));
+            btn.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(new Color(80, 60, 40), 2),
+                    BorderFactory.createEmptyBorder(6, 8, 6, 8)));
             btn.setToolTipText("MP Cost: " + SKILL_MP_COST[i]);
 
             int skillID = i + 1;
             btn.addActionListener(e -> executeSkill(skillID));
-            panel.add(btn);
-            buttonStore.add(btn);
+            grid.add(btn);
+            skillButtons.add(btn);
         }
+
+        panel.add(grid, BorderLayout.CENTER);
         return panel;
+    }
+
+    private void refreshSkillButtons() {
+        CharacterDef activeCharacter = isP1Turn ? currentPlayerDef : currentEnemyDef;
+        refreshSkillPanelTitle(activeCharacter);
+        applySkillNamesToButtons(activeCharacter, skillButtons);
+        refreshSkillButtonMPState();
+    }
+
+    private void refreshSkillPanelTitle(CharacterDef activeCharacter) {
+        if (skillPanelTitle == null) return;
+        String actor = isP1Turn ? "PLAYER 1" : "PLAYER 2";
+        if (activeCharacter != null && activeCharacter.name != null && !activeCharacter.name.isBlank()) {
+            skillPanelTitle.setText(actor + " MOVE - " + activeCharacter.name);
+        } else {
+            skillPanelTitle.setText(actor + " MOVE");
+        }
     }
 
     @Override
@@ -768,7 +799,7 @@ public class GamePanel extends JPanel {
         );
 
         // Grey out unaffordable skill buttons
-        refreshSkillButtonMPState();
+        refreshSkillButtons();
 
         if (countdownLabel != null) {
             countdownLabel.setVisible(true);
@@ -811,7 +842,6 @@ public class GamePanel extends JPanel {
         int feetX2 = p2SpriteX + getEnemyDrawWidth()  / 2;
         int feetY2 = p2SpriteY + getEnemyDrawHeight();
 
-        int btnW = tileSize * 2, btnH = 40;
         int gap  = 5;
 
         // Hidden HP labels — zero-sized so they take no space
@@ -831,33 +861,46 @@ public class GamePanel extends JPanel {
         if (p2MpBar != null) p2MpBar.setBounds(feetX2 - barW / 2, mpY, barW, barH);
 
         // Skill buttons below feet (below bars stack)
-        if (p1ButtonPanel != null) p1ButtonPanel.setBounds(feetX1 - btnW / 2, feetY1 + gap + barH + gap + barH + gap, btnW, btnH);
-        if (p2ButtonPanel != null) p2ButtonPanel.setBounds(feetX2 - btnW / 2, feetY2 + gap + barH + gap + barH + gap, btnW, btnH);
+        if (skillButtonPanel != null) {
+            int panelW = Math.max(SKILL_PANEL_MIN_WIDTH, Math.min(SKILL_PANEL_MAX_WIDTH, getWidth() - SKILL_PANEL_SIDE_MARGIN * 2));
+            int panelX = (getWidth() - panelW) / 2;
+            int panelY = getHeight() - SKILL_PANEL_HEIGHT - SKILL_PANEL_BOTTOM_MARGIN;
+            skillButtonPanel.setBounds(panelX, panelY, panelW, SKILL_PANEL_HEIGHT);
+        }
 
-        // Countdown above the active player's button panel
+        // Countdown close to the battle UI
         if (countdownLabel != null) {
             int cdW = 56, cdH = 40;
-            int activeFeetX = isP1Turn ? feetX1 : feetX2;
-            int activeFeetY = isP1Turn
-                    ? (feetY1 + gap + barH + gap + barH + gap)
-                    : (feetY2 + gap + barH + gap + barH + gap);
-            countdownLabel.setBounds(activeFeetX - cdW / 2, activeFeetY - cdH - 4, cdW, cdH);
+            int panelW = Math.max(SKILL_PANEL_MIN_WIDTH, Math.min(SKILL_PANEL_MAX_WIDTH, getWidth() - SKILL_PANEL_SIDE_MARGIN * 2));
+            int panelX = (getWidth() - panelW) / 2;
+            int panelY = getHeight() - SKILL_PANEL_HEIGHT - SKILL_PANEL_BOTTOM_MARGIN;
+            countdownLabel.setBounds(panelX + panelW - cdW, panelY - cdH - 8, cdW, cdH);
         }
     }
 
     private void refreshSkillButtonLabels() {
-        applySkillNamesToButtons(currentPlayerDef, p1SkillButtons);
-        applySkillNamesToButtons(currentEnemyDef,  p2SkillButtons);
+        refreshSkillButtons();
     }
 
     private void applySkillNamesToButtons(CharacterDef character, List<JButton> buttons) {
         if (character == null || buttons.isEmpty()) return;
         for (int i = 0; i < buttons.size(); i++) {
             String name = character.getSkillName(i + 1);
+            String type = getSkillType(character, i + 1);
             int cost    = SKILL_MP_COST[i];
-            buttons.get(i).setText("<html><center>" + name + "<br/><font color='#4488ff'>" + cost + " MP</font></center></html>");
+            buttons.get(i).setText("<html><center>" + name + "<br/><font color='#cc7a00'>" + type + "</font><br/><font color='#4488ff'>" + cost + " MP</font></center></html>");
             buttons.get(i).setToolTipText("MP Cost: " + cost);
         }
+    }
+
+    private String getSkillType(CharacterDef character, int skillID) {
+        if (character == null) return "";
+        return switch (skillID) {
+            case 1 -> character.skill1Type;
+            case 2 -> character.skill2Type;
+            case 3 -> character.skill3Type;
+            default -> "";
+        };
     }
 
 
