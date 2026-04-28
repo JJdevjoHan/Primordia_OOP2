@@ -1,5 +1,7 @@
 package engine;
 
+import assets.Utility.CreditsButton;
+import assets.Utility.ExitButton;
 import assets.Utility.FontManager;
 import javax.swing.*;
 import java.awt.*;
@@ -9,6 +11,8 @@ public class IntroPanel extends JPanel {
 
     private Image backgroundImage;
     private GameWindow window;
+    private JButton creditsButton;
+    private JButton exitButton;
 
     private final int tileSize = 128;
     private final int screenWidth = tileSize * 12;
@@ -16,14 +20,16 @@ public class IntroPanel extends JPanel {
 
     private final SoundManager sound = new SoundManager();
     public IntroPanel(GameWindow window) {
-
         this.window = window;
-
         this.setPreferredSize(new Dimension(screenWidth, screenHeight));
         this.setLayout(null);
-
         loadBackground("/assets/maps/splashscreen.png");
         createStartButton();
+
+        creditsButton = new CreditsButton().createCreditsButton(window, sound);
+        exitButton = new ExitButton().createExitButton(this);
+        add(exitButton);
+        add(creditsButton);
     }
 
     private void createStartButton() {
@@ -93,6 +99,19 @@ public class IntroPanel extends JPanel {
     }
 
 
+    @Override
+    public void doLayout() {
+        super.doLayout();
+        int margin = 20;
+        if (creditsButton != null) {
+            int leftMargin = 40;
+            int bottomMargin = 60;
+            creditsButton.setBounds(leftMargin, getHeight() - 40 - bottomMargin, 150, 40);
+        }
+        if (exitButton != null) {
+            exitButton.setBounds(getWidth() - 50 - margin, margin, 40, 40);
+        }
+    }
 
     private void loadBackground(String path) {
 

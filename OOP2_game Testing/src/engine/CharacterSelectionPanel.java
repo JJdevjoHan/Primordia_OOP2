@@ -1,5 +1,8 @@
 package engine;
 
+import assets.Utility.BackButton;
+import assets.Utility.CreditsButton;
+import assets.Utility.ExitButton;
 import assets.Utility.FontManager;
 
 import javax.imageio.ImageIO;
@@ -41,6 +44,9 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
     private int playerOneIndex = -1;
     private boolean selectingPlayerOne = true;
 
+    private JButton exitButton;
+    private JButton backbutton;
+
     private final Font titleFont = FontManager.getFont(38f).deriveFont(Font.BOLD);
     private final Font subtitleFont = FontManager.getFont(26f).deriveFont(Font.BOLD);
     private final Font bodyFont = FontManager.getFont(22f).deriveFont(Font.PLAIN);
@@ -67,6 +73,28 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
         });
 
         resetSelectionState();
+
+        backbutton = new BackButton().createBackButton(window, this);
+        add(backbutton);
+
+        exitButton = new ExitButton().createExitButton(this);
+        add(exitButton);
+    }
+
+    @Override
+    public void doLayout() {
+        super.doLayout();
+        int margin = 20;
+        for (Component c : getComponents()) {
+            if (c instanceof JButton && ((JButton) c).getText().equals("Back")) {
+                int fromBottom = 100; // increase this to move button higher
+                int fromRight = 120;  // increase this to move button more to the left
+                c.setBounds(getWidth() - fromRight, getHeight() - fromBottom, 100, 40);
+            }
+        }
+        if (exitButton != null) {
+            exitButton.setBounds(getWidth() - 50 - margin, margin, 40, 40);
+        }
     }
 
 

@@ -4,14 +4,13 @@ package engine;
 //Mag add rakog comments ari guys ugma duka na
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.KeyEvent;
 
 public class GameWindow extends JFrame {
 
     private CardLayout layout;
     private JPanel container;
     private final SoundManager menuBGM = new SoundManager();
-    private boolean isFullscreen = true;
+
 
     public GameWindow() {
 
@@ -20,32 +19,27 @@ public class GameWindow extends JFrame {
 
         IntroPanel intro = new IntroPanel(this);
         GameModeSelector menu = new GameModeSelector(this);
+        CreditsPanel credits = new CreditsPanel(this);
 
         container.add(intro, "INTRO");
         container.add(menu, "MENU");
+        container.add(credits,"CREDITS");
 
         container.add(new JPanel(), "CHAR_SELECT");
         container.add(new JPanel(), "GAME");
         container.add(new JPanel(), "SURVIVAL");
+        container.add(new JPanel(),"ARCADE");
 
         add(container);
 
         setTitle("Primordia");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setUndecorated(true);
-        setResizable(true);
+        setResizable(false);
+        setUndecorated(true); // removes title bar
         setExtendedState(JFrame.MAXIMIZED_BOTH);
-        setFocusable(true);
-        
+        pack();
+        setLocationRelativeTo(null);
         setVisible(true);
-
-        // Global ESC handler: catches Esc regardless of focused component
-        KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(e -> {
-            if (e.getID() == KeyEvent.KEY_PRESSED && e.getKeyCode() == KeyEvent.VK_ESCAPE) {
-                SwingUtilities.invokeLater(this::toggleFullscreen);
-            }
-            return false; // don't consume - allow other components to see the key
-        });
         playMenuMusic(6);
         layout.show(container, "INTRO");
     }
@@ -140,24 +134,7 @@ public class GameWindow extends JFrame {
         }
     }
 
-    private void toggleFullscreen() {
-        // Toggle between undecorated (borderless) fullscreen and decorated fullscreen.
-        if (isFullscreen) {
-            // currently borderless fullscreen -> switch to decorated fullscreen
-            dispose();
-            setUndecorated(false);
-            setVisible(true);
-            setExtendedState(JFrame.MAXIMIZED_BOTH);
-            isFullscreen = false;
-        } else {
-            // currently decorated -> switch to borderless fullscreen
-            dispose();
-            setUndecorated(true);
-            setVisible(true);
-            setExtendedState(JFrame.MAXIMIZED_BOTH);
-            isFullscreen = true;
-        }
+    public void showCredits() {
+        layout.show(container,"CREDITS");
     }
-
-    
 }

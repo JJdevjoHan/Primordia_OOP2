@@ -16,10 +16,7 @@ import java.nio.file.Paths;
 import javax.imageio.ImageIO;
 import javax.xml.parsers.DocumentBuilderFactory;
 
-import assets.Utility.BackButton;
-import assets.Utility.FontManager;
-import assets.Utility.GameBar;
-import assets.Utility.RoundManager;
+import assets.Utility.*;
 import engine.CharacterDataLoader;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -174,6 +171,7 @@ public class ArcadeGamePanel extends JPanel {
     private RoundManager roundManager;
 
     private final SoundManager arcadeBGM = new SoundManager();
+    private JButton exitButton;
 
     public ArcadeGamePanel() {
         this(new GameWindow(), 0, 1, GameMode.PVP, BotAI.Difficulty.NORMAL);
@@ -200,6 +198,7 @@ public class ArcadeGamePanel extends JPanel {
 
         setLayout(null);
         add(new BackButton().createBackButton(window, this));
+        add(new ExitButton().createExitButton(this));
 
         loadMapData("/assets/maps/map1.tmx");
 
@@ -297,9 +296,15 @@ public class ArcadeGamePanel extends JPanel {
     @Override
     public void doLayout() {
         super.doLayout();
+        
+        int margin = 20;
         for (Component c : getComponents()) {
             if (c instanceof JButton && ((JButton) c).getText().equals("Back"))
                 c.setBounds(getWidth() - 120, getHeight() - 70, 100, 40);
+        }
+
+        if (exitButton != null) {
+            exitButton.setBounds(getWidth() - 50 - margin, margin, 40, 40);
         }
     }
 

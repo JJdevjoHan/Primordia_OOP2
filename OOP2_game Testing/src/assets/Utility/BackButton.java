@@ -11,7 +11,8 @@ public class BackButton {
     public JButton createBackButton(GameWindow window, JPanel panel) {
 
         JButton backBtn = new JButton("Back");
-
+        backBtn.setOpaque(true);
+        backBtn.setContentAreaFilled(true);
         backBtn.setFocusPainted(false);
         backBtn.setFont(new Font("Arial", Font.BOLD, 14));
         backBtn.setForeground(Color.WHITE);
@@ -33,14 +34,6 @@ public class BackButton {
                 SwingUtilities.invokeLater(() -> window.showMenu());
             }
         });
-
-
-        /*
-        backBtn.addActionListener(e -> {
-            SwingUtilities.invokeLater(() -> window.showMenu());
-        });
-
-         */
 
 
         return backBtn;
