@@ -8,7 +8,6 @@ import assets.Utility.FontManager;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.net.URL;
@@ -46,6 +45,7 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
 
     private JButton exitButton;
     private JButton backbutton;
+    private JRootPane boundRootPane;
 
     private final Font titleFont = FontManager.getFont(38f).deriveFont(Font.BOLD);
     private final Font subtitleFont = FontManager.getFont(26f).deriveFont(Font.BOLD);
@@ -64,13 +64,7 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
         playMusic(0);
         setPreferredSize(new Dimension(SCREEN_WIDTH, SCREEN_HEIGHT));
         setFocusable(true);
-
-        addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyPressed(KeyEvent e) {
-                handleInput(e.getKeyCode());
-            }
-        });
+        setFocusTraversalKeysEnabled(false);
 
         resetSelectionState();
 
@@ -101,7 +95,14 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
     @Override
     public void addNotify() {
         super.addNotify();
+        installKeyBindings();
         SwingUtilities.invokeLater(this::requestFocusInWindow);
+    }
+
+    @Override
+    public void removeNotify() {
+        uninstallKeyBindings();
+        super.removeNotify();
     }
 
     public void resetSelectionState() {
@@ -135,6 +136,67 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
         }
 
         repaint();
+    }
+
+    private void installKeyBindings() {
+        JRootPane rootPane = SwingUtilities.getRootPane(this);
+        if (rootPane == null) {
+            return;
+        }
+
+        if (boundRootPane == rootPane) {
+            return;
+        }
+
+        uninstallKeyBindings();
+        boundRootPane = rootPane;
+
+        InputMap inputMap = rootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap actionMap = rootPane.getActionMap();
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0), "moveLeft");
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, 0), "moveRight");
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0), "moveUp");
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0), "moveDown");
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "confirmSelection");
+
+        actionMap.put("moveLeft", new AbstractAction() {
+            @Override public void actionPerformed(java.awt.event.ActionEvent e) { handleInput(KeyEvent.VK_LEFT); }
+        });
+        actionMap.put("moveRight", new AbstractAction() {
+            @Override public void actionPerformed(java.awt.event.ActionEvent e) { handleInput(KeyEvent.VK_RIGHT); }
+        });
+        actionMap.put("moveUp", new AbstractAction() {
+            @Override public void actionPerformed(java.awt.event.ActionEvent e) { handleInput(KeyEvent.VK_UP); }
+        });
+        actionMap.put("moveDown", new AbstractAction() {
+            @Override public void actionPerformed(java.awt.event.ActionEvent e) { handleInput(KeyEvent.VK_DOWN); }
+        });
+        actionMap.put("confirmSelection", new AbstractAction() {
+            @Override public void actionPerformed(java.awt.event.ActionEvent e) { handleInput(KeyEvent.VK_ENTER); }
+        });
+    }
+
+    private void uninstallKeyBindings() {
+        if (boundRootPane == null) {
+            return;
+        }
+
+        InputMap inputMap = boundRootPane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap actionMap = boundRootPane.getActionMap();
+
+        inputMap.remove(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0));
+        inputMap.remove(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, 0));
+        inputMap.remove(KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0));
+        inputMap.remove(KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0));
+        inputMap.remove(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0));
+
+        actionMap.remove("moveLeft");
+        actionMap.remove("moveRight");
+        actionMap.remove("moveUp");
+        actionMap.remove("moveDown");
+        actionMap.remove("confirmSelection");
+        boundRootPane = null;
     }
 
     private void moveFocus(int dx, int dy) {
