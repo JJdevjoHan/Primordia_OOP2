@@ -467,13 +467,7 @@ public class GamePanel extends JPanel {
         grid.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
 
         for (int i = 0; i < 3; i++) {
-            JButton btn = new JButton("Skill " + (i + 1));
-            btn.setFocusable(false);
-                btn.setFont(FontManager.getFont(19).deriveFont(Font.BOLD));
-            btn.setBackground(new Color(245, 245, 235));
-            btn.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(new Color(80, 60, 40), 2),
-                    BorderFactory.createEmptyBorder(3, 4, 3, 4)));
+            JButton btn = new BattleUISkillButton("Skill " + (i + 1));
             btn.setToolTipText("MP Cost: " + SKILL_MP_COST[i]);
 
             int skillID = i + 1;
@@ -949,9 +943,9 @@ public class GamePanel extends JPanel {
         for (int i = 0; i < buttons.size(); i++) {
             String name = character.getSkillName(i + 1);
             String type = getSkillType(character, i + 1);
-            int cost    = SKILL_MP_COST[i];
-            buttons.get(i).setText("<html><center>" + name + "<br/><font color='#cc7a00'>" + type + "</font><br/><font color='#4488ff'>" + cost + " MP</font></center></html>");
-            buttons.get(i).setToolTipText("MP Cost: " + cost);
+            int cost = SKILL_MP_COST[i];
+            buttons.get(i).setText(name);
+            buttons.get(i).setToolTipText("<html>Type: " + type + "<br/>MP Cost: " + cost + "</html>");
         }
     }
 
