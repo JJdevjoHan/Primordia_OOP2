@@ -432,6 +432,13 @@ public class GamePanel extends JPanel {
                 urgent ? Color.RED : Color.WHITE, urgent ? 2 : 1));
     }
 
+    @Override
+    public void addNotify() {
+        super.addNotify();
+        // Force an immediate layout pass to prevent UI flicker on first frame
+        SwingUtilities.invokeLater(this::repositionUI);
+    }
+
     private int sanitizeCharacterIndex(int requestedIndex, int fallbackIndex) {
         if (ALL_CHARACTERS.isEmpty()) return 0;
         if (requestedIndex >= 0 && requestedIndex < ALL_CHARACTERS.size()) return requestedIndex;
@@ -457,9 +464,10 @@ public class GamePanel extends JPanel {
         panel.setBorder(BorderFactory.createEmptyBorder(16, 20, 20, 20));
 
         skillPanelTitle = new JLabel("", SwingConstants.CENTER);
-        skillPanelTitle.setFont(FontManager.getFont(25).deriveFont(Font.BOLD));
-        skillPanelTitle.setForeground(Color.BLACK);
+        skillPanelTitle.setFont(FontManager.getFont(34).deriveFont(Font.BOLD));
+        skillPanelTitle.setForeground(new Color(0x52, 0x33, 0x3F));
         skillPanelTitle.setOpaque(false);
+        skillPanelTitle.setBorder(BorderFactory.createEmptyBorder(10, 0, 0, 0));
         panel.add(skillPanelTitle, BorderLayout.NORTH);
 
         JPanel grid = new JPanel(new GridLayout(1, 3, 4, 4));
@@ -945,6 +953,8 @@ public class GamePanel extends JPanel {
             String type = getSkillType(character, i + 1);
             int cost = SKILL_MP_COST[i];
             buttons.get(i).setText(name);
+            buttons.get(i).putClientProperty("skillType", type != null ? type.toLowerCase() : null);
+            buttons.get(i).putClientProperty("mpCost", cost);
             buttons.get(i).setToolTipText("<html>Type: " + type + "<br/>MP Cost: " + cost + "</html>");
         }
     }
