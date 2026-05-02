@@ -61,11 +61,12 @@ public class SurivivalGamePanel extends JPanel {
 
     private static final int TURN_TIME_SECONDS    = 10;
     private static final int TIMER_WARN_THRESHOLD = 3;
-    private static final int SKILL_PANEL_MIN_WIDTH = 720;
-    private static final int SKILL_PANEL_MAX_WIDTH = 920;
-    private static final int SKILL_PANEL_HEIGHT = 140;
-    private static final int SKILL_PANEL_BOTTOM_MARGIN = 80;
-    private static final int SKILL_PANEL_SIDE_MARGIN = 24;
+    private static final int SKILL_PANEL_MIN_WIDTH = 928;
+    private static final int SKILL_PANEL_MAX_WIDTH = 1216;
+    private static final int SKILL_PANEL_HEIGHT = 192;
+    private static final int SKILL_PANEL_BOTTOM_MARGIN = 64;
+    private static final int SKILL_PANEL_SIDE_MARGIN = 32;
+    private static final String BATTLE_UI_BOX_PATH = "/assets/BattleUI/BattleUI_Box.png";
 
     private int mapPixelWidth  = screenWidth;
     private int mapPixelHeight = screenHeight;
@@ -73,6 +74,8 @@ public class SurivivalGamePanel extends JPanel {
     public static final List<CharacterDef> ALL_CHARACTERS = loadCharacterDefs();
 
     private Image backgroundImage;
+    private Image battleUiBoxImage;
+    private long battleUiBoxLastModified = -1;
 
     private List<BufferedImage> playerFrames     = new ArrayList<>();
     private int                 playerFrameIndex = 0;
@@ -128,8 +131,12 @@ public class SurivivalGamePanel extends JPanel {
     private Timer enemyHurtDelayTimer;
     private Timer playerHurtWindowTimer;
     private Timer enemyHurtWindowTimer;
+    private Timer playerHurtFlashTimer;
+    private Timer enemyHurtFlashTimer;
     private boolean isPlayerHurtAnimating = false;
     private boolean isEnemyHurtAnimating  = false;
+    private boolean playerHurtFlashing = false;
+    private boolean enemyHurtFlashing = false;
 
     private CharacterDef        currentPlayerDef, currentEnemyDef;
     private List<BufferedImage> playerDeadFrames     = new ArrayList<>();
@@ -489,28 +496,40 @@ public class SurivivalGamePanel extends JPanel {
     }
 
     private JPanel createSkillUI() {
-        JPanel panel = new JPanel(new BorderLayout(8, 8));
-        panel.setBackground(new Color(28, 23, 18, 235));
-        panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(new Color(210, 184, 124), 3, true),
-                BorderFactory.createEmptyBorder(10, 10, 10, 10)));
+        JPanel panel = new JPanel(new BorderLayout(4, 4)) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                if (battleUiBoxImage != null) {
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                    g2.drawImage(battleUiBoxImage, 0, 0, getWidth(), getHeight(), null);
+                    g2.dispose();
+                }
+            }
+        };
+        battleUiBoxImage = getBattleUiBoxImage();
+        panel.setOpaque(false);
+        panel.setBorder(BorderFactory.createEmptyBorder(16, 20, 20, 20));
 
         skillPanelTitle = new JLabel("", SwingConstants.CENTER);
-        skillPanelTitle.setFont(FontManager.getFont(18).deriveFont(Font.BOLD));
-        skillPanelTitle.setForeground(new Color(255, 245, 220));
+        skillPanelTitle.setFont(FontManager.getFont(25).deriveFont(Font.BOLD));
+        skillPanelTitle.setForeground(Color.BLACK);
+        skillPanelTitle.setOpaque(false);
         panel.add(skillPanelTitle, BorderLayout.NORTH);
 
-        JPanel grid = new JPanel(new GridLayout(1, 3, 8, 8));
+        JPanel grid = new JPanel(new GridLayout(1, 3, 4, 4));
         grid.setOpaque(false);
+        grid.setBorder(BorderFactory.createEmptyBorder(4, 4, 4, 4));
 
         for (int i = 0; i < 3; i++) {
             JButton btn = new JButton("Skill " + (i + 1));
             btn.setFocusable(false);
-                btn.setFont(FontManager.getFont(15).deriveFont(Font.BOLD));
+                btn.setFont(FontManager.getFont(19).deriveFont(Font.BOLD));
             btn.setBackground(new Color(245, 245, 235));
             btn.setBorder(BorderFactory.createCompoundBorder(
                     BorderFactory.createLineBorder(new Color(80, 60, 40), 2),
-                    BorderFactory.createEmptyBorder(6, 8, 6, 8)));
+                    BorderFactory.createEmptyBorder(3, 4, 3, 4)));
             btn.setToolTipText("MP Cost: " + SKILL_MP_COST[i]);
             int skillID = i + 1;
             btn.addActionListener(e -> executeSkill(skillID));
@@ -520,6 +539,25 @@ public class SurivivalGamePanel extends JPanel {
 
         panel.add(grid, BorderLayout.CENTER);
         return panel;
+    }
+
+    private Image getBattleUiBoxImage() {
+        try {
+            Path imagePath = Paths.get("OOP2_game Testing", "src", "assets", "BattleUI", "BattleUI_Box.png");
+            if (Files.exists(imagePath)) {
+                long lm = Files.getLastModifiedTime(imagePath).toMillis();
+                if (lm != battleUiBoxLastModified || battleUiBoxImage == null) {
+                    battleUiBoxLastModified = lm;
+                    battleUiBoxImage = new ImageIcon(imagePath.toString()).getImage();
+                }
+                return battleUiBoxImage;
+            }
+        } catch (Exception ignored) {}
+        try {
+            URL resourceUrl = getClass().getResource(BATTLE_UI_BOX_PATH);
+            if (resourceUrl != null) return new ImageIcon(resourceUrl).getImage();
+        } catch (Exception ignored) {}
+        return null;
     }
 
     private void refreshSkillButtons() {
@@ -554,7 +592,11 @@ public class SurivivalGamePanel extends JPanel {
                 g2.drawImage(playerDeadFrames.get(playerDeadFrameIndex),
                         p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
         } else if (isPlayerHurtAnimating && !playerHurtFrames.isEmpty()) {
-            g2.drawImage(playerHurtFrames.get(playerHurtFrameIndex),
+            BufferedImage hurtFrame = playerHurtFrames.get(playerHurtFrameIndex);
+            if (playerHurtFlashing) {
+                hurtFrame = applyRedTintToNonTransparent(hurtFrame);
+            }
+            g2.drawImage(hurtFrame,
                     p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
         } else if (isTargetOverlayAttack3(true) && shouldHideCasterDuringOverlaySkill3(true)) {
             // Wind Wizard skill 3 hides the caster while the overlay animation plays.
@@ -583,7 +625,11 @@ public class SurivivalGamePanel extends JPanel {
                 g2.drawImage(enemyDeadFrames.get(enemyDeadFrameIndex),
                         p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
         } else if (isEnemyHurtAnimating && !enemyHurtFrames.isEmpty()) {
-            g2.drawImage(enemyHurtFrames.get(enemyHurtFrameIndex),
+            BufferedImage hurtFrame = enemyHurtFrames.get(enemyHurtFrameIndex);
+            if (enemyHurtFlashing) {
+                hurtFrame = applyRedTintToNonTransparent(hurtFrame);
+            }
+            g2.drawImage(hurtFrame,
                     p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
         } else if (isTargetOverlayAttack3(false) && shouldHideCasterDuringOverlaySkill3(false)) {
             // Wind Wizard skill 3 hides the caster while the overlay animation plays.
@@ -764,6 +810,15 @@ public class SurivivalGamePanel extends JPanel {
         if (p1HP <= 0 || p2HP <= 0) return;
         if (botIsThinking) return;
 
+        // ── Prevent casting while opponent is animating ────────────────────────────────────────
+        if (isP1Turn && (isEnemySkillAnimating || isProjectileAnimating)) {
+            String original = turnLabel.getText();
+            turnLabel.setText("Wait for opponent's animation to finish...");
+            Timer restore = new Timer(1200, e -> turnLabel.setText(original));
+            restore.setRepeats(false);
+            restore.start();
+            return;
+        }
 
         if (!hasEnoughMP(isP1Turn, skillID)) {
             // Flash the turn label to tell the player they can't afford it
@@ -1889,7 +1944,9 @@ public class SurivivalGamePanel extends JPanel {
             if (p1HP <= 0 || playerHurtFrames.isEmpty()) return;
             if (playerHurtTimer       != null) playerHurtTimer.stop();
             if (playerHurtWindowTimer != null) playerHurtWindowTimer.stop();
+            if (playerHurtFlashTimer  != null) playerHurtFlashTimer.stop();
             isPlayerHurtAnimating = true; playerHurtFrameIndex = 0;
+            playerHurtFlashing = false;
             playerHurtTimer = new Timer(DEFAULT_HURT_DELAY_MS, null);
             playerHurtTimer.addActionListener(e -> {
                 if (!playerHurtFrames.isEmpty())
@@ -1897,6 +1954,13 @@ public class SurivivalGamePanel extends JPanel {
                 repaint();
             });
             playerHurtTimer.start();
+            // Flash timer: toggle red flash every 150ms
+            playerHurtFlashTimer = new Timer(150, null);
+            playerHurtFlashTimer.addActionListener(e -> {
+                playerHurtFlashing = !playerHurtFlashing;
+                repaint();
+            });
+            playerHurtFlashTimer.start();
             playerHurtWindowTimer = new Timer(durationMs, null);
             playerHurtWindowTimer.setRepeats(false);
             playerHurtWindowTimer.addActionListener(e -> stopHurtTimeline(true));
@@ -1905,7 +1969,9 @@ public class SurivivalGamePanel extends JPanel {
             if (p2HP <= 0 || enemyHurtFrames.isEmpty()) return;
             if (enemyHurtTimer       != null) enemyHurtTimer.stop();
             if (enemyHurtWindowTimer != null) enemyHurtWindowTimer.stop();
+            if (enemyHurtFlashTimer  != null) enemyHurtFlashTimer.stop();
             isEnemyHurtAnimating = true; enemyHurtFrameIndex = 0;
+            enemyHurtFlashing = false;
             enemyHurtTimer = new Timer(DEFAULT_HURT_DELAY_MS, null);
             enemyHurtTimer.addActionListener(e -> {
                 if (!enemyHurtFrames.isEmpty())
@@ -1913,6 +1979,13 @@ public class SurivivalGamePanel extends JPanel {
                 repaint();
             });
             enemyHurtTimer.start();
+            // Flash timer: toggle red flash every 150ms
+            enemyHurtFlashTimer = new Timer(150, null);
+            enemyHurtFlashTimer.addActionListener(e -> {
+                enemyHurtFlashing = !enemyHurtFlashing;
+                repaint();
+            });
+            enemyHurtFlashTimer.start();
             enemyHurtWindowTimer = new Timer(durationMs, null);
             enemyHurtWindowTimer.setRepeats(false);
             enemyHurtWindowTimer.addActionListener(e -> stopHurtTimeline(false));
@@ -1925,13 +1998,39 @@ public class SurivivalGamePanel extends JPanel {
             if (playerHurtDelayTimer  != null) { playerHurtDelayTimer.stop();  playerHurtDelayTimer  = null; }
             if (playerHurtWindowTimer != null) { playerHurtWindowTimer.stop(); playerHurtWindowTimer = null; }
             if (playerHurtTimer       != null) { playerHurtTimer.stop();       playerHurtTimer       = null; }
+            if (playerHurtFlashTimer  != null) { playerHurtFlashTimer.stop();  playerHurtFlashTimer  = null; }
             isPlayerHurtAnimating = false; playerHurtFrameIndex = 0;
+            playerHurtFlashing = false;
         } else {
             if (enemyHurtDelayTimer  != null) { enemyHurtDelayTimer.stop();  enemyHurtDelayTimer  = null; }
             if (enemyHurtWindowTimer != null) { enemyHurtWindowTimer.stop(); enemyHurtWindowTimer = null; }
             if (enemyHurtTimer       != null) { enemyHurtTimer.stop();       enemyHurtTimer       = null; }
+            if (enemyHurtFlashTimer  != null) { enemyHurtFlashTimer.stop();  enemyHurtFlashTimer  = null; }
             isEnemyHurtAnimating = false; enemyHurtFrameIndex = 0;
+            enemyHurtFlashing = false;
         }
+    }
+
+    private BufferedImage applyRedTintToNonTransparent(BufferedImage original) {
+        BufferedImage tinted = new BufferedImage(original.getWidth(), original.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < original.getHeight(); y++) {
+            for (int x = 0; x < original.getWidth(); x++) {
+                int argb = original.getRGB(x, y);
+                int alpha = (argb >> 24) & 0xFF;
+                if (alpha > 0) {
+                    // Non-transparent pixel - apply red tint with reduced opacity
+                    int r = 255;
+                    int g = 0;
+                    int b = 0;
+                    int reducedAlpha = (int)(alpha * 0.5); // 50% opacity
+                    tinted.setRGB(x, y, (reducedAlpha << 24) | (r << 16) | (g << 8) | b);
+                } else {
+                    // Transparent pixel - keep as is
+                    tinted.setRGB(x, y, argb);
+                }
+            }
+        }
+        return tinted;
     }
 
     private void startDeadAnimation(boolean isPlayer) {
