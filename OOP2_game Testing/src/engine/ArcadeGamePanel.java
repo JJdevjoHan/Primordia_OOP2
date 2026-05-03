@@ -34,8 +34,8 @@ public class ArcadeGamePanel extends JPanel {
     private final int screenWidth  = tileSize * 12;
     private final int screenHeight = tileSize * 7;
 
-    private static final int DEFAULT_DRAW_WIDTH     = 384;
-    private static final int DEFAULT_DRAW_HEIGHT    = 384;
+    private static final int DEFAULT_DRAW_WIDTH     = 480;
+    private static final int DEFAULT_DRAW_HEIGHT    = 480;
     private static final int DEFAULT_FRAME_SIZE     = 128;
     private static final int DEFAULT_IDLE_DELAY_MS  = 120;
     private static final int DEFAULT_DEAD_DELAY_MS  = 150;
@@ -246,14 +246,16 @@ public class ArcadeGamePanel extends JPanel {
         p2HealthBar = new GameBar(100, Color.RED,   GameBar.BarType.HP);
         add(p1HealthBar);
         add(p2HealthBar);
+        p2HealthBar.setFillFromRight(true);
 
-        p1MpBar = new GameBar(MAX_MP, new Color(80, 160, 255), GameBar.BarType.MP);
-        p2MpBar = new GameBar(MAX_MP, new Color(80, 160, 255), GameBar.BarType.MP);
+        p1MpBar = new GameBar(MAX_MP, new Color(40, 100, 180), GameBar.BarType.MP);
+        p2MpBar = new GameBar(MAX_MP, new Color(40, 100, 180), GameBar.BarType.MP);
         add(p1MpBar);
         add(p2MpBar);
+        p2MpBar.setFillFromRight(true);
 
         // ── Rounds Won Indicators ─────────────────────────────────────────────
-        p1RoundsWon = new RoundsWonIndicator(Color.GREEN);
+        p1RoundsWon = new RoundsWonIndicator(Color.GREEN, true);
         p2RoundsWon = new RoundsWonIndicator(Color.RED);
         add(p1RoundsWon);
         add(p2RoundsWon);

@@ -3,13 +3,15 @@ package assets.Utility;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.geom.Ellipse2D;
+import java.awt.font.FontRenderContext;
+import java.awt.font.GlyphVector;
+import java.awt.geom.Rectangle2D;
 
 public class CircularTimerLabel extends JComponent {
 
     private static final Color FILL_COLOR = new Color(255, 255, 255);
     private static final Color BORDER_COLOR = Color.BLACK;
     private static final Color DEFAULT_TEXT_COLOR = new Color(20, 20, 20);
-    private static final int TEXT_TOP_MARGIN = 5;
     private String text;
 
     public CircularTimerLabel(String text) {
@@ -49,11 +51,13 @@ public class CircularTimerLabel extends JComponent {
 
         g2.setColor(getForeground());
         g2.setFont(getFont());
-        FontMetrics fm = g2.getFontMetrics();
         String value = text != null ? text : "";
-        int textX = x + (diameter - fm.stringWidth(value)) / 2;
-        int textY = y + (diameter - fm.getHeight()) / 2 + fm.getAscent() + TEXT_TOP_MARGIN;
-        g2.drawString(value, textX, textY);
+        FontRenderContext frc = g2.getFontRenderContext();
+        GlyphVector glyphVector = getFont().createGlyphVector(frc, value);
+        Rectangle2D bounds = glyphVector.getVisualBounds();
+        double textX = x + (diameter - bounds.getWidth()) / 2.0 - bounds.getX();
+        double textY = y + (diameter - bounds.getHeight()) / 2.0 - bounds.getY();
+        g2.drawGlyphVector(glyphVector, (float) textX, (float) textY);
         g2.dispose();
     }
 }

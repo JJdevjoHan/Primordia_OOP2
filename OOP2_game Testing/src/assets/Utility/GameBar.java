@@ -11,9 +11,11 @@ public class GameBar extends JPanel {
     private int     currentVal;
     private Color   barColor;
     private BarType barType;
+    private boolean fillFromRight = false;
 
    
-    private static final Font LABEL_FONT = new Font("Arial", Font.BOLD, 11);
+    private static final Font HP_LABEL_FONT = FontManager.getFont(14f).deriveFont(Font.BOLD);
+    private static final Font MP_LABEL_FONT = FontManager.getFont(12f).deriveFont(Font.BOLD);
 
     public GameBar(int max, Color color) {
         this(max, color, BarType.HP);
@@ -38,6 +40,11 @@ public class GameBar extends JPanel {
         this.maxVal = max;
     }
 
+    public void setFillFromRight(boolean fillFromRight) {
+        this.fillFromRight = fillFromRight;
+        repaint();
+    }
+
     public int getCurrentVal() { return currentVal; }
     public int getMaxVal()     { return maxVal;     }
 
@@ -53,7 +60,7 @@ public class GameBar extends JPanel {
         int h      = getHeight();
 
         String prefix = barType == BarType.MP ? "MP" : "HP";
-        g2.setFont(LABEL_FONT);
+        g2.setFont(barType == BarType.HP ? HP_LABEL_FONT : MP_LABEL_FONT);
         FontMetrics fm    = g2.getFontMetrics();
         int barX          = 0;
         int barW          = totalW;
@@ -71,14 +78,36 @@ public class GameBar extends JPanel {
         g2.fillRoundRect(barX, 0, barW, h, arc, arc);
 
         if (fillWidth > 0) {
-            GradientPaint gradient = new GradientPaint(
-                    barX, 0, barColor.brighter(),
-                    barX + barW, h, barColor.darker());
+            int fillX = fillFromRight ? barX + barW - fillWidth : barX;
+            
+            // Create multi-stop gradient for HP bars and MP bars
+            Paint gradient;
+            if (barType == BarType.HP) {
+                float[] fractions = {0f, 0.4f, 1f};
+                Color[] colors;
+                if (fillFromRight) {
+                    // Player 2: orange → red → purple (left to right)
+                    colors = new Color[]{new Color(0xff8933), new Color(0xe64539), new Color(0x781d4f)};
+                } else {
+                    // Player 1: purple → red → orange (left to right, reversed)
+                    colors = new Color[]{new Color(0x781d4f), new Color(0xe64539), new Color(0xff8933)};
+                }
+                gradient = new java.awt.LinearGradientPaint(fillX, 0, fillX + fillWidth, h, fractions, colors);
+            } else {
+                // MP bars: reversed based on fillFromRight flag
+                if (fillFromRight) {
+                    gradient = new GradientPaint(fillX + fillWidth, 0, barColor.brighter(), fillX, h, barColor.darker());
+                } else {
+                    gradient = new GradientPaint(fillX, 0, barColor.brighter(), fillX + fillWidth, h, barColor.darker());
+                }
+            }
+            
             g2.setPaint(gradient);
-            g2.fillRoundRect(barX, 0, fillWidth, h, arc, arc);
+            g2.fillRoundRect(fillX, 0, fillWidth, h, arc, arc);
 
-            g2.setColor(new Color(barColor.getRed(), barColor.getGreen(), barColor.getBlue(), 80));
-            g2.fillRoundRect(barX, 0, fillWidth, h, arc, arc);
+            Color overlayColor = barType == BarType.HP ? new Color(150, 150, 150, 60) : new Color(barColor.getRed(), barColor.getGreen(), barColor.getBlue(), 80);
+            g2.setColor(overlayColor);
+            g2.fillRoundRect(fillX, 0, fillWidth, h, arc, arc);
         }
 
         g2.setColor(new Color(212, 175, 55));
@@ -91,8 +120,6 @@ public class GameBar extends JPanel {
         int combinedW = prefixW + valuePad + textW;
         int textX = barX + Math.max(labelPad, (barW - combinedW) / 2);
         int textY = h / 2 + fm.getAscent() / 2 - 1;
-
-        g2.setFont(LABEL_FONT);
 
         g2.setColor(new Color(0, 0, 0, 160));
         g2.drawString(prefix, textX + 1, textY + 1);
