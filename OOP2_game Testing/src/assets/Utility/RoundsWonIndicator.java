@@ -13,6 +13,7 @@ public class RoundsWonIndicator extends JPanel {
     private int wins;
     private int totalRounds;
     private Color shadeColor;
+    private boolean fillFromRight;
 
     private static final int CIRCLE_DIAMETER = 18;
     private static final int SPACING = 6;
@@ -20,9 +21,14 @@ public class RoundsWonIndicator extends JPanel {
     private static final int OUTLINE_WIDTH = 2;
 
     public RoundsWonIndicator(Color shadeColor) {
+        this(shadeColor, false);
+    }
+
+    public RoundsWonIndicator(Color shadeColor, boolean fillFromRight) {
         this.wins = 0;
         this.totalRounds = 2;
         this.shadeColor = shadeColor;
+        this.fillFromRight = fillFromRight;
         
         setOpaque(false);
         setPreferredSize(new Dimension(
@@ -50,7 +56,8 @@ public class RoundsWonIndicator extends JPanel {
         int startY = (getHeight() - CIRCLE_DIAMETER) / 2;
 
         for (int i = 0; i < totalRounds; i++) {
-            int x = startX + i * (CIRCLE_DIAMETER + SPACING);
+            int circleIndex = fillFromRight ? totalRounds - 1 - i : i;
+            int x = startX + circleIndex * (CIRCLE_DIAMETER + SPACING);
             
             if (i < wins) {
                 // Shaded (filled) circle for won round
