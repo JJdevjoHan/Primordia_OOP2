@@ -172,7 +172,7 @@ public class GamePanel extends JPanel {
 
     private int    turnSecondsLeft = TURN_TIME_SECONDS;
     private Timer  countdownTimer;
-    private JLabel countdownLabel;
+    private CircularTimerLabel countdownLabel;
 
     // UI Elements
     private JPanel skillButtonPanel;
@@ -184,6 +184,8 @@ public class GamePanel extends JPanel {
     private GameBar p1HealthBar, p2HealthBar;
     // MP bars
     private GameBar p1MpBar, p2MpBar;
+    // Rounds won indicators
+    private RoundsWonIndicator p1RoundsWon, p2RoundsWon;
 
     int barW = 220;
     int barH = 18;
@@ -228,10 +230,11 @@ public class GamePanel extends JPanel {
         Font boldFont = FontManager.getFont(40).deriveFont(Font.BOLD);
         Font noneBold = FontManager.getFont(22).deriveFont(Font.BOLD);
 
-        // Turn Indicator Label
+        // Turn Indicator Label (hidden - redundant with BattleUI)
         turnLabel = new JLabel("PLAYER 1'S TURN", SwingConstants.CENTER);
         turnLabel.setFont(boldFont);
         turnLabel.setBounds(0, 10, screenWidth, 50);
+        turnLabel.setVisible(false);
         this.add(turnLabel);
 
         // HP labels — kept invisible; values are shown inside the bars
@@ -263,13 +266,15 @@ public class GamePanel extends JPanel {
         this.add(p1MpBar);
         this.add(p2MpBar);
 
+        // ── Rounds Won Indicators ─────────────────────────────────────────────
+        p1RoundsWon = new RoundsWonIndicator(Color.GREEN);
+        p2RoundsWon = new RoundsWonIndicator(Color.RED);
+        this.add(p1RoundsWon);
+        this.add(p2RoundsWon);
+
         // ── Countdown label ───────────────────────────────────────────────────
-        countdownLabel = new JLabel("10", SwingConstants.CENTER);
-        countdownLabel.setFont(FontManager.getFont(32).deriveFont(Font.BOLD));
-        countdownLabel.setForeground(Color.WHITE);
-        countdownLabel.setOpaque(true);
-        countdownLabel.setBackground(new Color(40, 40, 40, 180));
-        countdownLabel.setBorder(BorderFactory.createLineBorder(Color.WHITE, 1));
+        countdownLabel = new CircularTimerLabel("10");
+        countdownLabel.setFont(FontManager.getFont(38).deriveFont(Font.BOLD));
         this.add(countdownLabel);
 
         roundManager = new RoundManager(
@@ -296,6 +301,12 @@ public class GamePanel extends JPanel {
                 (p1WonRound, round) -> {
                     String msg = p1WonRound ? "PLAYER 1 WINS ROUND " : "PLAYER 2 WINS ROUND ";
                     turnLabel.setText(msg + round);
+                    if (p1WonRound) {
+                        p1RoundsWon.setWins(roundManager.getP1Wins());
+                    } else {
+                        p2RoundsWon.setWins(roundManager.getP2Wins());
+                    }
+                    repaint();
 
                     new Timer(2000, e -> {
                         ((Timer) e.getSource()).stop();
@@ -424,19 +435,21 @@ public class GamePanel extends JPanel {
         if (countdownLabel == null) return;
         countdownLabel.setText(String.valueOf(Math.max(0, turnSecondsLeft)));
         boolean urgent = turnSecondsLeft <= TIMER_WARN_THRESHOLD;
-        countdownLabel.setForeground(Color.WHITE);
-        countdownLabel.setBackground(urgent
-                ? new Color(180, 20, 20, 210)
-                : new Color(40, 40, 40, 180));
-        countdownLabel.setBorder(BorderFactory.createLineBorder(
-                urgent ? Color.RED : Color.WHITE, urgent ? 2 : 1));
+        countdownLabel.setForeground(urgent ? new Color(190, 20, 20) : new Color(20, 20, 20));
+        countdownLabel.repaint();
     }
 
     @Override
     public void addNotify() {
         super.addNotify();
-        // Force an immediate layout pass to prevent UI flicker on first frame
-        SwingUtilities.invokeLater(this::repositionUI);
+        // Force a full UI refresh on first attach to prevent initial HUD misplacement.
+        SwingUtilities.invokeLater(() -> {
+            updateP1DrawFromSpawn();
+            updateP2DrawFromSpawn();
+            repositionUI();
+            revalidate();
+            repaint();
+        });
     }
 
     private int sanitizeCharacterIndex(int requestedIndex, int fallbackIndex) {
@@ -715,11 +728,6 @@ public class GamePanel extends JPanel {
 
         // ── Prevent casting while opponent is animating ──────────────────────
         if (isP1Turn && (isEnemySkillAnimating || isProjectileAnimating)) {
-            String original = turnLabel.getText();
-            turnLabel.setText("Wait for opponent's animation to finish...");
-            Timer restore = new Timer(1200, e -> turnLabel.setText(original));
-            restore.setRepeats(false);
-            restore.start();
             return;
         }
         if (!isP1Turn && (isPlayerSkillAnimating || isProjectileAnimating)) {
@@ -901,44 +909,46 @@ public class GamePanel extends JPanel {
 
 
     private void repositionUI() {
-        int feetX1 = p1SpriteX + getPlayerDrawWidth() / 2;
-        int feetY1 = p1SpriteY + getPlayerDrawHeight();
-        int feetX2 = p2SpriteX + getEnemyDrawWidth()  / 2;
-        int feetY2 = p2SpriteY + getEnemyDrawHeight();
-
-        int gap  = 5;
-
         // Hidden HP labels — zero-sized so they take no space
         if (p1HPLabel != null) p1HPLabel.setBounds(0, 0, 0, 0);
         if (p2HPLabel != null) p2HPLabel.setBounds(0, 0, 0, 0);
 
-        int panelH = Math.max(getHeight(), screenHeight);
-        int hpY = Math.max(0, Math.min(BARS_TOP_Y, panelH - ((barH * 2) + gap + 10)));
-        int mpY = hpY + barH + gap;
+        int panelW = getWidth();
+        int topMargin = 84;
+        int barTop = topMargin;
+        int hpHeight = 28;
+        int manaHeight = 18;
+        int barSpacing = 6;
+        int sideMargin = 30;
+        int centerDiameter = 60;
+        int indicatorWidth = 56;
+        int indicatorGap = 8;
 
-        // HP bars above the character
-        if (p1HealthBar != null) p1HealthBar.setBounds(feetX1 - barW / 2, hpY, barW, barH);
-        if (p2HealthBar != null) p2HealthBar.setBounds(feetX2 - barW / 2, hpY, barW, barH);
+        int leftMaxWidth = (panelW / 2) - sideMargin - (centerDiameter / 2);
+        int rightMaxWidth = leftMaxWidth;
+        int hpWidth = Math.max(260, leftMaxWidth - 20);
+        int manaWidth = Math.max(180, hpWidth - indicatorWidth - indicatorGap);
 
-        // MP bars directly below HP bars
-        if (p1MpBar != null) p1MpBar.setBounds(feetX1 - barW / 2, mpY, barW, barH);
-        if (p2MpBar != null) p2MpBar.setBounds(feetX2 - barW / 2, mpY, barW, barH);
+        int leftX = sideMargin;
+        int rightX = panelW - sideMargin - hpWidth;
+        int centerX = (panelW - centerDiameter) / 2;
+
+        if (p1HealthBar != null) p1HealthBar.setBounds(leftX, barTop, hpWidth, hpHeight);
+        if (p1MpBar != null) p1MpBar.setBounds(leftX, barTop + hpHeight + barSpacing, manaWidth, manaHeight);
+        if (p1RoundsWon != null) p1RoundsWon.setBounds(leftX + manaWidth + indicatorGap, barTop + hpHeight + barSpacing - 2, indicatorWidth, 28);
+
+        if (p2HealthBar != null) p2HealthBar.setBounds(rightX, barTop, hpWidth, hpHeight);
+        if (p2MpBar != null) p2MpBar.setBounds(rightX + indicatorWidth + indicatorGap, barTop + hpHeight + barSpacing, manaWidth, manaHeight);
+        if (p2RoundsWon != null) p2RoundsWon.setBounds(rightX, barTop + hpHeight + barSpacing - 2, indicatorWidth, 28);
+
+        if (countdownLabel != null) countdownLabel.setBounds(centerX, barTop - 4, centerDiameter, centerDiameter);
 
         // Skill buttons below feet (below bars stack)
         if (skillButtonPanel != null) {
-            int panelW = Math.max(SKILL_PANEL_MIN_WIDTH, Math.min(SKILL_PANEL_MAX_WIDTH, getWidth() - SKILL_PANEL_SIDE_MARGIN * 2));
-            int panelX = (getWidth() - panelW) / 2;
+            int panelW2 = Math.max(SKILL_PANEL_MIN_WIDTH, Math.min(SKILL_PANEL_MAX_WIDTH, getWidth() - SKILL_PANEL_SIDE_MARGIN * 2));
+            int panelX = (getWidth() - panelW2) / 2;
             int panelY = getHeight() - SKILL_PANEL_HEIGHT - SKILL_PANEL_BOTTOM_MARGIN;
-            skillButtonPanel.setBounds(panelX, panelY, panelW, SKILL_PANEL_HEIGHT);
-        }
-
-        // Countdown close to the battle UI
-        if (countdownLabel != null) {
-            int cdW = 56, cdH = 40;
-            int panelW = Math.max(SKILL_PANEL_MIN_WIDTH, Math.min(SKILL_PANEL_MAX_WIDTH, getWidth() - SKILL_PANEL_SIDE_MARGIN * 2));
-            int panelX = (getWidth() - panelW) / 2;
-            int panelY = getHeight() - SKILL_PANEL_HEIGHT - SKILL_PANEL_BOTTOM_MARGIN;
-            countdownLabel.setBounds(panelX + panelW - cdW, panelY - cdH - 8, cdW, cdH);
+            skillButtonPanel.setBounds(panelX, panelY, panelW2, SKILL_PANEL_HEIGHT);
         }
     }
 

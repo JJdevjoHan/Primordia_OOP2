@@ -59,14 +59,16 @@ public class GameModeSelector extends JPanel {
         int btnWidth = 250;
         int btnHeight = 50;
         int centerX = screenWidth/2 - btnWidth/2;
+        int topMargin = 480;
+        int buttonGap = 78;
 
         JButton pvp = createRPGButton("Versus");
         JButton survival = createRPGButton("Survival");
         JButton arcade = createRPGButton("Arcade");
 
-        pvp.setBounds(centerX, 450, btnWidth, btnHeight);
-        survival.setBounds(centerX, 540, btnWidth, btnHeight);
-        arcade.setBounds(centerX, 630, btnWidth, btnHeight);
+        pvp.setBounds(centerX, topMargin, btnWidth, btnHeight);
+        survival.setBounds(centerX, topMargin + buttonGap, btnWidth, btnHeight);
+        arcade.setBounds(centerX, topMargin + (buttonGap * 2), btnWidth, btnHeight);
 
         add(pvp);
         add(survival);

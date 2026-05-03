@@ -55,13 +55,12 @@ public class GameBar extends JPanel {
         String prefix = barType == BarType.MP ? "MP" : "HP";
         g2.setFont(LABEL_FONT);
         FontMetrics fm    = g2.getFontMetrics();
-        int labelW        = fm.stringWidth(prefix) + 6;   // a little padding
-        int labelX        = 0;
-        int barX          = labelW + 4;
-        int barW          = totalW - barX;
+        int barX          = 0;
+        int barW          = totalW;
+        int labelPad      = 10;
+        int valuePad      = 8;
 
         g2.setColor(barType == BarType.MP ? new Color(160, 210, 255) : new Color(200, 255, 180));
-        g2.drawString(prefix, labelX, h / 2 + fm.getAscent() / 2 - 1);
 
         if (maxVal <= 0) maxVal = 1;
         float percent  = Math.max(0, (float) currentVal / maxVal);
@@ -78,7 +77,6 @@ public class GameBar extends JPanel {
             g2.setPaint(gradient);
             g2.fillRoundRect(barX, 0, fillWidth, h, arc, arc);
 
-            // Sheen overlay
             g2.setColor(new Color(barColor.getRed(), barColor.getGreen(), barColor.getBlue(), 80));
             g2.fillRoundRect(barX, 0, fillWidth, h, arc, arc);
         }
@@ -88,16 +86,20 @@ public class GameBar extends JPanel {
         g2.drawRoundRect(barX, 0, barW - 1, h - 1, arc, arc);
 
         String valueText = currentVal + "/" + maxVal;
+        int prefixW = fm.stringWidth(prefix);
         int textW = fm.stringWidth(valueText);
-        int textX = barX + (barW - textW) / 2;
+        int combinedW = prefixW + valuePad + textW;
+        int textX = barX + Math.max(labelPad, (barW - combinedW) / 2);
         int textY = h / 2 + fm.getAscent() / 2 - 1;
 
         g2.setFont(LABEL_FONT);
 
         g2.setColor(new Color(0, 0, 0, 160));
-        g2.drawString(valueText, textX + 1, textY + 1);
+        g2.drawString(prefix, textX + 1, textY + 1);
+        g2.drawString(valueText, textX + prefixW + valuePad + 1, textY + 1);
 
         g2.setColor(Color.WHITE);
-        g2.drawString(valueText, textX, textY);
+        g2.drawString(prefix, textX, textY);
+        g2.drawString(valueText, textX + prefixW + valuePad, textY);
     }
 }
