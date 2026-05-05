@@ -186,6 +186,8 @@ public class GamePanel extends JPanel {
     private GameBar p1MpBar, p2MpBar;
     // Rounds won indicators
     private RoundsWonIndicator p1RoundsWon, p2RoundsWon;
+    // Battle message overlay
+    private BattleMessageOverlay messageOverlay;
 
     int barW = 220;
     int barH = 18;
@@ -274,6 +276,10 @@ public class GamePanel extends JPanel {
         this.add(p1RoundsWon);
         this.add(p2RoundsWon);
 
+        // ── Battle message overlay ───────────────────────────────────────────
+        messageOverlay = new BattleMessageOverlay(FontManager.getFont(48));
+        this.add(messageOverlay);
+
         // ── Countdown label ───────────────────────────────────────────────────
         countdownLabel = new CircularTimerLabel("10");
         countdownLabel.setFont(FontManager.getFont(38).deriveFont(Font.BOLD));
@@ -298,33 +304,53 @@ public class GamePanel extends JPanel {
                     // Ensure idle animations resume after a death/round transition
                     ensureIdleTimers();
                     repaint();
+
+                    // Show round start message overlay
+                    if (messageOverlay != null) {
+                        messageOverlay.showRoundStart(round);
+                    }
                 },
 
                 // ROUND END
                 (p1WonRound, round) -> {
-                    String msg = p1WonRound ? "PLAYER 1 WINS ROUND " : "PLAYER 2 WINS ROUND ";
-                    turnLabel.setText(msg + round);
-                    if (p1WonRound) {
-                        p1RoundsWon.setWins(roundManager.getP1Wins());
-                    } else {
-                        p2RoundsWon.setWins(roundManager.getP2Wins());
-                    }
-                    repaint();
+                    System.out.println((p1WonRound ? "Player 1" : "Player 2") + " wins round " + round);
 
-                    new Timer(2000, e -> {
-                        ((Timer) e.getSource()).stop();
-                        roundManager.advanceRound();
+                    // Show round win message overlay
+                    if (messageOverlay != null) {
+                        messageOverlay.showRoundWin(p1WonRound, round);
+                        messageOverlay.setOnHide(() -> {
+                            new Timer(100, e -> roundManager.advanceRound()).start();
+                        });
+                    } else {
+                        new Timer(2000, e -> roundManager.advanceRound()).start();
+                    }
+
+                    // Update round indicators after a short delay
+                    new Timer(800, e -> {
+                        if (p1WonRound) {
+                            p1RoundsWon.setWins(roundManager.getP1Wins());
+                        } else {
+                            p2RoundsWon.setWins(roundManager.getP2Wins());
+                        }
+                        repaint();
                     }).start();
                 },
 
                 // MATCH END
                 (p1WonMatch, p1Wins, p2Wins, totalRounds) -> {
+                    System.out.println("Match over! " + (p1WonMatch ? "Player 1" : "Player 2") + " wins!");
                     stopTurnTimer();
 
-                    String msg = p1WonMatch ? "PLAYER 1 WINS MATCH!" : "PLAYER 2 WINS MATCH!";
-                    turnLabel.setText(msg);
+                    // Determine if it was a KO (HP <= 0) vs just best 2 out of 3
+                    boolean isKO = (p1HP <= 0 || p2HP <= 0);
 
+                    // Hide skill buttons
                     skillButtonPanel.setVisible(false);
+
+                    // Show match result overlay
+                    if (messageOverlay != null) {
+                        messageOverlay.showMatchResult(p1WonMatch, isKO);
+                    }
                 });
 
         refreshSkillButtons();
@@ -395,6 +421,9 @@ public class GamePanel extends JPanel {
 
         countdownTimer = new Timer(1000, null);
         countdownTimer.addActionListener(e -> {
+            if (isBattleActionAnimating()) {
+                return;
+            }
             turnSecondsLeft--;
             refreshCountdownLabel();
             if (turnSecondsLeft <= 0) skipTurn();
@@ -407,6 +436,10 @@ public class GamePanel extends JPanel {
             countdownTimer.stop();
             countdownTimer = null;
         }
+    }
+
+    private boolean isBattleActionAnimating() {
+        return isPlayerSkillAnimating || isEnemySkillAnimating || isProjectileAnimating;
     }
 
     private void skipTurn() {
@@ -671,9 +704,9 @@ public class GamePanel extends JPanel {
     public void setCharacters(int playerIdx, int enemyIdx) {
         if (playerTimer != null && playerTimer.isRunning()) playerTimer.stop();
         if (enemyTimer  != null && enemyTimer.isRunning())  enemyTimer.stop();
-        stopSkillAnimation(true);
-        stopSkillAnimation(false);
-        stopProjectileAnimation();
+        stopSkillAnimation(true, false);
+        stopSkillAnimation(false, false);
+        stopProjectileAnimation(false);
         stopHurtTimeline(true);
         stopHurtTimeline(false);
 
@@ -788,7 +821,7 @@ public class GamePanel extends JPanel {
 
         CharacterDef.ProjectileDef activeProjectileDef = projectileDef;
         if (isDefenseFormToggleSkill) {
-            stopProjectileAnimation();
+            stopProjectileAnimation(false);
             if (isNatureDefenseFormActive(actingPlayerOne)) {
                 playNatureDefenseFormExitAnimation(actingPlayerOne, defenseForm);
             } else {
@@ -832,7 +865,7 @@ public class GamePanel extends JPanel {
                 }
             }
         } else {
-            stopProjectileAnimation();
+            stopProjectileAnimation(false);
             playSkillAnimation(actingPlayerOne, skillID, false, null);
         }
 
@@ -846,6 +879,10 @@ public class GamePanel extends JPanel {
         p2HP = Math.max(0, Math.min(100,    p2HP));
         p1MP = Math.max(0, Math.min(MAX_MP, p1MP));
         p2MP = Math.max(0, Math.min(MAX_MP, p2MP));
+
+        if (p1HPLabel == null || p2HPLabel == null || turnLabel == null) {
+            return;
+        }
 
         // HP label text (hidden — kept for safety)
         p1HPLabel.setText("HP: " + p1HP);
@@ -880,7 +917,14 @@ public class GamePanel extends JPanel {
             countdownLabel.setVisible(true);
             repositionUI();
         }
-        startTurnTimer();
+        // Only start the turn timer if no announcement overlay is showing and no skill animation is in progress
+        if (messageOverlay != null && messageOverlay.isAnimating()) {
+            // Don't start timer during announcements
+        } else if (isPlayerSkillAnimating || isEnemySkillAnimating || isProjectileAnimating) {
+            // Don't start timer during skill/projectile animations
+        } else {
+            startTurnTimer();
+        }
 
         System.out.println("P1: " + roundManager.getWinPips(true));
         System.out.println("P2: " + roundManager.getWinPips(false));
@@ -952,6 +996,11 @@ public class GamePanel extends JPanel {
             int panelX = (getWidth() - panelW2) / 2;
             int panelY = getHeight() - SKILL_PANEL_HEIGHT - SKILL_PANEL_BOTTOM_MARGIN;
             skillButtonPanel.setBounds(panelX, panelY, panelW2, SKILL_PANEL_HEIGHT);
+        }
+
+        // Message overlay covers the entire panel
+        if (messageOverlay != null) {
+            messageOverlay.setBounds(0, 0, getWidth(), getHeight());
         }
     }
 
@@ -1191,7 +1240,7 @@ public class GamePanel extends JPanel {
         if (frames == null || frames.isEmpty()) { callback.run(); return; }
 
         if (isPlayerOne) {
-            stopSkillAnimation(true);
+            stopSkillAnimation(true, false);
             activePlayerSkillFrames  = frames;
             playerSkillFrameIndex    = 0;
             isPlayerSkillAnimating   = true;
@@ -1213,7 +1262,7 @@ public class GamePanel extends JPanel {
             });
             playerSkillTimer.start();
         } else {
-            stopSkillAnimation(false);
+            stopSkillAnimation(false, false);
             activeEnemySkillFrames  = frames;
             enemySkillFrameIndex    = 0;
             isEnemySkillAnimating   = true;
@@ -1238,6 +1287,10 @@ public class GamePanel extends JPanel {
     }
 
     private void stopSkillAnimation(boolean isPlayerOne) {
+        stopSkillAnimation(isPlayerOne, true);
+    }
+
+    private void stopSkillAnimation(boolean isPlayerOne, boolean allowTurnResume) {
         if (isPlayerOne) {
             if (playerSkillTimer != null) { playerSkillTimer.stop(); playerSkillTimer = null; }
             isPlayerSkillAnimating = false; playerSkillFrameIndex = 0;
@@ -1246,6 +1299,19 @@ public class GamePanel extends JPanel {
             if (enemySkillTimer != null)  { enemySkillTimer.stop();  enemySkillTimer  = null; }
             isEnemySkillAnimating = false;  enemySkillFrameIndex = 0;
             activeEnemySkillID = 0;         activeEnemySkillOffsetX = 0;    activeEnemySkillFrames = List.of();
+        }
+        // If both skill animations are now stopped and no overlay is showing, restart the turn timer
+        if (allowTurnResume
+                && !isPlayerSkillAnimating
+                && !isEnemySkillAnimating
+                && !isProjectileAnimating
+                && !isPlayerHurtAnimating
+                && !isEnemyHurtAnimating) {
+            if (messageOverlay == null || !messageOverlay.isAnimating()) {
+                if (p1HP > 0 && p2HP > 0) {
+                    updateGameState();
+                }
+            }
         }
     }
 
@@ -1299,7 +1365,7 @@ public class GamePanel extends JPanel {
             return;
         }
 
-        stopSkillAnimation(isPlayerOne);
+        stopSkillAnimation(isPlayerOne, false);
         int freezeIndex = Math.max(0, Math.min(frames.size() - 1, defenseForm.enterFreezeFrame - 1));
 
         if (isPlayerOne) {
@@ -1354,7 +1420,7 @@ public class GamePanel extends JPanel {
             return;
         }
 
-        stopSkillAnimation(isPlayerOne);
+        stopSkillAnimation(isPlayerOne, false);
         int startIndex = Math.max(0, Math.min(frames.size() - 1, defenseForm.exitStartFrame - 1));
 
         if (isPlayerOne) {
@@ -1404,7 +1470,7 @@ public class GamePanel extends JPanel {
 
         Runnable callback = onCastFinished != null ? onCastFinished : () -> {};
         if (isPlayerOne) {
-            stopSkillAnimation(true);
+            stopSkillAnimation(true, false);
             activePlayerSkillFrames = frames;
             playerSkillFrameIndex = 0;
             isPlayerSkillAnimating = true;
@@ -1423,7 +1489,7 @@ public class GamePanel extends JPanel {
             });
             playerSkillTimer.start();
         } else {
-            stopSkillAnimation(false);
+            stopSkillAnimation(false, false);
             activeEnemySkillFrames = frames;
             enemySkillFrameIndex = 0;
             isEnemySkillAnimating = true;
@@ -1569,7 +1635,7 @@ public class GamePanel extends JPanel {
         List<BufferedImage> frames = loadProjectileFrames(projectileDef);
         if (frames.isEmpty()) { if (onComplete != null) onComplete.run(); return; }
         List<BufferedImage> impactFrames = loadProjectileImpactFrames(projectileDef);
-        stopProjectileAnimation();
+        stopProjectileAnimation(false);
         int attackerX      = isPlayerOne ? p1SpriteX : p2SpriteX;
         int attackerY      = isPlayerOne ? p1SpriteY : p2SpriteY;
         int attackerWidth  = isPlayerOne ? getPlayerDrawWidth()  : getEnemyDrawWidth();
@@ -1755,6 +1821,10 @@ public class GamePanel extends JPanel {
     }
 
     private void stopProjectileAnimation() {
+        stopProjectileAnimation(true);
+    }
+
+    private void stopProjectileAnimation(boolean allowTurnResume) {
         if (projectileTimer != null) { projectileTimer.stop(); projectileTimer = null; }
         isProjectileAnimating = false; projectileFrameIndex = 0;
         projectileDrawWidth = DEFAULT_PROJECTILE_DRAW_SIZE;
@@ -1768,6 +1838,19 @@ public class GamePanel extends JPanel {
         projectileImpactEndIndex = -1;
         projectileX = 0; projectileY = 0; projectileDirection = 1;
         projectileIsPlayerOne = true;   activeProjectileFrames = List.of();
+        // If both skill and projectile animations are now stopped and no overlay is showing, restart the turn timer
+        if (allowTurnResume
+                && !isPlayerSkillAnimating
+                && !isEnemySkillAnimating
+                && !isProjectileAnimating
+                && !isPlayerHurtAnimating
+                && !isEnemyHurtAnimating) {
+            if (messageOverlay == null || !messageOverlay.isAnimating()) {
+                if (p1HP > 0 && p2HP > 0) {
+                    updateGameState();
+                }
+            }
+        }
     }
 
     private void scheduleHurtTimeline(boolean attackerIsPlayerOne, int skillID) {

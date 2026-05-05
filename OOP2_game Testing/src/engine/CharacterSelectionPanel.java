@@ -38,6 +38,7 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
     private Rectangle previewBounds = null;
     private int previewFrameIndex = 0;
     private Timer previewTimer;
+    private Timer pvpStartTimer;
 
     private int focusedIndex = 0;
     private int playerOneIndex = -1;
@@ -73,6 +74,14 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
 
         exitButton = new ExitButton().createExitButton(this);
         add(exitButton);
+        // Preload player selection SFX so playback is immediate when Enter is pressed
+        new Thread(() -> {
+            try {
+                playerSelection.preload(1); // player 1
+                playerSelection.preload(2); // player 2
+            } catch (Exception ignored) {
+            }
+        }).start();
     }
 
     @Override
@@ -106,6 +115,7 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
     }
 
     public void resetSelectionState() {
+        stopPvpStartTimer();
         selectingPlayerOne = true;
         playerOneIndex = -1;
         focusedIndex = 0;
@@ -240,7 +250,15 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
                 }
                 selectionSoundIndex = 2;
                 startPlay();
-                window.startPvPMatch(playerOneIndex, focusedIndex);
+                // Delay starting the PvP match by 1 second after playing selection SFX
+                stopPvpStartTimer();
+                pvpStartTimer = new Timer(1000, e -> {
+                    ((Timer) e.getSource()).stop();
+                    pvpStartTimer = null;
+                    window.startPvPMatch(playerOneIndex, focusedIndex);
+                });
+                pvpStartTimer.setRepeats(false);
+                pvpStartTimer.start();
             }
 
             case SURVIVAL -> {
@@ -259,13 +277,8 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
 
     private void startPlay() {
         Thread t = new Thread(this);
+        t.setDaemon(true);
         t.start();
-        try {
-            t.join();
-        } catch (InterruptedException e) {
-            System.out.println("Audio Thread Interrupted");
-        }
-        stopMusic();
     }
 
     private void restartPreviewTimer(int frameDelayMs) {
@@ -765,6 +778,15 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
             Thread.sleep(1000);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        }
+        // Stop background music after the selection sound finishes
+        stopMusic();
+    }
+
+    private void stopPvpStartTimer() {
+        if (pvpStartTimer != null) {
+            pvpStartTimer.stop();
+            pvpStartTimer = null;
         }
     }
 }

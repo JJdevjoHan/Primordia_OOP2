@@ -1,0 +1,7 @@
+-cp
+../out/production/Primordia_OOP2
+-d
+../out/production/Primordia_OOP2
+src/engine/GamePanel.java
+src/engine/ArcadeGamePanel.java
+src/engine/SurivivalGamePanel.java
