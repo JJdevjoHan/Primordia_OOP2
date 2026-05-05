@@ -97,6 +97,9 @@
         "skill1": "src/assets/spritesheet/Idk Magician/Attack_1.png",
         "skill2": "src/assets/spritesheet/Idk Magician/Attack_2.png",
         "skill3": "src/assets/spritesheet/Idk Magician/Magic_sphere.png",
+      "weakness": ["Light"],
+      "hp": 138,
+      "mana": 130,
         "idle": "src/assets/spritesheet/Idk Magician/Idle.png",
         "death": "src/assets/spritesheet/Idk Magician/Dead.png",
         "hurt": "src/assets/spritesheet/Idk Magician/Hurt.png"
@@ -335,8 +338,8 @@
       "weakness": ["Fire", "Ice"],
       "hp": 140,
       "mana": 126,
-      "drawWidth": 288,
-      "drawHeight": 288,
+      "drawWidth": 320,
+      "drawHeight": 320,
       "defenseForm": {
         "toggleSkillSlot": 3,
         "altSkillSlot": 1,
@@ -434,6 +437,8 @@
       "weakness": ["Thunder", "Nature"],
       "hp": 140,
       "mana": 134,
+      "drawWidth": 384,
+      "drawHeight": 384,
       "skills": [
         {
           "slot": 1,
@@ -523,8 +528,8 @@
       "weakness": ["Earth", "Ice"],
       "hp": 128,
       "mana": 138,
-      "drawWidth": 620,
-      "drawHeight": 620,
+      "drawWidth": 750,
+      "drawHeight": 750,
       "skills": [
         {
           "slot": 1,
@@ -576,6 +581,8 @@
       "weakness": ["Light"],
       "hp": 138,
       "mana": 130,
+      "drawWidth": 440,
+      "drawHeight": 440,
       "skills": [
         {
           "slot": 1,

@@ -40,6 +40,11 @@ public class SoundManager implements Runnable {
 
     public void setFile(int i) {
         try {
+            stop();
+            if (clip != null) {
+                clip.close();
+                clip = null;
+            }
             if (soundURL[i] == null) {
                 System.err.println("Index " + i + " kay null icheck imo path name.");
                 return;
@@ -73,6 +78,8 @@ public class SoundManager implements Runnable {
     public void stop() {
         if (clip != null) {
             clip.stop();
+            clip.close();
+            clip = null;
         }
     }
 

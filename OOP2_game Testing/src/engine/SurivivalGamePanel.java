@@ -299,6 +299,7 @@ public class SurivivalGamePanel extends JPanel {
                 (round, p1Wins, p2Wins) -> {
                     System.out.println("Round " + round + " Start!");
 
+                    resetNatureDefenseForms();
                     if (gameMode == GameMode.SURVIVAL && round > 1) {
                         p1HP = Math.min(100, p1HP + SURVIVAL_ROUND_HEAL_AMOUNT);
                         pickNewSurvivalEnemy();
@@ -364,7 +365,7 @@ public class SurivivalGamePanel extends JPanel {
         updateGameState();
         roundManager.startMatch();
         survivalBGM.setFile(9);
-        survivalBGM.play();
+        survivalBGM.loop();
     }
 
     private static int mpCostFor(int skillID) {
@@ -777,7 +778,7 @@ public class SurivivalGamePanel extends JPanel {
 
     private void setEnemyCharacter(int enemyIdx) {
         if (enemyTimer != null && enemyTimer.isRunning()) enemyTimer.stop();
-        stopSkillAnimation(false);
+        resetNatureDefenseForms();
         stopProjectileAnimation();
         stopHurtTimeline(false);
 
@@ -1404,6 +1405,13 @@ public class SurivivalGamePanel extends JPanel {
         } else {
             isEnemyNatureDefenseForm = active;
         }
+    }
+
+    private void resetNatureDefenseForms() {
+        stopSkillAnimation(true);
+        stopSkillAnimation(false);
+        isPlayerNatureDefenseForm = false;
+        isEnemyNatureDefenseForm = false;
     }
 
     private CharacterDef.DefenseFormDef getDefenseFormConfig(boolean isPlayerOne) {
@@ -2074,6 +2082,19 @@ public class SurivivalGamePanel extends JPanel {
                 repaint();
             });
             enemyDeadTimer.start();
+        }
+    }
+
+    //PLAYS THE MUSIC
+    public void playMusic(int i) {
+        survivalBGM.setFile(i);
+        survivalBGM.loop();
+    }
+
+    //STOPS THE MUSIC
+    public void stopMusic() {
+        if (survivalBGM != null) {
+            survivalBGM.stop();
         }
     }
 

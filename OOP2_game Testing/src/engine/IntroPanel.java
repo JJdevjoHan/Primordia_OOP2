@@ -1,5 +1,6 @@
 package engine;
 
+import assets.Utility.ButtonTextRenderer;
 import assets.Utility.CreditsButton;
 import assets.Utility.ExitButton;
 import assets.Utility.FontManager;
@@ -33,7 +34,8 @@ public class IntroPanel extends JPanel {
     }
 
     private void createStartButton() {
-        JButton startButton = new JButton("START") {
+        final String startLabel = "START";
+        JButton startButton = new JButton("") {
             @Override
             protected void paintComponent(Graphics g) {
 
@@ -57,11 +59,13 @@ public class IntroPanel extends JPanel {
                 g2.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, 30, 30);
 
                 super.paintComponent(g2);
+
+                ButtonTextRenderer.drawCenteredText(g2, this, startLabel, 5);
                 g2.dispose();
             }
         };
 
-        int btnWidth = 200;
+        int btnWidth = 220;
         int btnHeight = 50;
 
         startButton.setBounds(
@@ -71,7 +75,7 @@ public class IntroPanel extends JPanel {
                 btnHeight
         );
 
-        startButton.setFont(FontManager.getFont(35));
+        startButton.setFont(FontManager.getFont(35).deriveFont(Font.BOLD));
         startButton.setForeground(Color.WHITE);
         startButton.setBackground(new Color(30,30,50));
         startButton.setFocusPainted(false);

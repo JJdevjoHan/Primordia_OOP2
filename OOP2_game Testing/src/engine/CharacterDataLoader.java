@@ -2,6 +2,9 @@ package engine;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -113,12 +116,14 @@ public final class CharacterDataLoader {
 
     public static List<CharacterConfig> loadCharacterConfigs(String resourcePath) {
         try (InputStream stream = CharacterDataLoader.class.getResourceAsStream(resourcePath)) {
-            if (stream == null) {
-                System.err.println("Character JSON not found: " + resourcePath);
-                return List.of();
+            String json = readJsonFromFileSystem();
+            if (json == null) {
+                if (stream == null) {
+                    System.err.println("Character JSON not found: " + resourcePath);
+                    return List.of();
+                }
+                json = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
             }
-
-            String json = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
             Object rootValue = new JsonParser(json).parseValue();
             if (!(rootValue instanceof Map<?, ?> rootMap)) {
                 return List.of();
@@ -212,6 +217,24 @@ public final class CharacterDataLoader {
             System.err.println("Failed to load character JSON: " + e.getMessage());
             return List.of();
         }
+    }
+
+    private static String readJsonFromFileSystem() {
+        String[] candidates = {
+                "OOP2_game Testing/src/assets/data/characters.json",
+                "src/assets/data/characters.json",
+                "assets/data/characters.json"
+        };
+        for (String candidate : candidates) {
+            Path path = Paths.get(candidate);
+            if (Files.exists(path)) {
+                try {
+                    return Files.readString(path, StandardCharsets.UTF_8);
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        return null;
     }
 
     private static String getSkillName(List<?> skills, int index, String fallback) {

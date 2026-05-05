@@ -286,6 +286,7 @@ public class GamePanel extends JPanel {
                 (round, p1Wins, p2Wins) -> {
                     System.out.println("Round " + round + " Start!");
 
+                    resetNatureDefenseForms();
                     p1HP = 100;
                     p2HP = 100;
                     // Restore MP fully at the start of every round
@@ -1260,6 +1261,13 @@ public class GamePanel extends JPanel {
         }
     }
 
+    private void resetNatureDefenseForms() {
+        stopSkillAnimation(true);
+        stopSkillAnimation(false);
+        isPlayerNatureDefenseForm = false;
+        isEnemyNatureDefenseForm = false;
+    }
+
     private CharacterDef.DefenseFormDef getDefenseFormConfig(boolean isPlayerOne) {
         CharacterDef actor = isPlayerOne ? currentPlayerDef : currentEnemyDef;
         return actor != null ? actor.defenseForm : null;
@@ -2026,7 +2034,6 @@ public class GamePanel extends JPanel {
     //PLAYS THE MUSIC
     public void playMusic(int i) {
         bgmMainGamePlay.setFile(i);
-        bgmMainGamePlay.play();
         bgmMainGamePlay.loop();
     }
 

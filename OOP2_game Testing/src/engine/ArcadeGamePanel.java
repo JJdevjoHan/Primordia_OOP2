@@ -270,6 +270,7 @@ public class ArcadeGamePanel extends JPanel {
                 // ROUND START
                 (round, p1Wins, p2Wins) -> {
                     System.out.println("[Arcade] Round " + round + " start");
+                    resetNatureDefenseForms();
                     p1HP = 100;     // full reset — key difference from Survival
                     p2HP = 100;
                     p1MP = MAX_MP;
@@ -310,7 +311,7 @@ public class ArcadeGamePanel extends JPanel {
         updateGameState();
         roundManager.startMatch();
         arcadeBGM.setFile(10);
-        arcadeBGM.play();
+        arcadeBGM.loop();
     }
 
     @Override
@@ -1229,6 +1230,13 @@ public class ArcadeGamePanel extends JPanel {
         }
     }
 
+    private void resetNatureDefenseForms() {
+        stopSkillAnimation(true);
+        stopSkillAnimation(false);
+        isPlayerNatureDefenseForm = false;
+        isEnemyNatureDefenseForm = false;
+    }
+
     private CharacterDef.DefenseFormDef getDefenseFormConfig(boolean isPlayerOne) {
         CharacterDef actor = isPlayerOne ? currentPlayerDef : currentEnemyDef;
         return actor != null ? actor.defenseForm : null;
@@ -1841,6 +1849,19 @@ public class ArcadeGamePanel extends JPanel {
                 repaint();
             });
             enemyDeadTimer.start();
+        }
+    }
+
+    //PLAYS THE MUSIC
+    public void playMusic(int i) {
+        arcadeBGM.setFile(i);
+        arcadeBGM.loop();
+    }
+
+    //STOPS THE MUSIC
+    public void stopMusic() {
+        if (arcadeBGM != null) {
+            arcadeBGM.stop();
         }
     }
 

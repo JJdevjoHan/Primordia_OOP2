@@ -1,5 +1,6 @@
 package engine;
 
+import assets.Utility.ButtonTextRenderer;
 import assets.Utility.CreditsButton;
 import assets.Utility.ExitButton;
 import assets.Utility.FontManager;
@@ -93,7 +94,18 @@ public class GameModeSelector extends JPanel {
 
     private JButton createRPGButton(String text){
 
-        JButton btn = new JButton(text);
+        final String label = text;
+        JButton btn = new JButton("") {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                ButtonTextRenderer.drawCenteredText(g2, this, label, 5);
+                g2.dispose();
+            }
+        };
         Font boldFont = FontManager.getFont(32).deriveFont(Font.BOLD);
 
         btn.setFont(boldFont);
