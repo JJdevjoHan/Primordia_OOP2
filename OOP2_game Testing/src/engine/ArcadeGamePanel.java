@@ -43,6 +43,10 @@ public class ArcadeGamePanel extends JPanel {
     private static final int DEFAULT_HURT_DELAY_MS  = 90;
     private static final int POST_ATTACK_HURT_MS    = 600;
     private static final int BARS_TOP_Y             = 84;
+    private static final int WIND_SKILL2_P2_LEFT_NUDGE_X = 400;
+    private static final int WIND_SKILL3_FEET_OFFSET_X = 80;
+    private static final int WIND_SKILL3_FEET_OFFSET_Y = 0;
+    private static final double WIND_SKILL3_SCALE = 2.2;
     private static final int NATURE_FORM_FREEZE_FRAME_ONE_BASED = 5;
     private static final int NATURE_FORM_RELEASE_START_FRAME_ONE_BASED = 6;
     private static final String NATURE_SHOT_SHEET_PATH = "/src/assets/spritesheet/Nature Wizard/Shot-Sheet.png";
@@ -594,8 +598,12 @@ public class ArcadeGamePanel extends JPanel {
             BufferedImage skillFrame = activeEnemySkillFrames.get(enemySkillFrameIndex);
             int skillDrawHeight = getEnemyDrawHeight();
             int skillDrawWidth = getSkillDrawWidth(skillFrame, skillDrawHeight, getEnemyDrawWidth());
+            int enemySkillDrawX = p2SpriteX + skillDrawWidth + activeEnemySkillOffsetX;
+            if (isWindWizardSkill2(false)) {
+                enemySkillDrawX -= WIND_SKILL2_P2_LEFT_NUDGE_X;
+            }
             g2.drawImage(skillFrame,
-                p2SpriteX + skillDrawWidth + activeEnemySkillOffsetX, p2SpriteY,
+                enemySkillDrawX, p2SpriteY,
                 -skillDrawWidth, skillDrawHeight, this);
         } else if (isEnemyNatureDefenseForm) {
             BufferedImage stanceFrame = getNatureDefensePoseFrame(false);
@@ -612,15 +620,16 @@ public class ArcadeGamePanel extends JPanel {
         }
 
         if (isTargetOverlayAttack3(true) && !activePlayerSkillFrames.isEmpty()) {
-            drawCenteredSkillFrame(g2, activePlayerSkillFrames.get(playerSkillFrameIndex),
-                p2SpriteX + 70, p2SpriteY,
-                    getEnemyDrawWidth(), getEnemyDrawHeight(), true);
+            drawAnchoredSkillFrame(g2, activePlayerSkillFrames.get(playerSkillFrameIndex),
+                getEnemyFeetAnchorX(), getEnemyFeetAnchorY(),
+                getPlayerDrawWidth(), getPlayerDrawHeight(), true);
         }
         if (isTargetOverlayAttack3(false) && !activeEnemySkillFrames.isEmpty()) {
-            drawCenteredSkillFrame(g2, activeEnemySkillFrames.get(enemySkillFrameIndex),
-                p1SpriteX - 70, p1SpriteY,
-                    getPlayerDrawWidth(), getPlayerDrawHeight(), false);
+            drawAnchoredSkillFrame(g2, activeEnemySkillFrames.get(enemySkillFrameIndex),
+                getPlayerFeetAnchorX(), getPlayerFeetAnchorY(),
+                getEnemyDrawWidth(), getEnemyDrawHeight(), false);
         }
+        
 
         // Projectile
         if (isProjectileAnimating && !activeProjectileFrames.isEmpty()) {
@@ -834,6 +843,7 @@ public class ArcadeGamePanel extends JPanel {
     private void maybeTriggerBotTurn() {
         if (gameMode != GameMode.PVB || isP1Turn) return;
         if (p1HP <= 0 || p2HP <= 0) return;
+        if (isPlayerSkillAnimating || isProjectileAnimating) return;  // Don't interrupt player animation
 
         botIsThinking = true;
         setPlayerButtonsEnabled(false);
@@ -1264,9 +1274,12 @@ public class ArcadeGamePanel extends JPanel {
             if (messageOverlay == null || !messageOverlay.isAnimating()) {
                 if (p1HP > 0 && p2HP > 0) {
                     updateGameState();
+                    maybeTriggerBotTurn();  // Trigger bot turn after animations complete
                 }
             }
         }
+        // Ensure idle timers are running after animations complete
+        ensureIdleTimersRunning();
     }
 
     private boolean isNatureDefenseFormActive(boolean isPlayerOne) {
@@ -1506,23 +1519,56 @@ public class ArcadeGamePanel extends JPanel {
         return isWindWizardAttack3(isPlayerOne);
     }
 
-    private void drawCenteredSkillFrame(Graphics2D g2,
+    private boolean isWindWizardSkill2(boolean isPlayerOne) {
+        CharacterDef actor = isPlayerOne ? currentPlayerDef : currentEnemyDef;
+        int activeSkillID = isPlayerOne ? activePlayerSkillID : activeEnemySkillID;
+        return actor != null && "Wind Wizard".equalsIgnoreCase(actor.name) && activeSkillID == 2;
+    }
+
+    private void drawAnchoredSkillFrame(Graphics2D g2,
                                         BufferedImage frame,
-                                        int spriteX,
-                                        int spriteY,
-                                        int spriteWidth,
-                                        int spriteHeight,
+                                        int targetFeetX,
+                                        int targetFeetY,
+                        int skillMaxDrawWidth,
+                                        int skillDrawHeight,
                                         boolean mirror) {
         if (frame == null) return;
-        int drawHeight = spriteHeight;
-        int drawWidth = getSkillDrawWidth(frame, drawHeight, spriteWidth);
-        int x = spriteX + (spriteWidth - drawWidth) / 2;
-        int y = spriteY + (spriteHeight - drawHeight) / 2;
+        int sourceX = 0;
+        int sourceY = 0;
+        int sourceW = Math.max(1, frame.getWidth());
+        int sourceH = Math.max(1, frame.getHeight());
+        double scale = Math.min(
+            Math.max(1, skillMaxDrawWidth) / (double) sourceW,
+            Math.max(1, skillDrawHeight) / (double) sourceH
+        ) * WIND_SKILL3_SCALE;
+        int drawWidth = Math.max(1, (int) Math.round(sourceW * scale));
+        int drawHeight = Math.max(1, (int) Math.round(sourceH * scale));
+        int directionalOffsetX = mirror ? WIND_SKILL3_FEET_OFFSET_X : -WIND_SKILL3_FEET_OFFSET_X;
+        int x = targetFeetX - (drawWidth / 2) + directionalOffsetX;
+        int y = targetFeetY - drawHeight + WIND_SKILL3_FEET_OFFSET_Y;
         if (mirror) {
-            g2.drawImage(frame, x + drawWidth, y, x, y + drawHeight, 0, 0, frame.getWidth(), frame.getHeight(), this);
+            g2.drawImage(frame, x + drawWidth, y, x, y + drawHeight,
+                    sourceX, sourceY, sourceX + sourceW, sourceY + sourceH, this);
         } else {
-            g2.drawImage(frame, x, y, drawWidth, drawHeight, this);
+            g2.drawImage(frame, x, y, x + drawWidth, y + drawHeight,
+                    sourceX, sourceY, sourceX + sourceW, sourceY + sourceH, this);
         }
+    }
+
+    private int getPlayerFeetAnchorX() {
+        return scaleMapXToPanel(p1SpawnFeetMapX);
+    }
+
+    private int getPlayerFeetAnchorY() {
+        return scaleMapYToPanel(p1SpawnFeetMapY);
+    }
+
+    private int getEnemyFeetAnchorX() {
+        return scaleMapXToPanel(p2SpawnFeetMapX);
+    }
+
+    private int getEnemyFeetAnchorY() {
+        return scaleMapYToPanel(p2SpawnFeetMapY);
     }
 
     private void startProjectileAnimation(boolean isPlayerOne, int skillID, CharacterDef.ProjectileDef overrideProjectileDef, Runnable onImpactStart, Runnable onComplete) {
@@ -1744,9 +1790,12 @@ public class ArcadeGamePanel extends JPanel {
             if (messageOverlay == null || !messageOverlay.isAnimating()) {
                 if (p1HP > 0 && p2HP > 0) {
                     updateGameState();
+                    maybeTriggerBotTurn();  // Trigger bot turn after animations complete
                 }
             }
         }
+        // Ensure idle timers are running after animations complete
+        ensureIdleTimersRunning();
     }
 
     private void scheduleHurtTimeline(boolean attackerIsPlayerOne, int skillID) {
@@ -1863,6 +1912,27 @@ public class ArcadeGamePanel extends JPanel {
             if (enemyHurtFlashTimer  != null) { enemyHurtFlashTimer.stop();  enemyHurtFlashTimer  = null; }
             isEnemyHurtAnimating = false; enemyHurtFrameIndex = 0;
             enemyHurtFlashing = false;
+        }
+        // Ensure idle timers may resume after hurt animations
+        ensureIdleTimersRunning();
+    }
+
+    private void ensureIdleTimersRunning() {
+        if ((playerTimer == null || !playerTimer.isRunning()) && !playerFrames.isEmpty() && p1HP > 0) {
+            if (playerTimer != null) try { playerTimer.stop(); } catch (Exception ignored) {}
+            playerTimer = new Timer(currentPlayerDef != null ? currentPlayerDef.idleAnimation.frameDelayMs : DEFAULT_IDLE_DELAY_MS, e -> {
+                playerFrameIndex = (playerFrameIndex + 1) % Math.max(1, playerFrames.size());
+                repaint();
+            });
+            playerTimer.start();
+        }
+        if ((enemyTimer == null || !enemyTimer.isRunning()) && !enemyFrames.isEmpty() && p2HP > 0) {
+            if (enemyTimer != null) try { enemyTimer.stop(); } catch (Exception ignored) {}
+            enemyTimer = new Timer(currentEnemyDef != null ? currentEnemyDef.idleAnimation.frameDelayMs : DEFAULT_IDLE_DELAY_MS, e -> {
+                enemyFrameIndex = (enemyFrameIndex + 1) % Math.max(1, enemyFrames.size());
+                repaint();
+            });
+            enemyTimer.start();
         }
     }
 
