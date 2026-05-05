@@ -1,5 +1,6 @@
 package assets.Utility;
 
+import assets.Utility.ButtonTextRenderer;
 import assets.Utility.FontManager;
 import engine.GameWindow;
 import engine.SoundManager;
@@ -10,7 +11,17 @@ import java.awt.*;
 public class CreditsButton {
 
     public JButton createCreditsButton(GameWindow window, SoundManager sound) {
-        JButton creditsButton = new JButton("CREDITS");
+        final String label = "CREDITS";
+        JButton creditsButton = new JButton("") {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                ButtonTextRenderer.drawCenteredText(g2, this, label, 3);
+                g2.dispose();
+            }
+        };
 
         creditsButton.setFont(FontManager.getFont(24f));
         creditsButton.setForeground(Color.WHITE);

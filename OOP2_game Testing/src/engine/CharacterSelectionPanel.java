@@ -739,7 +739,6 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
     //PLAYS THE MUSIC
     public void playMusic(int i) {
         bgmCharacterSelection.setFile(i);
-        bgmCharacterSelection.play();
         bgmCharacterSelection.loop();
     }
 

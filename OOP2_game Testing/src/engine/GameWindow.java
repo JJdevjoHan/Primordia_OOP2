@@ -42,6 +42,7 @@ public class GameWindow extends JFrame {
     public void showMenu(){
 
         layout.show(container,"MENU");
+        playMenuMusic(6);
     }
 
     public void showGamePanel(){
@@ -119,7 +120,6 @@ public class GameWindow extends JFrame {
 
     public void playMenuMusic(int i) {
         menuBGM.setFile(i);
-        menuBGM.play();
         menuBGM.loop();
     }
 

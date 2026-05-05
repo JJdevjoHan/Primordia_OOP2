@@ -1,7 +1,9 @@
 package assets.Utility;
 
-import engine.GameMode;
+import engine.ArcadeGamePanel;
+import engine.GamePanel;
 import engine.GameWindow;
+import engine.SurivivalGamePanel;
 
 import javax.swing.*;
 import java.awt.*;
@@ -31,6 +33,13 @@ public class BackButton {
 
             if (confirm == JOptionPane.YES_OPTION) {
                 System.out.println("Switching to menu...");
+                if (panel instanceof GamePanel gamePanel) {
+                    gamePanel.stopMusic();
+                } else if (panel instanceof SurivivalGamePanel survivalGamePanel) {
+                    survivalGamePanel.stopMusic();
+                } else if (panel instanceof ArcadeGamePanel arcadeGamePanel) {
+                    arcadeGamePanel.stopMusic();
+                }
                 SwingUtilities.invokeLater(() -> window.showMenu());
             }
         });
