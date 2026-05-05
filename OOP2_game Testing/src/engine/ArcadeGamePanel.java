@@ -1260,9 +1260,7 @@ public class ArcadeGamePanel extends JPanel {
         if (allowTurnResume
                 && !isPlayerSkillAnimating
                 && !isEnemySkillAnimating
-                && !isProjectileAnimating
-                && !isPlayerHurtAnimating
-                && !isEnemyHurtAnimating) {
+                && !isProjectileAnimating) {
             if (messageOverlay == null || !messageOverlay.isAnimating()) {
                 if (p1HP > 0 && p2HP > 0) {
                     updateGameState();
@@ -1742,9 +1740,7 @@ public class ArcadeGamePanel extends JPanel {
         if (allowTurnResume
                 && !isPlayerSkillAnimating
                 && !isEnemySkillAnimating
-                && !isProjectileAnimating
-                && !isPlayerHurtAnimating
-                && !isEnemyHurtAnimating) {
+                && !isProjectileAnimating) {
             if (messageOverlay == null || !messageOverlay.isAnimating()) {
                 if (p1HP > 0 && p2HP > 0) {
                     updateGameState();

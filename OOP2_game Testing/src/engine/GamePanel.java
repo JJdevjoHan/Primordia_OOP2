@@ -319,21 +319,27 @@ public class GamePanel extends JPanel {
                     if (messageOverlay != null) {
                         messageOverlay.showRoundWin(p1WonRound, round);
                         messageOverlay.setOnHide(() -> {
-                            new Timer(100, e -> roundManager.advanceRound()).start();
+                            Timer advanceTimer = new Timer(100, e -> roundManager.advanceRound());
+                            advanceTimer.setRepeats(false);
+                            advanceTimer.start();
                         });
                     } else {
-                        new Timer(2000, e -> roundManager.advanceRound()).start();
+                        Timer advanceTimer = new Timer(2000, e -> roundManager.advanceRound());
+                        advanceTimer.setRepeats(false);
+                        advanceTimer.start();
                     }
 
                     // Update round indicators after a short delay
-                    new Timer(800, e -> {
+                    Timer roundsWonTimer = new Timer(800, e -> {
                         if (p1WonRound) {
                             p1RoundsWon.setWins(roundManager.getP1Wins());
                         } else {
                             p2RoundsWon.setWins(roundManager.getP2Wins());
                         }
                         repaint();
-                    }).start();
+                    });
+                    roundsWonTimer.setRepeats(false);
+                    roundsWonTimer.start();
                 },
 
                 // MATCH END
@@ -1304,9 +1310,7 @@ public class GamePanel extends JPanel {
         if (allowTurnResume
                 && !isPlayerSkillAnimating
                 && !isEnemySkillAnimating
-                && !isProjectileAnimating
-                && !isPlayerHurtAnimating
-                && !isEnemyHurtAnimating) {
+                && !isProjectileAnimating) {
             if (messageOverlay == null || !messageOverlay.isAnimating()) {
                 if (p1HP > 0 && p2HP > 0) {
                     updateGameState();
@@ -1842,9 +1846,7 @@ public class GamePanel extends JPanel {
         if (allowTurnResume
                 && !isPlayerSkillAnimating
                 && !isEnemySkillAnimating
-                && !isProjectileAnimating
-                && !isPlayerHurtAnimating
-                && !isEnemyHurtAnimating) {
+                && !isProjectileAnimating) {
             if (messageOverlay == null || !messageOverlay.isAnimating()) {
                 if (p1HP > 0 && p2HP > 0) {
                     updateGameState();
