@@ -231,7 +231,7 @@
           "hurtTriggerBufferSeconds": 0.22,
           "description": "Launches a condensed fireball that explodes on impact and heavily burns one target.",
           "manaCost": 28,
-          "power": 43,
+          "power": 100,
           "cooldownTurns": 0,
           "target": "single_enemy"
         }

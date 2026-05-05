@@ -74,6 +74,13 @@ public class BattleMessageOverlay extends JPanel {
         startAnimation(isKO ? MessageType.KO_DEFEAT : MessageType.VICTORY);
     }
 
+    /** Show custom KO message for Survival mode. */
+    public void showSurvivalKO(boolean isKO) {
+        isPlayerOneMatchWin = false;
+        displayText = isKO ? "YOU LOSE" : "Victory";
+        startAnimation(isKO ? MessageType.KO_DEFEAT : MessageType.VICTORY);
+    }
+
     /** Start the full fade-in/hold/fade-out cycle. */
     private void startAnimation(MessageType type) {
         state = State.FADE_IN;
@@ -186,28 +193,73 @@ public class BattleMessageOverlay extends JPanel {
         if (getWidth() < 900) fontSize = 48;
         if (getWidth() < 600) fontSize = 38;
 
-        Font useFont = messageFont.deriveFont(Font.BOLD, fontSize * Math.min(getHeight() / 500f, 1.3f));
-        g2.setFont(useFont);
+        // Check if this is a survival KO message (contains "YOU LOSE")
+        if (displayText.contains("YOU LOSE")) {
+            // Render as two lines: "YOU LOSE" at full size, "AI WINS" smaller below
+            Font mainLineFont = messageFont.deriveFont(Font.BOLD, fontSize * Math.min(getHeight() / 500f, 1.3f));
+            Font smallLineFont = messageFont.deriveFont(Font.BOLD, fontSize * 0.6f * Math.min(getHeight() / 500f, 1.3f));
+            
+            g2.setFont(mainLineFont);
+            FontMetrics fmMain = g2.getFontMetrics();
+            int mainTextW = fmMain.stringWidth("YOU LOSE");
+            int mainTextH = fmMain.getAscent();
+            int mainX = (getWidth() - mainTextW) / 2;
+            int mainY = (getHeight() - mainTextH) / 2 - 20;
+            
+            // Shadow for main line
+            g2.setColor(new Color(0, 0, 0, (int) (180 * alpha)));
+            g2.drawString("YOU LOSE", mainX + 4, mainY + 4);
+            
+            // Main text color for main line
+            float textAlpha = Math.min(1.0f, alpha * 1.2f);
+            Color mainColor = new Color(
+                    textColor.getRed(),
+                    textColor.getGreen(),
+                    textColor.getBlue(),
+                    (int) (textColor.getAlpha() * textAlpha));
+            g2.setColor(mainColor);
+            g2.drawString("YOU LOSE", mainX, mainY);
+            
+            // Now render "AI WINS" smaller below
+            g2.setFont(smallLineFont);
+            FontMetrics fmSmall = g2.getFontMetrics();
+            int smallTextW = fmSmall.stringWidth("AI WINS");
+            int smallTextH = fmSmall.getAscent();
+            int smallX = (getWidth() - smallTextW) / 2;
+            int smallY = mainY + mainTextH + 15;
+            
+            // Shadow for small line
+            g2.setColor(new Color(0, 0, 0, (int) (180 * alpha)));
+            g2.drawString("AI WINS", smallX + 4, smallY + 4);
+            
+            // Small text color
+            g2.setColor(mainColor);
+            g2.drawString("AI WINS", smallX, smallY);
+        } else {
+            // Original single-line rendering
+            Font useFont = messageFont.deriveFont(Font.BOLD, fontSize * Math.min(getHeight() / 500f, 1.3f));
+            g2.setFont(useFont);
 
-        FontMetrics fm = g2.getFontMetrics();
-        int textW = fm.stringWidth(displayText);
-        int textH = fm.getAscent();
-        int x = (getWidth()  - textW) / 2;
-        int y = (getHeight() + textH) / 2;
+            FontMetrics fm = g2.getFontMetrics();
+            int textW = fm.stringWidth(displayText);
+            int textH = fm.getAscent();
+            int x = (getWidth()  - textW) / 2;
+            int y = (getHeight() + textH) / 2;
 
-        // Shadow
-        g2.setColor(new Color(0, 0, 0, (int) (180 * alpha)));
-        g2.drawString(displayText, x + 4, y + 4);
+            // Shadow
+            g2.setColor(new Color(0, 0, 0, (int) (180 * alpha)));
+            g2.drawString(displayText, x + 4, y + 4);
 
-        // Main text color
-        float textAlpha = Math.min(1.0f, alpha * 1.2f);
-        Color mainColor = new Color(
-                textColor.getRed(),
-                textColor.getGreen(),
-                textColor.getBlue(),
-                (int) (textColor.getAlpha() * textAlpha));
-        g2.setColor(mainColor);
-        g2.drawString(displayText, x, y);
+            // Main text color
+            float textAlpha = Math.min(1.0f, alpha * 1.2f);
+            Color mainColor = new Color(
+                    textColor.getRed(),
+                    textColor.getGreen(),
+                    textColor.getBlue(),
+                    (int) (textColor.getAlpha() * textAlpha));
+            g2.setColor(mainColor);
+            g2.drawString(displayText, x, y);
+        }
 
         // -- 3) Optional extra line for match result --
         if (state == State.HOLD && (displayText.equals("Victory") || displayText.equals("Defeat")
@@ -222,10 +274,11 @@ public class BattleMessageOverlay extends JPanel {
             FontMetrics fm2 = g2.getFontMetrics();
             int extraW = fm2.stringWidth(extra);
             int extraX = (getWidth() - extraW) / 2;
-            int extraY = y + fm2.getAscent() + 12;
+            int extraY = (getHeight() + fontSize) / 2 + fm2.getAscent() + 12;
 
             g2.setColor(new Color(0, 0, 0, (int) (140 * alpha)));
             g2.drawString(extra, extraX + 2, extraY + 2);
+            float textAlpha = Math.min(1.0f, alpha * 1.2f);
             g2.setColor(new Color(200, 180, 150, (int) (220 * textAlpha)));
             g2.drawString(extra, extraX, extraY);
         }

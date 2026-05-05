@@ -166,6 +166,9 @@ public class SurivivalGamePanel extends JPanel {
 
     // Survival score (rounds use RoundManager just like GamePanel)
     private int survivalScore = 0;
+    // Survival mode internal round counter (each encounter = 1 round)
+    private int survivalEncounter = 1;
+    private boolean survivalActive = false;
 
     private boolean botIsThinking = false;
 
@@ -376,7 +379,14 @@ public class SurivivalGamePanel extends JPanel {
         refreshSkillButtons();
         repositionUI();
         updateGameState();
-        roundManager.startMatch();
+        // For survival, we'll manage encounters continuously without using RoundManager's match end rules
+        if (gameMode == GameMode.SURVIVAL) {
+            survivalEncounter = 1;
+            survivalActive = true;
+            startSurvivalEncounter(survivalEncounter);
+        } else {
+            roundManager.startMatch();
+        }
         survivalBGM.setFile(9);
         survivalBGM.loop();
         messageOverlay = new assets.Utility.BattleMessageOverlay(FontManager.getFont(48));
@@ -844,8 +854,70 @@ public class SurivivalGamePanel extends JPanel {
         setEnemyCharacter(newEnemyIdx);
     }
 
+    // Start a survival encounter (one round = one enemy). This handles setup and UI.
+    private void startSurvivalEncounter(int encounterNumber) {
+        survivalEncounter = encounterNumber;
+        resetNatureDefenseForms();
+        if (encounterNumber > 1) {
+            p1HP = Math.min(100, p1HP + SURVIVAL_ROUND_HEAL_AMOUNT);
+            pickNewSurvivalEnemy();
+        } else {
+            p1HP = 100;
+        }
+        p2HP = 100;
+        p1MP = MAX_MP;
+        p2MP = MAX_MP;
+        isP1Turn = true;
+        updateGameState();
+        repaint();
+        if (messageOverlay != null) messageOverlay.showRoundStart(encounterNumber);
+    }
+
+    private void scheduleDelayedSurvivalEncounterEnd(boolean playerWon) {
+        // Calculate death animation duration
+        CharacterDef deadCharacter = playerWon ? currentEnemyDef : currentPlayerDef;
+        List<BufferedImage> deadFrames = playerWon ? enemyDeadFrames : playerDeadFrames;
+        int frameDelay = (deadCharacter != null && deadCharacter.deadAnimation != null)
+                ? deadCharacter.deadAnimation.frameDelayMs
+                : 150;
+        int deathAnimationDurationMs = deadFrames.size() * frameDelay + 500; // Add 500ms buffer for visibility
+        
+        Timer delayTimer = new Timer(deathAnimationDurationMs, null);
+        delayTimer.setRepeats(false);
+        delayTimer.addActionListener(e -> handleSurvivalEncounterEnd(playerWon));
+        delayTimer.start();
+    }
+
+    private void handleSurvivalEncounterEnd(boolean playerWon) {
+        // Award points for a win and immediately start the next encounter.
+        if (playerWon) {
+            int hpBonus    = p1HP;
+            int roundBonus = survivalEncounter * 10;
+            survivalScore += 100 + hpBonus + roundBonus;
+            scoreLabel.setText("Score: " + survivalScore);
+            // Immediately proceed to next encounter
+            survivalEncounter++;
+            startSurvivalEncounter(survivalEncounter);
+        } else {
+            // Player lost — end survival run and show final screen
+            survivalActive = false;
+            stopTurnTimer();
+            String msg = "Game Over!  Final Score: " + survivalScore;
+            turnLabel.setText(msg);
+            skillButtonPanel.setVisible(false);
+            boolean isKO = (p1HP <= 0 || p2HP <= 0);
+            if (messageOverlay != null) {
+                messageOverlay.showSurvivalKO(isKO);
+            }
+        }
+    }
+
     public void executeSkill(int skillID) {
-        if (!roundManager.isRoundInProgress()) return;
+        if (gameMode == GameMode.SURVIVAL) {
+            if (!survivalActive) return;
+        } else {
+            if (!roundManager.isRoundInProgress()) return;
+        }
         if (p1HP <= 0 || p2HP <= 0) return;
         if (botIsThinking) return;
 
@@ -889,15 +961,15 @@ public class SurivivalGamePanel extends JPanel {
 
         if (isP1Turn) {
             switch (skillID) {
-                case 1 -> p2HP = Math.max(0, p2HP - 10);
+                case 1 -> p2HP = Math.max(0, p2HP - Math.max(0, actor != null ? actor.getSkillPower(skillID) : 0));
                 case 2 -> p1HP = Math.min(100, p1HP + 10);
-                case 3 -> p2HP = Math.max(0, p2HP - 25);
+                case 3 -> p2HP = Math.max(0, p2HP - Math.max(0, actor != null ? actor.getSkillPower(skillID) : 0));
             }
         } else {
             switch (skillID) {
-                case 1 -> p1HP = Math.max(0, p1HP - 10);
+                case 1 -> p1HP = Math.max(0, p1HP - Math.max(0, actor != null ? actor.getSkillPower(skillID) : 0));
                 case 2 -> p2HP = Math.min(100, p2HP + 10);
-                case 3 -> p1HP = Math.max(0, p1HP - 25);
+                case 3 -> p1HP = Math.max(0, p1HP - Math.max(0, actor != null ? actor.getSkillPower(skillID) : 0));
             }
         }
 
@@ -1011,7 +1083,7 @@ public class SurivivalGamePanel extends JPanel {
 
     private BotAI.Difficulty scaledDifficulty() {
         if (gameMode != GameMode.SURVIVAL) return difficulty;
-        int round = roundManager.getCurrentRound();
+        int round = survivalEncounter; // each survival encounter increments this
         return switch (difficulty) {
             case EASY   -> (round >= 5) ? BotAI.Difficulty.NORMAL : BotAI.Difficulty.EASY;
             case NORMAL -> (round >= 6) ? BotAI.Difficulty.HARD   : BotAI.Difficulty.NORMAL;
@@ -1048,19 +1120,24 @@ public class SurivivalGamePanel extends JPanel {
 
         if (p1HP <= 0 || p2HP <= 0) {
             stopTurnTimer();
-            if (!roundManager.isMatchOver()) {
+            if (gameMode == GameMode.SURVIVAL) {
                 boolean p1WonRound = p2HP <= 0;
-                roundManager.recordRoundResult(p1WonRound);
+                // In survival, delay encounter end until death animation completes
+                scheduleDelayedSurvivalEncounterEnd(p1WonRound);
+            } else {
+                if (!roundManager.isMatchOver()) {
+                    boolean p1WonRound = p2HP <= 0;
+                    roundManager.recordRoundResult(p1WonRound);
+                }
             }
             return;
         }
 
         // Update turn label
         if (gameMode == GameMode.SURVIVAL) {
-            String roundInfo = "Round " + roundManager.getCurrentRound()
-                    + " | Score: " + survivalScore;
+            String roundInfo = "Round " + survivalEncounter + " | Score: " + survivalScore;
             turnLabel.setText(roundInfo + (botIsThinking ? " — BOT IS THINKING…"
-                    : isP1Turn ? " — YOUR TURN" : ""));
+                : isP1Turn ? " — YOUR TURN" : ""));
         } else if (gameMode == GameMode.PVB) {
             turnLabel.setText(isP1Turn
                     ? (botIsThinking ? "BOT IS THINKING…" : "YOUR TURN")
