@@ -36,9 +36,10 @@ public class SurivivalGamePanel extends JPanel {
     private static final int DEFAULT_HURT_DELAY_MS    = 90;
     private static final int POST_ATTACK_HURT_MS      = 600;
     private static final int BARS_TOP_Y               = 84;
-    private static final int WIND_SKILL2_P2_LEFT_NUDGE_X = 60;
-    private static final int WIND_SKILL3_FEET_OFFSET_Y   = 0;
-    private static final double WIND_SKILL3_SCALE        = 1.18;
+    private static final int WIND_SKILL2_P2_LEFT_NUDGE_X = 400;
+    private static final int WIND_SKILL3_FEET_OFFSET_X = 80;
+    private static final int WIND_SKILL3_FEET_OFFSET_Y = 0;
+    private static final double WIND_SKILL3_SCALE = 2.2;
     private static final int NATURE_FORM_FREEZE_FRAME_ONE_BASED = 5;
     private static final int NATURE_FORM_RELEASE_START_FRAME_ONE_BASED = 6;
     private static final String NATURE_SHOT_SHEET_PATH = "/src/assets/spritesheet/Nature Wizard/Shot-Sheet.png";
@@ -968,6 +969,7 @@ public class SurivivalGamePanel extends JPanel {
         boolean isBotMode = (gameMode == GameMode.PVB || gameMode == GameMode.SURVIVAL);
         if (!isBotMode || isP1Turn) return;
         if (p1HP <= 0 || p2HP <= 0) return;
+        if (isPlayerSkillAnimating || isProjectileAnimating) return;  // Don't interrupt player animation
 
         botIsThinking = true;
         setPlayerButtonsEnabled(false);
@@ -1442,8 +1444,30 @@ public class SurivivalGamePanel extends JPanel {
             if (messageOverlay == null || !messageOverlay.isAnimating()) {
                 if (p1HP > 0 && p2HP > 0) {
                     updateGameState();
+                    maybeTriggerBotTurn();  // Trigger bot turn after animations complete
                 }
             }
+        }
+        // Ensure idle timers are running after animations complete
+        ensureIdleTimersRunning();
+    }
+
+    private void ensureIdleTimersRunning() {
+        if ((playerTimer == null || !playerTimer.isRunning()) && !playerFrames.isEmpty() && p1HP > 0) {
+            if (playerTimer != null) try { playerTimer.stop(); } catch (Exception ignored) {}
+            playerTimer = new Timer(currentPlayerDef != null ? currentPlayerDef.idleAnimation.frameDelayMs : DEFAULT_IDLE_DELAY_MS, e -> {
+                playerFrameIndex = (playerFrameIndex + 1) % Math.max(1, playerFrames.size());
+                repaint();
+            });
+            playerTimer.start();
+        }
+        if ((enemyTimer == null || !enemyTimer.isRunning()) && !enemyFrames.isEmpty() && p2HP > 0) {
+            if (enemyTimer != null) try { enemyTimer.stop(); } catch (Exception ignored) {}
+            enemyTimer = new Timer(currentEnemyDef != null ? currentEnemyDef.idleAnimation.frameDelayMs : DEFAULT_IDLE_DELAY_MS, e -> {
+                enemyFrameIndex = (enemyFrameIndex + 1) % Math.max(1, enemyFrames.size());
+                repaint();
+            });
+            enemyTimer.start();
         }
     }
 
@@ -1708,7 +1732,8 @@ public class SurivivalGamePanel extends JPanel {
         ) * WIND_SKILL3_SCALE;
         int drawWidth = Math.max(1, (int) Math.round(sourceW * scale));
         int drawHeight = Math.max(1, (int) Math.round(sourceH * scale));
-        int x = targetFeetX - (drawWidth / 2);
+        int directionalOffsetX = mirror ? WIND_SKILL3_FEET_OFFSET_X : -WIND_SKILL3_FEET_OFFSET_X;
+        int x = targetFeetX - (drawWidth / 2) + directionalOffsetX;
         int y = targetFeetY - drawHeight + WIND_SKILL3_FEET_OFFSET_Y;
         if (mirror) {
             g2.drawImage(frame, x + drawWidth, y, x, y + drawHeight,
@@ -1978,6 +2003,7 @@ public class SurivivalGamePanel extends JPanel {
             if (messageOverlay == null || !messageOverlay.isAnimating()) {
                 if (p1HP > 0 && p2HP > 0) {
                     updateGameState();
+                    maybeTriggerBotTurn();  // Trigger bot turn after animations complete
                 }
             }
         }

@@ -1317,6 +1317,29 @@ public class GamePanel extends JPanel {
                 }
             }
         }
+        // Ensure idle timers are running after skill animations complete
+        ensureIdleTimersRunning();
+    }
+
+    private void ensureIdleTimersRunning() {
+        // Player idle
+        if ((playerTimer == null || !playerTimer.isRunning()) && !playerFrames.isEmpty() && p1HP > 0) {
+            if (playerTimer != null) { try { playerTimer.stop(); } catch (Exception ignored) {} }
+            playerTimer = new Timer(currentPlayerDef != null ? currentPlayerDef.idleAnimation.frameDelayMs : DEFAULT_IDLE_DELAY_MS, e -> {
+                playerFrameIndex = (playerFrameIndex + 1) % Math.max(1, playerFrames.size());
+                repaint();
+            });
+            playerTimer.start();
+        }
+        // Enemy idle
+        if ((enemyTimer == null || !enemyTimer.isRunning()) && !enemyFrames.isEmpty() && p2HP > 0) {
+            if (enemyTimer != null) { try { enemyTimer.stop(); } catch (Exception ignored) {} }
+            enemyTimer = new Timer(currentEnemyDef != null ? currentEnemyDef.idleAnimation.frameDelayMs : DEFAULT_IDLE_DELAY_MS, e -> {
+                enemyFrameIndex = (enemyFrameIndex + 1) % Math.max(1, enemyFrames.size());
+                repaint();
+            });
+            enemyTimer.start();
+        }
     }
 
     private boolean isNatureDefenseFormActive(boolean isPlayerOne) {
