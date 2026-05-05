@@ -187,6 +187,12 @@ public class ArcadeGamePanel extends JPanel {
     private GameWindow   window;
     private RoundManager roundManager;
 
+    // Arcade mode tracking
+    private boolean isArcadeMode = false;
+    private List<Integer> arcadeOpponentIndices = new ArrayList<>();  // All opponents in order
+    private int currentArcadeOpponentIndex = 0;  // Current position in opponent list
+    private int arcadeWinsInRun = 0;  // Number of matches won so far in this run
+
     private final SoundManager arcadeBGM = new SoundManager();
     private JButton exitButton;
     private assets.Utility.BattleMessageOverlay messageOverlay;
@@ -309,16 +315,7 @@ public class ArcadeGamePanel extends JPanel {
 
                 // MATCH END
                 (p1WonMatch, p1Wins, p2Wins, totalRounds) -> {
-                    stopTurnTimer();
-                    String msg = gameMode == GameMode.PVB
-                            ? (p1WonMatch ? "YOU WIN!" : "BOT WINS!")
-                            : (p1WonMatch ? "PLAYER 1 WINS MATCH!" : "PLAYER 2 WINS MATCH!");
-                    turnLabel.setText(msg);
-                    skillButtonPanel.setVisible(false);
-                    boolean isKO = (p1HP <= 0 || p2HP <= 0);
-                    if (messageOverlay != null) {
-                        messageOverlay.showMatchResult(p1WonMatch, isKO);
-                    }
+                    handleArcadeMatchEnd(p1WonMatch, p1Wins, p2Wins, totalRounds);
                 });
 
         refreshSkillButtons();
@@ -329,6 +326,119 @@ public class ArcadeGamePanel extends JPanel {
         arcadeBGM.loop();
         messageOverlay = new assets.Utility.BattleMessageOverlay(FontManager.getFont(48));
         add(messageOverlay);
+    }
+
+    /**
+     * Constructor for Arcade Mode with opponent list progression.
+     * Player must defeat all opponents sequentially. Each opponent win requires 2 round wins.
+     * Losing any match ends the run.
+     */
+    public ArcadeGamePanel(GameWindow window,
+                           int playerCharacterIndex,
+                           List<Integer> arcadeOpponentIndices,
+                           BotAI.Difficulty startingDifficulty) {
+        this(window,
+            playerCharacterIndex,
+            firstArcadeOpponentIndex(playerCharacterIndex, arcadeOpponentIndices),
+            GameMode.PVB,
+            startingDifficulty);
+        
+        // Initialize arcade mode
+        this.isArcadeMode = true;
+        this.arcadeOpponentIndices = new ArrayList<>(arcadeOpponentIndices);
+        this.currentArcadeOpponentIndex = 0;
+        this.arcadeWinsInRun = 0;
+        
+        updateArcadeModeUI();
+    }
+
+    private void handleArcadeMatchEnd(boolean p1WonMatch, int p1Wins, int p2Wins, int totalRounds) {
+        stopTurnTimer();
+        
+        if (!isArcadeMode) {
+            // Regular match mode
+            String msg = gameMode == GameMode.PVB
+                    ? (p1WonMatch ? "YOU WIN!" : "BOT WINS!")
+                    : (p1WonMatch ? "PLAYER 1 WINS MATCH!" : "PLAYER 2 WINS MATCH!");
+            turnLabel.setText(msg);
+            skillButtonPanel.setVisible(false);
+            boolean isKO = (p1HP <= 0 || p2HP <= 0);
+            if (messageOverlay != null) {
+                messageOverlay.showMatchResult(p1WonMatch, isKO);
+            }
+        } else {
+            // Arcade mode progression logic
+            if (p1WonMatch) {
+                // Player won — advance to next opponent
+                arcadeWinsInRun++;
+                currentArcadeOpponentIndex++;
+                
+                if (currentArcadeOpponentIndex >= arcadeOpponentIndices.size()) {
+                    // Player beat all opponents — show victory screen
+                    scheduleArcadeTransition(() -> {
+                        turnLabel.setText("ARCADE COMPLETE! WINS: " + arcadeWinsInRun);
+                        skillButtonPanel.setVisible(false);
+                        if (messageOverlay != null) {
+                            messageOverlay.showMatchResult(true, false);
+                        }
+                    });
+                } else {
+                    // Load next opponent
+                    scheduleArcadeTransition(() -> {
+                        int nextOpponentIndex = arcadeOpponentIndices.get(currentArcadeOpponentIndex);
+                        int nextPlayerIndex = sanitizeCharacterIndex(currentPlayerDef != null ? ALL_CHARACTERS.indexOf(currentPlayerDef) : 0, -1);
+
+                        // Reset for next match
+                        setCharacters(nextPlayerIndex, nextOpponentIndex);
+                        p1RoundsWon.setWins(0);
+                        p2RoundsWon.setWins(0);
+                        roundManager.reset();
+
+                        updateArcadeModeUI();
+
+                        // Start next match after the enemy death animation has finished
+                        roundManager.startMatch();
+                    });
+                }
+            } else {
+                // Player lost — end arcade run
+                scheduleArcadeTransition(() -> {
+                    turnLabel.setText("ARCADE RUN ENDED. WINS: " + arcadeWinsInRun);
+                    skillButtonPanel.setVisible(false);
+                    boolean isKO = (p1HP <= 0 || p2HP <= 0);
+                    if (messageOverlay != null) {
+                        messageOverlay.showMatchResult(false, isKO);
+                    }
+                });
+            }
+        }
+    }
+
+    private void scheduleArcadeTransition(Runnable action) {
+        int delayMs = getEnemyDeathAnimationDurationMs();
+        Timer transitionTimer = new Timer(delayMs, e -> {
+            ((Timer) e.getSource()).stop();
+            action.run();
+        });
+        transitionTimer.setRepeats(false);
+        transitionTimer.start();
+    }
+
+    private int getEnemyDeathAnimationDurationMs() {
+        int frameDelay = (currentEnemyDef != null && currentEnemyDef.deadAnimation != null)
+                ? currentEnemyDef.deadAnimation.frameDelayMs
+                : DEFAULT_DEAD_DELAY_MS;
+        int frameCount = Math.max(1, enemyDeadFrames.size());
+        return (frameCount * frameDelay) + 250;
+    }
+
+    private void updateArcadeModeUI() {
+        if (!isArcadeMode) return;
+        
+        int totalOpponents = arcadeOpponentIndices.size();
+        int currentMatch = currentArcadeOpponentIndex + 1;
+        String arcadeInfo = "ARCADE: " + currentMatch + "/" + totalOpponents + " | WINS: " + arcadeWinsInRun;
+        turnLabel.setText(arcadeInfo);
     }
 
     @Override
@@ -460,6 +570,19 @@ public class ArcadeGamePanel extends JPanel {
         if (requested >= 0 && requested < ALL_CHARACTERS.size()) return requested;
         if (fallback  >= 0 && fallback  < ALL_CHARACTERS.size()) return fallback;
         return 0;
+    }
+
+    private static int firstArcadeOpponentIndex(int playerCharacterIndex, List<Integer> arcadeOpponentIndices) {
+        if (arcadeOpponentIndices != null && !arcadeOpponentIndices.isEmpty()) {
+            return arcadeOpponentIndices.get(0);
+        }
+        if (ALL_CHARACTERS.isEmpty()) {
+            return 0;
+        }
+        int fallback = playerCharacterIndex >= 0 && playerCharacterIndex < ALL_CHARACTERS.size()
+                ? playerCharacterIndex
+                : 0;
+        return (fallback + 1) % ALL_CHARACTERS.size();
     }
 
     private JPanel createSkillUI() {
@@ -765,15 +888,15 @@ public class ArcadeGamePanel extends JPanel {
 
         if (isP1Turn) {
             switch (skillID) {
-                case 1 -> p2HP = Math.max(0, p2HP - 10);
+                case 1 -> p2HP = Math.max(0, p2HP - Math.max(0, actor != null ? actor.getSkillPower(skillID) : 0));
                 case 2 -> p1HP = Math.min(100, p1HP + 10);
-                case 3 -> p2HP = Math.max(0, p2HP - 25);
+                case 3 -> p2HP = Math.max(0, p2HP - Math.max(0, actor != null ? actor.getSkillPower(skillID) : 0));
             }
         } else {
             switch (skillID) {
-                case 1 -> p1HP = Math.max(0, p1HP - 10);
+                case 1 -> p1HP = Math.max(0, p1HP - Math.max(0, actor != null ? actor.getSkillPower(skillID) : 0));
                 case 2 -> p2HP = Math.min(100, p2HP + 10);
-                case 3 -> p1HP = Math.max(0, p1HP - 25);
+                case 3 -> p1HP = Math.max(0, p1HP - Math.max(0, actor != null ? actor.getSkillPower(skillID) : 0));
             }
         }
 

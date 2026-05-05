@@ -220,6 +220,9 @@ public class CharacterDef {
     public final String skill1Type;
     public final String skill2Type;
     public final String skill3Type;
+    public final int skill1Power;
+    public final int skill2Power;
+    public final int skill3Power;
     public final String skill1SpritePath;
     public final String skill1FollowUpSpritePath;
     public final String skill2SpritePath;
@@ -268,6 +271,31 @@ public class CharacterDef {
                         String skill1Name, String skill2Name, String skill3Name,
                         String skill1Description, String skill2Description, String skill3Description,
                         String skill1Type, String skill2Type, String skill3Type,
+                        int skill1Power, int skill2Power, int skill3Power,
+                        String skill1SpritePath, String skill1FollowUpSpritePath, String skill2SpritePath, String skill3SpritePath,
+                        int skill1ForwardOffsetX, int skill2ForwardOffsetX, int skill3ForwardOffsetX,
+                        double skill1HurtTriggerBufferSeconds, double skill2HurtTriggerBufferSeconds, double skill3HurtTriggerBufferSeconds,
+                        AnimationDef idleAnimation, AnimationDef hurtAnimation, AnimationDef deadAnimation,
+                        int drawWidth, int drawHeight) {
+        this(name, backstory,
+                skill1Name, skill2Name, skill3Name,
+                skill1Description, skill2Description, skill3Description,
+                skill1Type, skill2Type, skill3Type,
+                skill1Power, skill2Power, skill3Power,
+                skill1SpritePath, skill1FollowUpSpritePath, skill2SpritePath, skill3SpritePath,
+                skill1ForwardOffsetX, skill2ForwardOffsetX, skill3ForwardOffsetX,
+                skill1HurtTriggerBufferSeconds, skill2HurtTriggerBufferSeconds, skill3HurtTriggerBufferSeconds,
+                idleAnimation, hurtAnimation, deadAnimation,
+                null, null, null,
+                null,
+                drawWidth, drawHeight);
+    }
+
+    public CharacterDef(String name,
+                        String backstory,
+                        String skill1Name, String skill2Name, String skill3Name,
+                        String skill1Description, String skill2Description, String skill3Description,
+                        String skill1Type, String skill2Type, String skill3Type,
                         String skill1SpritePath, String skill2SpritePath, String skill3SpritePath,
                         int skill1ForwardOffsetX, int skill2ForwardOffsetX, int skill3ForwardOffsetX,
                         double skill1HurtTriggerBufferSeconds, double skill2HurtTriggerBufferSeconds, double skill3HurtTriggerBufferSeconds,
@@ -291,6 +319,7 @@ public class CharacterDef {
                         String skill1Name, String skill2Name, String skill3Name,
                         String skill1Description, String skill2Description, String skill3Description,
                         String skill1Type, String skill2Type, String skill3Type,
+                        int skill1Power, int skill2Power, int skill3Power,
                         String skill1SpritePath, String skill1FollowUpSpritePath, String skill2SpritePath, String skill3SpritePath,
                         int skill1ForwardOffsetX, int skill2ForwardOffsetX, int skill3ForwardOffsetX,
                         double skill1HurtTriggerBufferSeconds, double skill2HurtTriggerBufferSeconds, double skill3HurtTriggerBufferSeconds,
@@ -309,6 +338,9 @@ public class CharacterDef {
         this.skill1Type = skill1Type;
         this.skill2Type = skill2Type;
         this.skill3Type = skill3Type;
+        this.skill1Power = skill1Power;
+        this.skill2Power = skill2Power;
+        this.skill3Power = skill3Power;
         this.skill1SpritePath = skill1SpritePath;
         this.skill1FollowUpSpritePath = skill1FollowUpSpritePath;
         this.skill2SpritePath = skill2SpritePath;
@@ -335,6 +367,7 @@ public class CharacterDef {
                         String skill1Name, String skill2Name, String skill3Name,
                         String skill1Description, String skill2Description, String skill3Description,
                         String skill1Type, String skill2Type, String skill3Type,
+                        int skill1Power, int skill2Power, int skill3Power,
                         String skill1SpritePath, String skill1FollowUpSpritePath, String skill2SpritePath, String skill3SpritePath,
                         int skill1ForwardOffsetX, int skill2ForwardOffsetX, int skill3ForwardOffsetX,
                         double skill1HurtTriggerBufferSeconds, double skill2HurtTriggerBufferSeconds, double skill3HurtTriggerBufferSeconds,
@@ -345,6 +378,7 @@ public class CharacterDef {
                 skill1Name, skill2Name, skill3Name,
                 skill1Description, skill2Description, skill3Description,
                 skill1Type, skill2Type, skill3Type,
+                skill1Power, skill2Power, skill3Power,
                     skill1SpritePath, skill1FollowUpSpritePath, skill2SpritePath, skill3SpritePath,
                 skill1ForwardOffsetX, skill2ForwardOffsetX, skill3ForwardOffsetX,
                 skill1HurtTriggerBufferSeconds, skill2HurtTriggerBufferSeconds, skill3HurtTriggerBufferSeconds,
@@ -352,6 +386,41 @@ public class CharacterDef {
                 skill1Projectile, skill2Projectile, skill3Projectile,
                 null,
                 drawWidth, drawHeight);
+    }
+
+    public CharacterDef(String name,
+                        String backstory,
+                        String skill1Name, String skill2Name, String skill3Name,
+                        String skill1Description, String skill2Description, String skill3Description,
+                        String skill1Type, String skill2Type, String skill3Type,
+                        String skill1SpritePath, String skill1FollowUpSpritePath, String skill2SpritePath, String skill3SpritePath,
+                        int skill1ForwardOffsetX, int skill2ForwardOffsetX, int skill3ForwardOffsetX,
+                        double skill1HurtTriggerBufferSeconds, double skill2HurtTriggerBufferSeconds, double skill3HurtTriggerBufferSeconds,
+                        AnimationDef idleAnimation, AnimationDef hurtAnimation, AnimationDef deadAnimation,
+                        ProjectileDef skill1Projectile, ProjectileDef skill2Projectile, ProjectileDef skill3Projectile,
+                        DefenseFormDef defenseForm,
+                        int drawWidth, int drawHeight) {
+        this(name, backstory,
+                skill1Name, skill2Name, skill3Name,
+                skill1Description, skill2Description, skill3Description,
+                skill1Type, skill2Type, skill3Type,
+                10, 10, 25,
+                skill1SpritePath, skill1FollowUpSpritePath, skill2SpritePath, skill3SpritePath,
+                skill1ForwardOffsetX, skill2ForwardOffsetX, skill3ForwardOffsetX,
+                skill1HurtTriggerBufferSeconds, skill2HurtTriggerBufferSeconds, skill3HurtTriggerBufferSeconds,
+                idleAnimation, hurtAnimation, deadAnimation,
+                skill1Projectile, skill2Projectile, skill3Projectile,
+                defenseForm,
+                drawWidth, drawHeight);
+    }
+
+    public int getSkillPower(int skillID) {
+        return switch (skillID) {
+            case 1 -> skill1Power;
+            case 2 -> skill2Power;
+            case 3 -> skill3Power;
+            default -> 0;
+        };
     }
 
     public String getSkillName(int skillID) {

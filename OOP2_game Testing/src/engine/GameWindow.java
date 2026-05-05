@@ -4,6 +4,8 @@ package engine;
 //Mag add rakog comments ari guys ugma duka na
 import javax.swing.*;
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class GameWindow extends JFrame {
 
@@ -57,6 +59,7 @@ public class GameWindow extends JFrame {
 
     public void showCharacterSelection(GameMode mode) {
         stopMenuMusic();
+        GamePanel.reloadCharacterDefs();
         CharacterSelectionPanel panel = new CharacterSelectionPanel(this, mode);
 
         container.add(panel, "CHAR_SELECT");
@@ -68,6 +71,7 @@ public class GameWindow extends JFrame {
     }
 
     public void startPvPMatch(int p1, int p2) {
+        GamePanel.reloadCharacterDefs();
 
         GamePanel panel = new GamePanel(this,p1, p2);
 
@@ -80,6 +84,7 @@ public class GameWindow extends JFrame {
     }
 
     public void startSurvivalMatch(int playerIndex) {
+        GamePanel.reloadCharacterDefs();
 
         int botIndex = (int)(Math.random() * GamePanel.ALL_CHARACTERS.size());
 
@@ -100,13 +105,17 @@ public class GameWindow extends JFrame {
     }
 
     public void startArcadeMatch(int playerIndex) {
-        int botIndex = (int)(Math.random() * GamePanel.ALL_CHARACTERS.size());
+        GamePanel.reloadCharacterDefs();
+        List<Integer> arcadeOpponents = new ArrayList<>();        for (int i = 0; i < GamePanel.ALL_CHARACTERS.size(); i++) {
+            if (i != playerIndex) {
+                arcadeOpponents.add(i);
+            }
+        }
 
         ArcadeGamePanel arcade = new ArcadeGamePanel(
                 this,
                 playerIndex,
-                botIndex,
-                GameMode.PVB,
+                arcadeOpponents,
                 BotAI.Difficulty.NORMAL
         );
 

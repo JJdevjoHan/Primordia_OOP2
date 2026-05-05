@@ -29,6 +29,9 @@ public final class CharacterDataLoader {
         public final String skill1Type;
         public final String skill2Type;
         public final String skill3Type;
+        public final int skill1Power;
+        public final int skill2Power;
+        public final int skill3Power;
         public final String skill1SpritePath;
         public final String skill1FollowUpSpritePath;
         public final String skill2SpritePath;
@@ -61,6 +64,9 @@ public final class CharacterDataLoader {
             String skill1Type,
             String skill2Type,
             String skill3Type,
+            int skill1Power,
+            int skill2Power,
+            int skill3Power,
             String skill1SpritePath,
             String skill1FollowUpSpritePath,
             String skill2SpritePath,
@@ -92,6 +98,9 @@ public final class CharacterDataLoader {
             this.skill1Type = skill1Type;
             this.skill2Type = skill2Type;
             this.skill3Type = skill3Type;
+            this.skill1Power = skill1Power;
+            this.skill2Power = skill2Power;
+            this.skill3Power = skill3Power;
             this.skill1SpritePath = skill1SpritePath;
             this.skill1FollowUpSpritePath = skill1FollowUpSpritePath;
             this.skill2SpritePath = skill2SpritePath;
@@ -153,6 +162,9 @@ public final class CharacterDataLoader {
                 String skill1Type = getSkillType(skills, 0, "damage");
                 String skill2Type = getSkillType(skills, 1, "defense");
                 String skill3Type = getSkillType(skills, 2, "damage");
+                int skill1Power = getSkillPower(skills, 0, 10);
+                int skill2Power = getSkillPower(skills, 1, 10);
+                int skill3Power = getSkillPower(skills, 2, 25);
                 CharacterDef.ProjectileDef skill1Projectile = getSkillProjectile(skills, 0);
                 CharacterDef.ProjectileDef skill2Projectile = getSkillProjectile(skills, 1);
                 CharacterDef.ProjectileDef skill3Projectile = getSkillProjectile(skills, 2);
@@ -190,6 +202,9 @@ public final class CharacterDataLoader {
                     skill1Type,
                     skill2Type,
                     skill3Type,
+                    skill1Power,
+                    skill2Power,
+                    skill3Power,
                     skill1SpritePath,
                     skill1FollowUpSpritePath,
                     skill2SpritePath,
@@ -436,6 +451,22 @@ public final class CharacterDataLoader {
             }
         }
         return 0.0;
+    }
+
+    private static int getSkillPower(List<?> skills, int index, int fallback) {
+        if (skills.size() <= index || !(skills.get(index) instanceof Map<?, ?> skillMap)) return fallback;
+        Object raw = skillMap.get("power");
+        if (raw instanceof Number number) {
+            return Math.max(0, number.intValue());
+        }
+        if (raw != null) {
+            try {
+                return Math.max(0, Integer.parseInt(String.valueOf(raw)));
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        }
+        return fallback;
     }
 
     private static String normalizeResourcePath(String path) {

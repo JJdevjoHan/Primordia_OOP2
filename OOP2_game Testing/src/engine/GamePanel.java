@@ -69,7 +69,7 @@ public class GamePanel extends JPanel {
     private int mapPixelHeight = screenHeight;
     
 
-    public static final List<CharacterDef> ALL_CHARACTERS = loadCharacterDefs();
+    public static List<CharacterDef> ALL_CHARACTERS = loadCharacterDefs();
 
     // Assets
     private Image backgroundImage;
@@ -806,15 +806,15 @@ public class GamePanel extends JPanel {
 
         if (isP1Turn) {
             switch (skillID) {
-                case 1 -> p2HP = Math.max(0, p2HP - 10);
+                case 1 -> p2HP = Math.max(0, p2HP - Math.max(0, actor != null ? actor.getSkillPower(skillID) : 0));
                 case 2 -> p1HP = Math.min(100, p1HP + 10);
-                case 3 -> p2HP = Math.max(0, p2HP - 25);
+                case 3 -> p2HP = Math.max(0, p2HP - Math.max(0, actor != null ? actor.getSkillPower(skillID) : 0));
             }
         } else {
             switch (skillID) {
-                case 1 -> p1HP = Math.max(0, p1HP - 10);
+                case 1 -> p1HP = Math.max(0, p1HP - Math.max(0, actor != null ? actor.getSkillPower(skillID) : 0));
                 case 2 -> p2HP = Math.min(100, p2HP + 10);
-                case 3 -> p1HP = Math.max(0, p1HP - 25);
+                case 3 -> p1HP = Math.max(0, p1HP - Math.max(0, actor != null ? actor.getSkillPower(skillID) : 0));
             }
         }
 
@@ -2045,6 +2045,10 @@ public class GamePanel extends JPanel {
             });
             enemyDeadTimer.start();
         }
+    }
+
+    public static void reloadCharacterDefs() {
+        ALL_CHARACTERS = loadCharacterDefs();
     }
 
     private static List<CharacterDef> loadCharacterDefs() {
