@@ -185,6 +185,7 @@ public class ArcadeGamePanel extends JPanel {
 
     private final SoundManager arcadeBGM = new SoundManager();
     private JButton exitButton;
+    private assets.Utility.BattleMessageOverlay messageOverlay;
 
     public ArcadeGamePanel() {
         this(new GameWindow(), 0, 1, GameMode.PVP, BotAI.Difficulty.NORMAL);
@@ -278,6 +279,9 @@ public class ArcadeGamePanel extends JPanel {
                     isP1Turn = true;
                     updateGameState();
                     repaint();
+                    if (messageOverlay != null) {
+                        messageOverlay.showRoundStart(round);
+                    }
                 },
 
                 // ROUND END
@@ -290,6 +294,9 @@ public class ArcadeGamePanel extends JPanel {
                         p2RoundsWon.setWins(roundManager.getP2Wins());
                     }
                     repaint();
+                    if (messageOverlay != null) {
+                        messageOverlay.showRoundWin(p1WonRound, round);
+                    }
                     new Timer(2000, e -> {
                         ((Timer) e.getSource()).stop();
                         roundManager.advanceRound();
@@ -304,6 +311,10 @@ public class ArcadeGamePanel extends JPanel {
                             : (p1WonMatch ? "PLAYER 1 WINS MATCH!" : "PLAYER 2 WINS MATCH!");
                     turnLabel.setText(msg);
                     skillButtonPanel.setVisible(false);
+                    boolean isKO = (p1HP <= 0 || p2HP <= 0);
+                    if (messageOverlay != null) {
+                        messageOverlay.showMatchResult(p1WonMatch, isKO);
+                    }
                 });
 
         refreshSkillButtons();
@@ -312,6 +323,8 @@ public class ArcadeGamePanel extends JPanel {
         roundManager.startMatch();
         arcadeBGM.setFile(10);
         arcadeBGM.loop();
+        messageOverlay = new assets.Utility.BattleMessageOverlay(FontManager.getFont(48));
+        add(messageOverlay);
     }
 
     @Override
@@ -327,6 +340,7 @@ public class ArcadeGamePanel extends JPanel {
         if (exitButton != null) {
             exitButton.setBounds(getWidth() - 50 - margin, margin, 40, 40);
         }
+        if (messageOverlay != null) messageOverlay.setBounds(0, 0, getWidth(), getHeight());
     }
 
 
@@ -373,6 +387,9 @@ public class ArcadeGamePanel extends JPanel {
 
         countdownTimer = new Timer(1000, null);
         countdownTimer.addActionListener(e -> {
+            if (isBattleActionAnimating()) {
+                return;
+            }
             turnSecondsLeft--;
             refreshCountdownLabel();
             if (turnSecondsLeft <= 0) skipTurn();
@@ -382,6 +399,10 @@ public class ArcadeGamePanel extends JPanel {
 
     private void stopTurnTimer() {
         if (countdownTimer != null) { countdownTimer.stop(); countdownTimer = null; }
+    }
+
+    private boolean isBattleActionAnimating() {
+        return isPlayerSkillAnimating || isEnemySkillAnimating || isProjectileAnimating;
     }
 
     private void skipTurn() {
@@ -638,9 +659,9 @@ public class ArcadeGamePanel extends JPanel {
     public void setCharacters(int playerIdx, int enemyIdx) {
         if (playerTimer != null && playerTimer.isRunning()) playerTimer.stop();
         if (enemyTimer  != null && enemyTimer.isRunning())  enemyTimer.stop();
-        stopSkillAnimation(true);
-        stopSkillAnimation(false);
-        stopProjectileAnimation();
+        stopSkillAnimation(true, false);
+        stopSkillAnimation(false, false);
+        stopProjectileAnimation(false);
         stopHurtTimeline(true);
         stopHurtTimeline(false);
 
@@ -701,6 +722,10 @@ public class ArcadeGamePanel extends JPanel {
         if (isP1Turn && (isEnemySkillAnimating || isProjectileAnimating)) {
             return;
         }
+        // ── Prevent casting while player's own animation is running ────────────────────────
+        if (isP1Turn && isPlayerSkillAnimating) {
+            return;
+        }
 
         if (!hasEnoughMP(isP1Turn, skillID)) {
             String original = turnLabel.getText();
@@ -751,7 +776,7 @@ public class ArcadeGamePanel extends JPanel {
 
         CharacterDef.ProjectileDef activeProjectileDef = projectileDef;
         if (isDefenseFormToggleSkill) {
-            stopProjectileAnimation();
+            stopProjectileAnimation(false);
             if (isNatureDefenseFormActive(actingP1)) {
                 playNatureDefenseFormExitAnimation(actingP1, defenseForm);
             } else {
@@ -795,7 +820,7 @@ public class ArcadeGamePanel extends JPanel {
                 }
             }
         } else {
-            stopProjectileAnimation();
+            stopProjectileAnimation(false);
             playSkillAnimation(actingP1, skillID, false, null);
         }
 
@@ -853,6 +878,10 @@ public class ArcadeGamePanel extends JPanel {
         p1MP = Math.max(0, Math.min(MAX_MP, p1MP));
         p2MP = Math.max(0, Math.min(MAX_MP, p2MP));
 
+        if (p1HPLabel == null || p2HPLabel == null) {
+            return;
+        }
+
         p1HPLabel.setText("HP: " + p1HP);
         p2HPLabel.setText("HP: " + p2HP);
 
@@ -884,7 +913,14 @@ public class ArcadeGamePanel extends JPanel {
         refreshSkillButtons();
 
         if (countdownLabel != null) { countdownLabel.setVisible(true); repositionUI(); }
-        startTurnTimer();
+        // Only start the turn timer if no announcement overlay is showing and no skill animation is in progress
+        if (messageOverlay != null && messageOverlay.isAnimating()) {
+            // Don't start timer during announcements
+        } else if (isPlayerSkillAnimating || isEnemySkillAnimating || isProjectileAnimating) {
+            // Don't start timer during skill/projectile animations
+        } else {
+            startTurnTimer();
+        }
     }
 
     private void repositionUI() {
@@ -1160,7 +1196,7 @@ public class ArcadeGamePanel extends JPanel {
         if (frames == null || frames.isEmpty()) { callback.run(); return; }
 
         if (isPlayerOne) {
-            stopSkillAnimation(true);
+            stopSkillAnimation(true, false);
             activePlayerSkillFrames  = frames;
             playerSkillFrameIndex    = 0;
             isPlayerSkillAnimating   = true;
@@ -1182,7 +1218,7 @@ public class ArcadeGamePanel extends JPanel {
             });
             playerSkillTimer.start();
         } else {
-            stopSkillAnimation(false);
+            stopSkillAnimation(false, false);
             activeEnemySkillFrames  = frames;
             enemySkillFrameIndex    = 0;
             isEnemySkillAnimating   = true;
@@ -1207,6 +1243,10 @@ public class ArcadeGamePanel extends JPanel {
     }
 
     private void stopSkillAnimation(boolean isPlayerOne) {
+        stopSkillAnimation(isPlayerOne, true);
+    }
+
+    private void stopSkillAnimation(boolean isPlayerOne, boolean allowTurnResume) {
         if (isPlayerOne) {
             if (playerSkillTimer != null) { playerSkillTimer.stop(); playerSkillTimer = null; }
             isPlayerSkillAnimating = false; playerSkillFrameIndex = 0;
@@ -1215,6 +1255,19 @@ public class ArcadeGamePanel extends JPanel {
             if (enemySkillTimer != null)  { enemySkillTimer.stop();  enemySkillTimer  = null; }
             isEnemySkillAnimating = false;  enemySkillFrameIndex = 0;
             activeEnemySkillID = 0;         activeEnemySkillOffsetX = 0;    activeEnemySkillFrames = List.of();
+        }
+        // If both skill animations are now stopped and no overlay is showing, restart the turn timer
+        if (allowTurnResume
+                && !isPlayerSkillAnimating
+                && !isEnemySkillAnimating
+                && !isProjectileAnimating
+                && !isPlayerHurtAnimating
+                && !isEnemyHurtAnimating) {
+            if (messageOverlay == null || !messageOverlay.isAnimating()) {
+                if (p1HP > 0 && p2HP > 0) {
+                    updateGameState();
+                }
+            }
         }
     }
 
@@ -1268,7 +1321,7 @@ public class ArcadeGamePanel extends JPanel {
             return;
         }
 
-        stopSkillAnimation(isPlayerOne);
+        stopSkillAnimation(isPlayerOne, false);
         int freezeIndex = Math.max(0, Math.min(frames.size() - 1, defenseForm.enterFreezeFrame - 1));
 
         if (isPlayerOne) {
@@ -1323,7 +1376,7 @@ public class ArcadeGamePanel extends JPanel {
             return;
         }
 
-        stopSkillAnimation(isPlayerOne);
+        stopSkillAnimation(isPlayerOne, false);
         int startIndex = Math.max(0, Math.min(frames.size() - 1, defenseForm.exitStartFrame - 1));
 
         if (isPlayerOne) {
@@ -1373,7 +1426,7 @@ public class ArcadeGamePanel extends JPanel {
 
         Runnable callback = onCastFinished != null ? onCastFinished : () -> {};
         if (isPlayerOne) {
-            stopSkillAnimation(true);
+            stopSkillAnimation(true, false);
             activePlayerSkillFrames = frames;
             playerSkillFrameIndex = 0;
             isPlayerSkillAnimating = true;
@@ -1392,7 +1445,7 @@ public class ArcadeGamePanel extends JPanel {
             });
             playerSkillTimer.start();
         } else {
-            stopSkillAnimation(false);
+            stopSkillAnimation(false, false);
             activeEnemySkillFrames = frames;
             enemySkillFrameIndex = 0;
             isEnemySkillAnimating = true;
@@ -1482,7 +1535,7 @@ public class ArcadeGamePanel extends JPanel {
         List<BufferedImage> frames = loadProjectileFrames(projectileDef);
         if (frames.isEmpty()) { if (onComplete != null) onComplete.run(); return; }
         List<BufferedImage> impactFrames = loadProjectileImpactFrames(projectileDef);
-        stopProjectileAnimation();
+        stopProjectileAnimation(false);
         int aX = isPlayerOne ? p1SpriteX : p2SpriteX;
         int aY = isPlayerOne ? p1SpriteY : p2SpriteY;
         int aW = isPlayerOne ? getPlayerDrawWidth()  : getEnemyDrawWidth();
@@ -1668,6 +1721,10 @@ public class ArcadeGamePanel extends JPanel {
     }
 
     private void stopProjectileAnimation() {
+        stopProjectileAnimation(true);
+    }
+
+    private void stopProjectileAnimation(boolean allowTurnResume) {
         if (projectileTimer != null) { projectileTimer.stop(); projectileTimer = null; }
         isProjectileAnimating = false; projectileFrameIndex = 0;
         projectileDrawWidth = DEFAULT_PROJECTILE_DRAW_SIZE;
@@ -1681,6 +1738,19 @@ public class ArcadeGamePanel extends JPanel {
         projectileImpactEndIndex = -1;
         projectileX = 0; projectileY = 0; projectileDirection = 1;
         projectileIsPlayerOne = true;   activeProjectileFrames = List.of();
+        // If both skill and projectile animations are now stopped and no overlay is showing, restart the turn timer
+        if (allowTurnResume
+                && !isPlayerSkillAnimating
+                && !isEnemySkillAnimating
+                && !isProjectileAnimating
+                && !isPlayerHurtAnimating
+                && !isEnemyHurtAnimating) {
+            if (messageOverlay == null || !messageOverlay.isAnimating()) {
+                if (p1HP > 0 && p2HP > 0) {
+                    updateGameState();
+                }
+            }
+        }
     }
 
     private void scheduleHurtTimeline(boolean attackerIsPlayerOne, int skillID) {
