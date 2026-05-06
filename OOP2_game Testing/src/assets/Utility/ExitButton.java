@@ -1,5 +1,6 @@
 package assets.Utility;
 import assets.Utility.FontManager;
+import engine.GameWindow;
 import javax.swing.*;
 import java.awt.*;
 
@@ -26,8 +27,30 @@ public class ExitButton {
             }
         });
 
-        exitButton.addActionListener(e -> System.exit(0));
+        // Try to get the GameWindow from the panel and call its close handler
+        exitButton.addActionListener(e -> {
+            GameWindow window = getGameWindow(panel);
+            if (window != null) {
+                window.handleExitButtonClick();
+            } else {
+                System.exit(0);
+            }
+        });
 
         return exitButton;
+    }
+    
+    private GameWindow getGameWindow(JPanel panel) {
+        Component comp = panel;
+        while (comp != null) {
+            if (comp instanceof JFrame) {
+                JFrame frame = (JFrame) comp;
+                if (frame instanceof GameWindow) {
+                    return (GameWindow) frame;
+                }
+            }
+            comp = comp.getParent();
+        }
+        return null;
     }
 }
