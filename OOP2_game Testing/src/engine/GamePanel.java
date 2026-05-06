@@ -792,6 +792,19 @@ public class GamePanel extends JPanel {
                 timeOffset = 1.0;  // Start at 1 second into the audio
                 stopAfterMillis = 2000;  // Play for 2 seconds total
             }
+        } else if ("Fire Wizard".equalsIgnoreCase(charName)) {
+            soundIndex = switch (skillID) {
+                case 1 -> 17; // Inferno Burst
+                case 2 -> 18; // Flame Strike
+                case 3 -> 19; // Meteor Storm
+                default -> -1;
+            };
+            if (skillID == 2) {
+                timeOffset = 1.5;  // Skill 2 starts at 1.5 seconds
+                stopAfterMillis = 1800;  // Stop after ~1.8 seconds (animation duration)
+            } else if (skillID == 3) {
+                timeOffset = 2.0;  // Skill 3 starts at 2.0 seconds
+            }
         }
         
         if (soundIndex >= 0) {
