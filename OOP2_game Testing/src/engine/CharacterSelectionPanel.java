@@ -576,6 +576,42 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
         PreviewTweak tweak = getPreviewTweak(selectedName);
         double fillRatio = PREVIEW_BASE_FILL_RATIO * tweak.scaleMultiplier;
         drawFittedSprite(g2, frame, spriteAreaX, spriteAreaY, spriteAreaW, spriteAreaH, fillRatio, previewBounds, PREVIEW_INSET_PX, true, tweak.offsetRatioX, tweak.offsetRatioY);
+
+        // Draw character name overlay inside the preview area (centered near bottom)
+        if (selectedName != null && !selectedName.isBlank()) {
+            BufferedImage nameBg = getBlurredGalleryBackgroundForSlot(focusedIndex);
+            int overlayW = Math.min(spriteAreaW - 40, 420);
+            int overlayH = 44;
+            int overlayX = spriteAreaX + (spriteAreaW - overlayW) / 2;
+            int overlayY = spriteAreaY + spriteAreaH - overlayH - 12;
+
+            Composite oldComp = g2.getComposite();
+            Shape oldClip = g2.getClip();
+
+            // Draw blurred background behind the name with low opacity
+            if (nameBg != null) {
+                g2.setClip(new Rectangle(overlayX, overlayY, overlayW, overlayH));
+                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.45f));
+                drawCoverImage(g2, nameBg, new Rectangle(overlayX, overlayY, overlayW, overlayH));
+                g2.setComposite(oldComp);
+                g2.setClip(oldClip);
+            }
+
+            // Dark translucent strip to improve readability
+            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.75f));
+            g2.setColor(new Color(24, 20, 17));
+            g2.fillRoundRect(overlayX, overlayY, overlayW, overlayH, 10, 10);
+            g2.setComposite(oldComp);
+
+            // Draw name text centered — larger, bold, ALL CAPS for readability
+            String nameUpper = selectedName.toUpperCase();
+            g2.setFont(bodyFont.deriveFont(Font.BOLD, 24f));
+            g2.setColor(new Color(245, 242, 238));
+            FontMetrics fm = g2.getFontMetrics();
+            int textX = overlayX + (overlayW - fm.stringWidth(nameUpper)) / 2;
+            int textY = overlayY + (overlayH + fm.getAscent()) / 2 - 4;
+            g2.drawString(nameUpper, textX, textY);
+        }
     }
 
     private PreviewTweak getPreviewTweak(String characterName) {
@@ -780,97 +816,140 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
         }
 
         CharacterDef selected = characters.get(focusedIndex);
+        // Add immersive blurred background using the character's gallery background
+        BufferedImage detailBg = getBlurredGalleryBackgroundForSlot(focusedIndex);
+        if (detailBg != null) {
+            Composite oldComp = g2.getComposite();
+            Shape oldClip = g2.getClip();
+            g2.setClip(panel);
+            g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.14f));
+            drawCoverImage(g2, detailBg, panel);
+            g2.setComposite(oldComp);
+            g2.setClip(oldClip);
+        }
 
-        y += 20;
+        // Draw a subtle content card to separate text from background
+        int cardX = panel.x + 12;
+        int cardY = y + 12;
+        int cardW = panel.width - 24;
+        int cardH = panel.height - (cardY - panel.y) - 18;
+        g2.setColor(new Color(245, 242, 238, 200));
+        g2.fillRoundRect(cardX, cardY, cardW, cardH, 14, 14);
+        g2.setColor(new Color(60, 50, 40, 160));
+        g2.setStroke(new BasicStroke(2f));
+        g2.drawRoundRect(cardX, cardY, cardW, cardH, 14, 14);
+
+        int innerX = cardX + 18;
+        int innerY = cardY + 18;
+        int innerW = cardW - 36;
+
         g2.setFont(labelFont);
-        g2.setColor(new Color(31, 25, 20));
-        g2.drawString("Name", x, y);
+        int headerH = 30;
+        // Place Backstory header near top of the content card to reduce empty space
+        int backHeaderY = innerY;
+        g2.setFont(labelFont);
+        g2.setColor(new Color(75, 57, 30));
+        g2.fillRoundRect(innerX, backHeaderY, innerW, headerH, 10, 10);
+        g2.setColor(new Color(245, 242, 238));
+        g2.setFont(labelFont.deriveFont(Font.BOLD, 26f));
+        g2.drawString("Backstory", innerX + 8, backHeaderY + headerH - 6);
 
-        y += 24;
-        g2.setFont(bodyFont);
+        // Backstory text area (height sized to wrapped content)
+        int backstoryY = backHeaderY + headerH + 8;
+        g2.setFont(bodyFont.deriveFont(Font.PLAIN, 24f));
         g2.setColor(new Color(44, 36, 28));
-        y = drawWrappedText(g2, selected.name, x, y, textWidth, 24);
+        int descTextWidth = innerW - 24;
+        int descLines = countWrappedLines(g2, selected.backstory == null ? "" : selected.backstory, descTextWidth);
+        int lineH = 24;
+        // Add a bit more top padding and size box to content; ensure text starts at top
+        int backBoxH = Math.max(24, descLines * lineH + 12);
+        g2.setColor(new Color(255, 255, 255, 200));
+        g2.fillRoundRect(innerX, backstoryY - 6, innerW, backBoxH + 8, 10, 10);
+        g2.setColor(new Color(50, 41, 32));
+        int descX = innerX + 12;
+        int descY = backstoryY + 12; // start from top padding
+        drawWrappedText(g2, selected.backstory == null ? "" : selected.backstory, descX, descY, descTextWidth, lineH);
 
-        y += 8;
-        g2.setFont(labelFont);
-        g2.setColor(new Color(31, 25, 20));
-        g2.drawString("Backstory", x, y);
+        // Skills header strip (colored) and table (preserve layout)
+        int skillsHeaderY = backstoryY + backBoxH + 12;
+        g2.setFont(labelFont.deriveFont(Font.BOLD, 24f));
+        g2.setColor(new Color(75, 57, 30));
+        g2.fillRoundRect(innerX, skillsHeaderY, innerW, headerH, 10, 10);
+        g2.setColor(new Color(245, 242, 238));
+        g2.drawString("Skills", innerX + 8, skillsHeaderY + headerH - 6);
 
-        y += 24;
-        g2.setFont(bodyFont);
-        g2.setColor(new Color(44, 36, 28));
-        y = drawWrappedText(g2, selected.backstory, x, y, textWidth, 24);
+        int skillsStartY = skillsHeaderY + headerH + 12;
+        int bottomY = drawSkillsTable(g2, selected, innerX, skillsStartY, innerW);
 
-        y += 10;
-        g2.setFont(labelFont);
-        g2.setColor(new Color(31, 25, 20));
-        g2.drawString("Skills", x, y);
-
-        y += 22;
-        y = drawSkillsTable(g2, selected, x, y, textWidth);
+        // Done drawing details
+        return;
     }
 
     private int drawSkillsTable(Graphics2D g2, CharacterDef selected, int x, int y, int width) {
-        int headerHeight = 28;
-        int rowMinHeight = 64;
-        int rowGap = 8;
+        // Render three skills horizontally to avoid vertical cutoff.
+        int boxes = 3;
+        int boxGap = 12;
+        int minBoxHeight = 80;
+        int nameBoxInnerH = 36;
+        int tableX = x + 0;
+        int totalGap = boxGap * (boxes - 1);
+        int boxW = (width - 16 - totalGap) / boxes;
 
-        int nameColW = Math.max(170, width / 4);
-        int descColW = Math.max(220, width - nameColW - 16);
-        int tableW = nameColW + descColW + 16;
-        int tableX = x;
+        // Use larger fonts for better readability
+        g2.setFont(bodyFont.deriveFont(Font.PLAIN, 18f));
 
-        g2.setFont(bodyFont.deriveFont(Font.BOLD, 18f));
-        FontMetrics headerMetrics = g2.getFontMetrics();
+        // Compute required height for each box based on wrapped description lines
+        int maxBoxH = minBoxHeight;
+        int[] boxHeights = new int[boxes];
+        for (int i = 0; i < boxes; i++) {
+            String desc = selected.getSkillDescription(i + 1);
+            int descTextWidth = Math.max(80, boxW - 24);
+            int descLines = countWrappedLines(g2, desc == null ? "" : desc, descTextWidth);
+            int h = Math.max(minBoxHeight, nameBoxInnerH + (descLines * 24) + 28);
+            boxHeights[i] = h;
+            maxBoxH = Math.max(maxBoxH, h);
+        }
 
-        g2.setColor(new Color(58, 42, 28));
-        g2.fillRoundRect(tableX, y, tableW, headerHeight, 12, 12);
-        g2.setColor(new Color(242, 232, 215));
-        g2.drawRoundRect(tableX, y, tableW, headerHeight, 12, 12);
-
-        int headerBaseline = y + headerHeight - 8;
-        g2.drawString("Skill", tableX + 14, headerBaseline);
-        g2.drawString("Details", tableX + nameColW + 28, headerBaseline);
-
-        y += headerHeight + 8;
-        for (int i = 1; i <= 3; i++) {
-            String skillName = selected.getSkillName(i);
-            String skillDesc = selected.getSkillDescription(i);
-
-            int descTextWidth = descColW - 20;
-            int descLines = countWrappedLines(g2, skillDesc, descTextWidth);
-            int rowHeight = Math.max(rowMinHeight, (descLines * 22) + 18);
+        // Draw each skill box
+        for (int i = 0; i < boxes; i++) {
+            int bx = tableX + i * (boxW + boxGap);
+            int by = y;
 
             g2.setColor(new Color(248, 245, 239));
-            g2.fillRoundRect(tableX, y, tableW, rowHeight, 12, 12);
+            g2.fillRoundRect(bx, by, boxW, maxBoxH, 12, 12);
             g2.setColor(new Color(53, 44, 34));
-            g2.drawRoundRect(tableX, y, tableW, rowHeight, 12, 12);
+            g2.drawRoundRect(bx, by, boxW, maxBoxH, 12, 12);
 
-            int nameBoxX = tableX + 10;
-            int nameBoxY = y + 10;
-            int nameBoxW = nameColW - 16;
-            int nameBoxH = rowHeight - 20;
+            // Name header area
+            int nameBoxX = bx + 10;
+            int nameBoxY = by + 10;
+            int nameBoxW = boxW - 20;
+            int nameBoxH = nameBoxInnerH;
             g2.setColor(new Color(86, 63, 35));
             g2.fillRoundRect(nameBoxX, nameBoxY, nameBoxW, nameBoxH, 10, 10);
             g2.setColor(new Color(247, 241, 228));
             g2.drawRoundRect(nameBoxX, nameBoxY, nameBoxW, nameBoxH, 10, 10);
 
+            // Skill name
+            String skillName = selected.getSkillName(i + 1);
             g2.setColor(new Color(252, 248, 242));
-            g2.setFont(bodyFont.deriveFont(Font.BOLD, 18f));
+            g2.setFont(bodyFont.deriveFont(Font.BOLD, 20f));
             FontMetrics nameMetrics = g2.getFontMetrics();
             int nameTextX = nameBoxX + 10;
             int nameTextY = nameBoxY + (nameBoxH + nameMetrics.getAscent()) / 2 - 2;
-            g2.drawString(skillName, nameTextX, nameTextY);
+            g2.drawString(skillName == null ? "" : skillName, nameTextX, nameTextY);
 
+            // Skill description
+            String skillDesc = selected.getSkillDescription(i + 1);
             g2.setColor(new Color(50, 41, 32));
-            int descX = tableX + nameColW + 24;
-            int descY = y + 18;
-            drawWrappedText(g2, skillDesc, descX, descY, descTextWidth, 22);
-
-            y += rowHeight + rowGap;
+            g2.setFont(bodyFont.deriveFont(Font.PLAIN, 16f));
+            int descX = bx + 12;
+            int descY = nameBoxY + nameBoxH + 14;
+            int descTextWidth = Math.max(80, boxW - 24);
+            drawWrappedText(g2, skillDesc == null ? "" : skillDesc, descX, descY, descTextWidth, 22);
         }
 
-        return y;
+        return y + maxBoxH + 12;
     }
 
     private int countWrappedLines(Graphics2D g2, String text, int maxWidth) {
