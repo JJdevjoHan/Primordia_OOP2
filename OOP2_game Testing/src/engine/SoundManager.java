@@ -53,8 +53,12 @@ public class SoundManager implements Runnable {
         soundURL[15] = getClass().getResource("/assets/SoundManager/SkillSfx/Light Mage/Skill2.wav");
         //Light Mage - Skill 3 (Dawn Piercer)
         soundURL[16] = getClass().getResource("/assets/SoundManager/SkillSfx/Light Mage/Skill3.wav");
-
-
+        //Fire Wizard - Skill 1 (Inferno Burst)
+        soundURL[17] = getClass().getResource("/assets/SoundManager/SkillSfx/Fire Wizard/Skill1.wav");
+        //Fire Wizard - Skill 2 (Flame Strike)
+        soundURL[18] = getClass().getResource("/assets/SoundManager/SkillSfx/Fire Wizard/Skill2.wav");
+        //Fire Wizard - Skill 3 (Meteor Storm)
+        soundURL[19] = getClass().getResource("/assets/SoundManager/SkillSfx/Fire Wizard/Skill3.wav");
     }
 
     public void setFile(int i) {
