@@ -10,11 +10,15 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
+import java.awt.image.ConvolveOp;
+import java.awt.image.Kernel;
+import java.awt.geom.Point2D;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 public class CharacterSelectionPanel extends JPanel implements Runnable{
     private static final int SCREEN_WIDTH = 1536;
@@ -26,7 +30,52 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
     private static final int PREVIEW_INSET_PX = 12;
     private static final int GRID_INSET_PX = 2;
     private static final int FEET_MARGIN_PX = 3;
-    private static final double GALLERY_PORTRAIT_FILL_RATIO = 1.10;
+    private static final double PREVIEW_BASE_FILL_RATIO = 0.70;
+    private static final double GALLERY_PORTRAIT_FILL_RATIO = 1.14;
+    private static final double GALLERY_PORTRAIT_HEIGHT_RATIO = 0.72;
+    private static final double GALLERY_PORTRAIT_TOP_PADDING_RATIO = 0.06;
+    private static final float GALLERY_BG_ALPHA = 0.75f;
+    private static final float PREVIEW_BG_ALPHA = 0.85f;
+
+    private static final class PreviewTweak {
+        final double offsetRatioX;
+        final double offsetRatioY;
+        final double scaleMultiplier;
+
+        PreviewTweak(double offsetRatioX, double offsetRatioY, double scaleMultiplier) {
+            this.offsetRatioX = offsetRatioX;
+            this.offsetRatioY = offsetRatioY;
+            this.scaleMultiplier = scaleMultiplier;
+        }
+    }
+
+    // Preview-only per-champion tuning.
+    // offsetRatioX/offsetRatioY are ratios of the drawn sprite size.
+    // scaleMultiplier multiplies PREVIEW_BASE_FILL_RATIO.
+    private static final Map<String, PreviewTweak> PREVIEW_TWEAKS = Map.of(
+        "idk magician", new PreviewTweak(-0.07, 0.0, 1.30),
+        "light mage", new PreviewTweak(-0.07, 0.0, 1.30),
+        "fire wizard", new PreviewTweak(-0.07, 0.0, 1.30),
+        "steel wizard", new PreviewTweak(-0.07, 0.0, 1.30),
+        "nature wizard", new PreviewTweak(-0.07, 0.0, 1.30),
+        "water wizard", new PreviewTweak(-0.10, -0.07, 1.30),
+        "wind wizard", new PreviewTweak(0.04, 0.015, 1.20),
+        "dark wizard", new PreviewTweak(-0.12, 0.0, 1.30)
+    );
+
+    private static final List<String> GALLERY_BG_IMAGE_PATHS = List.of(
+        "/assets/maps/backgrounds/Battleground1/Bright/Battleground1.png",
+        "/assets/maps/backgrounds/Battleground2/Bright/Battleground2.png",
+        "/assets/maps/backgrounds/Battleground3/Bright/Battleground3.png"
+    );
+
+    // Per-champion portrait nudges (ratio of the drawn sprite size).
+    // +x = right, -x = left, +y = down, -y = up.
+    private static final Map<String, Point2D.Double> PORTRAIT_OFFSET_RATIOS = Map.of(
+        "water wizard", new Point2D.Double(-0.10, -0.07),
+        "wind wizard", new Point2D.Double(0.10, 0.015),
+        "dark wizard", new Point2D.Double(-0.08, -0.035)
+    );
 
     private final GameWindow window;
     private final List<CharacterDef> characters;
@@ -34,6 +83,10 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
 
     private final Map<String, List<BufferedImage>> animationCache = new HashMap<>();
     private final Map<Integer, BufferedImage> thumbnailCache = new HashMap<>();
+
+    private final List<BufferedImage> galleryBackgrounds = new ArrayList<>();
+    private final List<BufferedImage> galleryBackgroundsBlurred = new ArrayList<>();
+    private final int[] galleryBackgroundIndexBySlot = new int[GRID_SLOTS];
 
     private List<BufferedImage> previewFrames = List.of();
     private Rectangle previewBounds = null;
@@ -69,6 +122,8 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
         setFocusTraversalKeysEnabled(false);
 
         resetSelectionState();
+        loadGalleryBackgrounds();
+        randomizeGalleryBackgroundSelection();
 
         backbutton = new BackButton().createBackButton(window, this);
         add(backbutton);
@@ -83,6 +138,61 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
             } catch (Exception ignored) {
             }
         }).start();
+    }
+
+    private void loadGalleryBackgrounds() {
+        if (!galleryBackgrounds.isEmpty()) {
+            return;
+        }
+
+        for (String path : GALLERY_BG_IMAGE_PATHS) {
+            try {
+                URL resource = getClass().getResource(path);
+                if (resource == null) {
+                    continue;
+                }
+                BufferedImage image = ImageIO.read(resource);
+                if (image != null) {
+                    galleryBackgrounds.add(image);
+                    galleryBackgroundsBlurred.add(blurImage(image));
+                }
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    private BufferedImage blurImage(BufferedImage source) {
+        if (source == null) {
+            return null;
+        }
+
+        // Small, subtle blur (5x5 box blur). Cached per background.
+        int size = 5;
+        float weight = 1.0f / (size * size);
+        float[] data = new float[size * size];
+        for (int i = 0; i < data.length; i++) {
+            data[i] = weight;
+        }
+
+        try {
+            ConvolveOp op = new ConvolveOp(new Kernel(size, size, data), ConvolveOp.EDGE_NO_OP, null);
+            BufferedImage dest = new BufferedImage(source.getWidth(), source.getHeight(), BufferedImage.TYPE_INT_ARGB);
+            op.filter(source, dest);
+            return dest;
+        } catch (Exception ignored) {
+            return source;
+        }
+    }
+
+    private void randomizeGalleryBackgroundSelection() {
+        if (galleryBackgrounds.isEmpty()) {
+            return;
+        }
+
+        Random random = new Random();
+        for (int i = 0; i < galleryBackgroundIndexBySlot.length; i++) {
+            galleryBackgroundIndexBySlot[i] = random.nextInt(galleryBackgrounds.size());
+        }
     }
 
     @Override
@@ -121,6 +231,7 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
         playerOneIndex = -1;
         focusedIndex = 0;
         previewFrameIndex = 0;
+        randomizeGalleryBackgroundSelection();
         if (!characters.isEmpty()) {
             setFocusedIndex(0);
         } else {
@@ -448,8 +559,7 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
         int spriteAreaW = panel.width - 48;
         int spriteAreaH = panel.height - 76;
 
-        g2.setColor(new Color(244, 241, 236));
-        g2.fillRect(spriteAreaX, spriteAreaY, spriteAreaW, spriteAreaH);
+        paintPreviewBackground(g2, new Rectangle(spriteAreaX, spriteAreaY, spriteAreaW, spriteAreaH));
         g2.setColor(new Color(24, 20, 17));
         g2.setStroke(new BasicStroke(4f));
         g2.drawRect(spriteAreaX, spriteAreaY, spriteAreaW, spriteAreaH);
@@ -462,7 +572,37 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
         if (frame == null) {
             return;
         }
-        drawFittedSprite(g2, frame, spriteAreaX, spriteAreaY, spriteAreaW, spriteAreaH, 0.70, previewBounds, PREVIEW_INSET_PX, true);
+        String selectedName = (focusedIndex >= 0 && focusedIndex < characters.size()) ? characters.get(focusedIndex).name : null;
+        PreviewTweak tweak = getPreviewTweak(selectedName);
+        double fillRatio = PREVIEW_BASE_FILL_RATIO * tweak.scaleMultiplier;
+        drawFittedSprite(g2, frame, spriteAreaX, spriteAreaY, spriteAreaW, spriteAreaH, fillRatio, previewBounds, PREVIEW_INSET_PX, true, tweak.offsetRatioX, tweak.offsetRatioY);
+    }
+
+    private PreviewTweak getPreviewTweak(String characterName) {
+        if (characterName == null) {
+            return new PreviewTweak(0.0, 0.0, 1.0);
+        }
+        PreviewTweak tweak = PREVIEW_TWEAKS.get(characterName.trim().toLowerCase());
+        return tweak != null ? tweak : new PreviewTweak(0.0, 0.0, 1.0);
+    }
+
+    private void paintPreviewBackground(Graphics2D g2, Rectangle bounds) {
+        BufferedImage bg = getBlurredGalleryBackgroundForSlot(focusedIndex);
+        if (bg == null) {
+            g2.setColor(new Color(244, 241, 236));
+            g2.fillRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            return;
+        }
+
+        Composite oldComposite = g2.getComposite();
+        Shape oldClip = g2.getClip();
+
+        g2.setClip(bounds);
+        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, PREVIEW_BG_ALPHA));
+        drawCoverImage(g2, bg, bounds);
+
+        g2.setComposite(oldComposite);
+        g2.setClip(oldClip);
     }
 
     private void paintGridPanel(Graphics2D g2, Rectangle panel) {
@@ -494,8 +634,7 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
             int cellX = gridX + col * (cellW + hGap);
             int cellY = gridY + row * (cellH + vGap);
 
-            g2.setColor(new Color(250, 249, 246));
-            g2.fillRect(cellX, cellY, cellW, cellH);
+            paintGalleryCellBackground(g2, i, new Rectangle(cellX, cellY, cellW, cellH));
 
             g2.setColor(new Color(20, 20, 20));
             g2.setStroke(new BasicStroke(3f));
@@ -518,7 +657,8 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
                 if (thumb != null) {
                     int imageAreaH = cellH - 30;
                     Rectangle portraitBounds = getPortraitBounds(thumb);
-                    drawFittedSprite(g2, thumb, cellX + 6, cellY + 4, cellW - 12, imageAreaH - 2, GALLERY_PORTRAIT_FILL_RATIO, portraitBounds, GRID_INSET_PX, false);
+                    Point2D.Double offset = getPortraitOffsetRatio(characters.get(i).name);
+                    drawFittedSprite(g2, thumb, cellX + 6, cellY + 4, cellW - 12, imageAreaH - 2, GALLERY_PORTRAIT_FILL_RATIO, portraitBounds, GRID_INSET_PX, false, offset.x, offset.y);
                 }
             } else {
                 g2.setFont(bodyFont.deriveFont(Font.BOLD, 18f));
@@ -553,6 +693,67 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
                 g2.drawString(name, textX, textY);
             }
         }
+    }
+
+    private void paintGalleryCellBackground(Graphics2D g2, int slotIndex, Rectangle cellBounds) {
+        BufferedImage bg = getGalleryBackgroundForSlot(slotIndex);
+        if (bg == null) {
+            g2.setColor(new Color(250, 249, 246));
+            g2.fillRect(cellBounds.x, cellBounds.y, cellBounds.width, cellBounds.height);
+            return;
+        }
+
+        Composite oldComposite = g2.getComposite();
+        Shape oldClip = g2.getClip();
+        g2.setClip(cellBounds);
+        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, GALLERY_BG_ALPHA));
+        drawCoverImage(g2, bg, cellBounds);
+        g2.setComposite(oldComposite);
+        g2.setClip(oldClip);
+    }
+
+    private BufferedImage getGalleryBackgroundForSlot(int slotIndex) {
+        if (galleryBackgrounds.isEmpty()) {
+            return null;
+        }
+
+        int safeSlot = Math.floorMod(slotIndex, galleryBackgroundIndexBySlot.length);
+        int bgIndex = galleryBackgroundIndexBySlot[safeSlot];
+        if (bgIndex < 0 || bgIndex >= galleryBackgrounds.size()) {
+            bgIndex = 0;
+        }
+        return galleryBackgrounds.get(bgIndex);
+    }
+
+    private BufferedImage getBlurredGalleryBackgroundForSlot(int slotIndex) {
+        if (galleryBackgroundsBlurred.isEmpty()) {
+            return null;
+        }
+
+        int safeSlot = Math.floorMod(slotIndex, galleryBackgroundIndexBySlot.length);
+        int bgIndex = galleryBackgroundIndexBySlot[safeSlot];
+        if (bgIndex < 0 || bgIndex >= galleryBackgroundsBlurred.size()) {
+            bgIndex = 0;
+        }
+        return galleryBackgroundsBlurred.get(bgIndex);
+    }
+
+    private void drawCoverImage(Graphics2D g2, BufferedImage image, Rectangle dest) {
+        if (image == null || dest.width <= 0 || dest.height <= 0) {
+            return;
+        }
+
+        double scale = Math.max(
+            dest.getWidth() / image.getWidth(),
+            dest.getHeight() / image.getHeight()
+        );
+
+        int drawW = (int) Math.ceil(image.getWidth() * scale);
+        int drawH = (int) Math.ceil(image.getHeight() * scale);
+        int drawX = dest.x + (dest.width - drawW) / 2;
+        int drawY = dest.y + (dest.height - drawH) / 2;
+
+        g2.drawImage(image, drawX, drawY, drawW, drawH, this);
     }
 
     private void paintDetailsPanel(Graphics2D g2, Rectangle panel) {
@@ -743,6 +944,21 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
                                   Rectangle sourceBounds,
                                   int insetPx,
                                   boolean alignFeetToBottom) {
+        drawFittedSprite(g2, image, areaX, areaY, areaW, areaH, fillRatio, sourceBounds, insetPx, alignFeetToBottom, 0.0, 0.0);
+    }
+
+    private void drawFittedSprite(Graphics2D g2,
+                                  BufferedImage image,
+                                  int areaX,
+                                  int areaY,
+                                  int areaW,
+                                  int areaH,
+                                  double fillRatio,
+                                  Rectangle sourceBounds,
+                                  int insetPx,
+                                  boolean alignFeetToBottom,
+                                  double offsetRatioX,
+                                  double offsetRatioY) {
         if (image == null || areaW <= 0 || areaH <= 0) {
             return;
         }
@@ -771,6 +987,11 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
             ? (innerY + innerH - targetH - FEET_MARGIN_PX)
             : (innerY + (innerH - targetH) / 2);
 
+        int offsetPxX = (int) Math.round(targetW * offsetRatioX);
+        int offsetPxY = (int) Math.round(targetH * offsetRatioY);
+        targetX += offsetPxX;
+        targetY += offsetPxY;
+
         g2.drawImage(
             image,
             targetX,
@@ -783,6 +1004,14 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
             sourceY + sourceH,
             this
         );
+    }
+
+    private Point2D.Double getPortraitOffsetRatio(String characterName) {
+        if (characterName == null) {
+            return new Point2D.Double(0.0, 0.0);
+        }
+        Point2D.Double offset = PORTRAIT_OFFSET_RATIOS.get(characterName.trim().toLowerCase());
+        return offset != null ? offset : new Point2D.Double(0.0, 0.0);
     }
 
     private Rectangle getCombinedOpaqueBounds(List<BufferedImage> frames) {
@@ -819,8 +1048,9 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
 
     private Rectangle getPortraitBounds(BufferedImage image) {
         Rectangle bounds = getOpaqueBounds(image);
-        int portraitHeight = Math.max(1, (int) Math.round(bounds.height * 0.68));
-        int portraitY = bounds.y;
+        int topPad = (int) Math.round(bounds.height * GALLERY_PORTRAIT_TOP_PADDING_RATIO);
+        int portraitY = Math.max(0, bounds.y - topPad);
+        int portraitHeight = Math.max(1, (int) Math.round(bounds.height * GALLERY_PORTRAIT_HEIGHT_RATIO));
         return new Rectangle(bounds.x, portraitY, bounds.width, portraitHeight);
     }
 
