@@ -80,7 +80,6 @@ public class GamePanel extends JPanel {
     private Image battleUiBoxImage;
     private long battleUiBoxLastModified = -1;
     private JButton exitButton;
-    private JButton backbutton;
 
     // Player animation state
     private List<BufferedImage> playerFrames = new ArrayList<>();
@@ -220,9 +219,6 @@ public class GamePanel extends JPanel {
 
         this.window = window;
         this.setLayout(null);
-
-        backbutton = new BackButton().createBackButton(window, this);
-        add(backbutton);
 
         exitButton = new ExitButton().createExitButton(this);
         add(exitButton);

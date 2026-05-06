@@ -1,6 +1,5 @@
 package engine;
 
-import assets.Utility.BackButton;
 import assets.Utility.CreditsButton;
 import assets.Utility.ExitButton;
 import assets.Utility.FontManager;
@@ -99,7 +98,6 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
     private boolean selectingPlayerOne = true;
 
     private JButton exitButton;
-    private JButton backbutton;
     private JRootPane boundRootPane;
 
     private final Font titleFont = FontManager.getFont(38f).deriveFont(Font.BOLD);
@@ -124,9 +122,6 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
         resetSelectionState();
         loadGalleryBackgrounds();
         randomizeGalleryBackgroundSelection();
-
-        backbutton = new BackButton().createBackButton(window, this);
-        add(backbutton);
 
         exitButton = new ExitButton().createExitButton(this);
         add(exitButton);
@@ -199,13 +194,6 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
     public void doLayout() {
         super.doLayout();
         int margin = 20;
-        for (Component c : getComponents()) {
-            if (c instanceof JButton && ((JButton) c).getText().equals("Back")) {
-                int fromBottom = 100; // increase this to move button higher
-                int fromRight = 120;  // increase this to move button more to the left
-                c.setBounds(getWidth() - fromRight, getHeight() - fromBottom, 100, 40);
-            }
-        }
         if (exitButton != null) {
             exitButton.setBounds(getWidth() - 50 - margin, margin, 40, 40);
         }
@@ -803,13 +791,6 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
         String phaseText = selectingPlayerOne ? "Player 1: Choose Your Champion" : "Player 2: Choose Your Champion";
         g2.drawString(phaseText, x, y);
         y += 28;
-
-        if (!selectingPlayerOne && playerOneIndex >= 0 && playerOneIndex < characters.size()) {
-            g2.setFont(labelFont);
-            g2.setColor(new Color(74, 57, 25));
-            g2.drawString("Player 1 Locked: " + characters.get(playerOneIndex).name, x, y + 12);
-            y += 32;
-        }
 
         if (characters.isEmpty()) {
             return;

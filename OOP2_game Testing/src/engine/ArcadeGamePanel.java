@@ -229,8 +229,8 @@ public class ArcadeGamePanel extends JPanel {
         });
 
         setLayout(null);
-        add(new BackButton().createBackButton(window, this));
-        add(new ExitButton().createExitButton(this));
+        exitButton = new ExitButton().createExitButton(this);
+        add(exitButton);
 
         loadMapData("/assets/maps/map1.tmx");
 

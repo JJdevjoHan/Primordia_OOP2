@@ -200,7 +200,6 @@ public class SurivivalGamePanel extends JPanel {
 
     private GameWindow   window;
     private RoundManager roundManager;
-    private JButton backbutton;
     private JButton exitButton;
     private assets.Utility.BattleMessageOverlay messageOverlay;
 
@@ -231,9 +230,6 @@ public class SurivivalGamePanel extends JPanel {
         });
 
         this.setLayout(null);
-
-        backbutton = new BackButton().createBackButton(window, this);
-        add(backbutton);
 
         exitButton = new ExitButton().createExitButton(this);
         add(exitButton);
