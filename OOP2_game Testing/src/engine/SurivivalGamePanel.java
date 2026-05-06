@@ -201,6 +201,7 @@ public class SurivivalGamePanel extends JPanel {
     private assets.Utility.BattleMessageOverlay messageOverlay;
 
     private final SoundManager survivalBGM = new SoundManager();
+    private final SoundManager sfx = new SoundManager();
 
     public SurivivalGamePanel() {
         this(new GameWindow(), 0, 1, GameMode.PVP, BotAI.Difficulty.NORMAL);
@@ -318,6 +319,7 @@ public class SurivivalGamePanel extends JPanel {
                     p2MP = MAX_MP;
 
                     isP1Turn = true;
+                    resetIdleTimersForRoundStart();
                     updateGameState();
                     repaint();
                     if (messageOverlay != null) {
@@ -868,6 +870,7 @@ public class SurivivalGamePanel extends JPanel {
         p1MP = MAX_MP;
         p2MP = MAX_MP;
         isP1Turn = true;
+        resetIdleTimersForRoundStart();
         updateGameState();
         repaint();
         if (messageOverlay != null) messageOverlay.showRoundStart(encounterNumber);
@@ -912,6 +915,43 @@ public class SurivivalGamePanel extends JPanel {
         }
     }
 
+    private void playSkillSound(CharacterDef character, int skillID) {
+        if (character == null) return;
+        String charName = character.name;
+        
+        int soundIndex = -1;
+        double timeOffset = 0.0;
+        int stopAfterMillis = -1;  // No auto-stop by default
+        
+        if ("Idk Magician".equalsIgnoreCase(charName)) {
+            soundIndex = switch (skillID) {
+                case 1 -> 11; // Lighting Burst
+                case 2 -> 12; // Thunder Call (start at 1 second mark, stop at animation end)
+                case 3 -> 13; // Plasma Bolt
+                default -> -1;
+            };
+            if (skillID == 2) {
+                timeOffset = 1.0;  // Skill 2 starts at 1 second
+                stopAfterMillis = 1500;  // Stop after ~1.5 seconds (animation duration)
+            }
+        } else if ("Light Mage".equalsIgnoreCase(charName)) {
+            soundIndex = switch (skillID) {
+                case 1 -> 14; // Light Sword
+                case 2 -> 15; // Halo of Aegis
+                case 3 -> 16; // Dawn Piercer
+                default -> -1;
+            };
+            if (skillID == 2) {
+                timeOffset = 1.0;  // Start at 1 second into the audio
+                stopAfterMillis = 2000;  // Play for 2 seconds total
+            }
+        }
+        
+        if (soundIndex >= 0) {
+            sfx.playSkillSFX(soundIndex, timeOffset, stopAfterMillis);
+        }
+    }
+
     public void executeSkill(int skillID) {
         if (gameMode == GameMode.SURVIVAL) {
             if (!survivalActive) return;
@@ -940,11 +980,19 @@ public class SurivivalGamePanel extends JPanel {
             return;
         }
 
+        if (isP1Turn) {
+            setPlayerButtonsEnabled(false);
+        }
+
         // Stop the countdown so it cannot fire mid-animation
         stopTurnTimer();
 
         boolean actingPlayerOne  = isP1Turn;
         CharacterDef actor       = actingPlayerOne ? currentPlayerDef : currentEnemyDef;
+        
+        // Play skill sound effect if it's Idk Magician
+        playSkillSound(actor, skillID);
+        
         CharacterDef.DefenseFormDef defenseForm = actor != null ? actor.defenseForm : null;
         boolean isDefenseFormToggleSkill = defenseForm != null && skillID == defenseForm.toggleSkillSlot;
         boolean isDefenseFormAltSkill = defenseForm != null
@@ -1093,6 +1141,18 @@ public class SurivivalGamePanel extends JPanel {
 
     private void setPlayerButtonsEnabled(boolean enabled) {
         for (JButton btn : skillButtons) btn.setEnabled(enabled);
+    }
+
+    private void resetIdleTimersForRoundStart() {
+        if (playerTimer != null) {
+            playerTimer.stop();
+            playerTimer = null;
+        }
+        if (enemyTimer != null) {
+            enemyTimer.stop();
+            enemyTimer = null;
+        }
+        ensureIdleTimersRunning();
     }
 
     private void updateGameState() {
@@ -2280,6 +2340,7 @@ public class SurivivalGamePanel extends JPanel {
                     config.skill1Name, config.skill2Name, config.skill3Name,
                     config.skill1Description, config.skill2Description, config.skill3Description,
                     config.skill1Type, config.skill2Type, config.skill3Type,
+                    config.skill1Power, config.skill2Power, config.skill3Power,
                     config.skill1SpritePath, config.skill1FollowUpSpritePath, config.skill2SpritePath, config.skill3SpritePath,
                     config.skill1ForwardOffsetX, config.skill2ForwardOffsetX, config.skill3ForwardOffsetX,
                     config.skill1HurtTriggerBufferSeconds, config.skill2HurtTriggerBufferSeconds,

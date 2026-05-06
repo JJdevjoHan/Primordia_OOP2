@@ -24,7 +24,7 @@
       "skills": [
         {
           "slot": 1,
-          "name": "Magic Arrow",
+          "name": "Lighting Burst",
           "type": "damage",
           "projectile": {
             "sprite": "src/assets/spritesheet/Idk Magician/Charge_2.png",
@@ -39,7 +39,7 @@
             "anchorOnTargetCenter": true
           },
           "hurtTriggerBufferSeconds": 0.15,
-          "description": "Fires a condensed arcane bolt that pierces one target and deals medium magic damage.",
+          "description": "Unleashes a jagged lightning burst that shocks one enemy for moderate damage.",
           "manaCost": 18,
           "power": 34,
           "cooldownTurns": 0,
@@ -47,8 +47,8 @@
         },
         {
           "slot": 2,
-          "name": "Arcane Charge",
-          "type": "defense",
+          "name": "Thunder Call",
+          "type": "damage",
           "projectile": {
             "sprite": "src/assets/spritesheet/Idk Magician/Charge_3.png",
             "frameWidth": 256,
@@ -61,15 +61,15 @@
             "startDuringCast": true,
             "anchorOnTargetCenter": true
           },
-          "description": "Wraps the caster in a rune shield, reducing incoming damage for 2 turns.",
+          "description": "Calls down a bolt of lightning, dealing significant damage to one enemy.",
           "manaCost": 22,
-          "shieldValue": 28,
-          "durationTurns": 2,
-          "target": "self"
+          "power": 40,
+          "cooldownTurns": 0,
+          "target": "single_enemy"
         },
         {
           "slot": 3,
-          "name": "Magic Sphere",
+          "name": "Plasma Bolt",
           "type": "debuff",
           "projectile": {
             "sprite": "src/assets/spritesheet/Idk Magician/Charge_1.png",
@@ -85,7 +85,7 @@
             "impactStartFrame": 7,
             "impactEndFrame": 9
           },
-          "description": "Summons a rotating sphere that shocks enemies and lowers their attack for 2 turns.",
+          "description": "Fires an unstable plasma bolt that deals massive damage and reduces an enemy's attack for 2 turns.",
           "manaCost": 30,
           "power": 26,
           "attackDownPercent": 20,
@@ -132,7 +132,7 @@
             "anchorOnTarget": true
           },
           "hurtTriggerBufferSeconds": 0.1,
-          "description": "Unleashes a radiant slash that deals high single-target light damage.",
+          "description": "Unleashes a radiant slash and explodes on the enemy that deals high single-target light damage.",
           "manaCost": 20,
           "power": 38,
           "cooldownTurns": 0,
@@ -154,7 +154,7 @@
           "name": "Dawn Piercer",
           "type": "damage",
           "hurtTriggerBufferSeconds": 0.35,
-          "description": "Calls down a focused beam that burns one enemy with concentrated light damage.",
+          "description": "Unleashes a focused beam that burns one enemy with concentrated light damage.",
           "manaCost": 24,
           "power": 42,
           "cooldownTurns": 0,
@@ -234,7 +234,7 @@
           "hurtTriggerBufferSeconds": 0.22,
           "description": "Launches a condensed fireball that explodes on impact and heavily burns one target.",
           "manaCost": 28,
-          "power": 100,
+          "power": 999,
           "cooldownTurns": 0,
           "target": "single_enemy"
         }

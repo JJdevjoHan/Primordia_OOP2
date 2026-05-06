@@ -170,6 +170,8 @@ public class ArcadeGamePanel extends JPanel {
 
     private int    turnSecondsLeft = TURN_TIME_SECONDS;
     private Timer  countdownTimer;
+    private Timer  pendingRoundAdvanceTimer;
+    private Timer  pendingBotTurnRetryTimer;
     private CircularTimerLabel countdownLabel;
 
     private JPanel              skillButtonPanel;
@@ -192,8 +194,10 @@ public class ArcadeGamePanel extends JPanel {
     private List<Integer> arcadeOpponentIndices = new ArrayList<>();  // All opponents in order
     private int currentArcadeOpponentIndex = 0;  // Current position in opponent list
     private int arcadeWinsInRun = 0;  // Number of matches won so far in this run
+    private boolean loadingNextArcadeOpponent = false;
 
     private final SoundManager arcadeBGM = new SoundManager();
+    private final SoundManager sfx = new SoundManager();
     private JButton exitButton;
     private assets.Utility.BattleMessageOverlay messageOverlay;
 
@@ -287,6 +291,7 @@ public class ArcadeGamePanel extends JPanel {
                     p1MP = MAX_MP;
                     p2MP = MAX_MP;
                     isP1Turn = true;
+                    resetIdleTimersForRoundStart();
                     updateGameState();
                     repaint();
                     if (messageOverlay != null) {
@@ -307,10 +312,16 @@ public class ArcadeGamePanel extends JPanel {
                     if (messageOverlay != null) {
                         messageOverlay.showRoundWin(p1WonRound, round);
                     }
-                    new Timer(2000, e -> {
+                    if (pendingRoundAdvanceTimer != null && pendingRoundAdvanceTimer.isRunning()) {
+                        pendingRoundAdvanceTimer.stop();
+                    }
+                    pendingRoundAdvanceTimer = new Timer(2000, e -> {
                         ((Timer) e.getSource()).stop();
+                        pendingRoundAdvanceTimer = null;
                         roundManager.advanceRound();
-                    }).start();
+                    });
+                    pendingRoundAdvanceTimer.setRepeats(false);
+                    pendingRoundAdvanceTimer.start();
                 },
 
                 // MATCH END
@@ -354,6 +365,10 @@ public class ArcadeGamePanel extends JPanel {
 
     private void handleArcadeMatchEnd(boolean p1WonMatch, int p1Wins, int p2Wins, int totalRounds) {
         stopTurnTimer();
+        if (pendingRoundAdvanceTimer != null && pendingRoundAdvanceTimer.isRunning()) {
+            pendingRoundAdvanceTimer.stop();
+        }
+        pendingRoundAdvanceTimer = null;
         
         if (!isArcadeMode) {
             // Regular match mode
@@ -383,21 +398,17 @@ public class ArcadeGamePanel extends JPanel {
                         }
                     });
                 } else {
-                    // Load next opponent
+                    // Announce match win first, then load next opponent
                     scheduleArcadeTransition(() -> {
-                        int nextOpponentIndex = arcadeOpponentIndices.get(currentArcadeOpponentIndex);
-                        int nextPlayerIndex = sanitizeCharacterIndex(currentPlayerDef != null ? ALL_CHARACTERS.indexOf(currentPlayerDef) : 0, -1);
-
-                        // Reset for next match
-                        setCharacters(nextPlayerIndex, nextOpponentIndex);
-                        p1RoundsWon.setWins(0);
-                        p2RoundsWon.setWins(0);
-                        roundManager.reset();
-
-                        updateArcadeModeUI();
-
-                        // Start next match after the enemy death animation has finished
-                        roundManager.startMatch();
+                        turnLabel.setText("YOU WIN! WINS: " + arcadeWinsInRun);
+                        skillButtonPanel.setVisible(false);
+                        boolean isKO = (p1HP <= 0 || p2HP <= 0);
+                        if (messageOverlay != null) {
+                            messageOverlay.showMatchResult(true, isKO);
+                            messageOverlay.setOnHide(this::startNextArcadeOpponentMatch);
+                        } else {
+                            startNextArcadeOpponentMatch();
+                        }
                     });
                 }
             } else {
@@ -407,7 +418,7 @@ public class ArcadeGamePanel extends JPanel {
                     skillButtonPanel.setVisible(false);
                     boolean isKO = (p1HP <= 0 || p2HP <= 0);
                     if (messageOverlay != null) {
-                        messageOverlay.showMatchResult(false, isKO);
+                        messageOverlay.showSurvivalKO(isKO);
                     }
                 });
             }
@@ -422,6 +433,35 @@ public class ArcadeGamePanel extends JPanel {
         });
         transitionTimer.setRepeats(false);
         transitionTimer.start();
+    }
+
+    private void startNextArcadeOpponentMatch() {
+        if (loadingNextArcadeOpponent) {
+            return;
+        }
+        loadingNextArcadeOpponent = true;
+        try {
+            int nextOpponentIndex = arcadeOpponentIndices.get(currentArcadeOpponentIndex);
+            int nextPlayerIndex = sanitizeCharacterIndex(currentPlayerDef != null ? ALL_CHARACTERS.indexOf(currentPlayerDef) : 0, -1);
+
+            setCharacters(nextPlayerIndex, nextOpponentIndex);
+            p1RoundsWon.setWins(0);
+            p2RoundsWon.setWins(0);
+            roundManager.reset();
+
+            if (skillButtonPanel != null) {
+                skillButtonPanel.setVisible(true);
+            }
+            setPlayerButtonsEnabled(true);
+
+            updateArcadeModeUI();
+            updateGameState();
+            revalidate();
+            repaint();
+            roundManager.startMatch();
+        } finally {
+            loadingNextArcadeOpponent = false;
+        }
     }
 
     private int getEnemyDeathAnimationDurationMs() {
@@ -617,7 +657,7 @@ public class ArcadeGamePanel extends JPanel {
             JButton btn = new BattleUISkillButton("Skill " + (i + 1));
             btn.setToolTipText("MP Cost: " + SKILL_MP_COST[i]);
             int skillID = i + 1;
-            btn.addActionListener(e -> executeSkill(skillID));
+            btn.addActionListener(e -> executePlayerSkill(skillID));
             grid.add(btn);
             skillButtons.add(btn);
         }
@@ -789,8 +829,14 @@ public class ArcadeGamePanel extends JPanel {
     }
 
     public void setCharacters(int playerIdx, int enemyIdx) {
-        if (playerTimer != null && playerTimer.isRunning()) playerTimer.stop();
-        if (enemyTimer  != null && enemyTimer.isRunning())  enemyTimer.stop();
+        if (playerTimer != null) {
+            playerTimer.stop();
+            playerTimer = null;
+        }
+        if (enemyTimer != null) {
+            enemyTimer.stop();
+            enemyTimer = null;
+        }
         stopSkillAnimation(true, false);
         stopSkillAnimation(false, false);
         stopProjectileAnimation(false);
@@ -815,21 +861,7 @@ public class ArcadeGamePanel extends JPanel {
         enemySkillAnimations  = loadSkillAnimations(enemyDef);
         playerFrameIndex = 0;
         enemyFrameIndex  = 0;
-
-        if (!playerFrames.isEmpty()) {
-            playerTimer = new Timer(playerDef.idleAnimation.frameDelayMs, e -> {
-                playerFrameIndex = (playerFrameIndex + 1) % playerFrames.size();
-                repaint();
-            });
-            playerTimer.start();
-        }
-        if (!enemyFrames.isEmpty()) {
-            enemyTimer = new Timer(enemyDef.idleAnimation.frameDelayMs, e -> {
-                enemyFrameIndex = (enemyFrameIndex + 1) % enemyFrames.size();
-                repaint();
-            });
-            enemyTimer.start();
-        }
+        ensureIdleTimersRunning();
 
         if (playerDeadTimer != null) { playerDeadTimer.stop(); playerDeadTimer = null; }
         if (enemyDeadTimer  != null) { enemyDeadTimer.stop();  enemyDeadTimer  = null; }
@@ -844,6 +876,47 @@ public class ArcadeGamePanel extends JPanel {
         repaint();
     }
 
+    private void playSkillSound(CharacterDef character, int skillID) {
+        if (character == null) return;
+        String charName = character.name;
+        
+        int soundIndex = -1;
+        double timeOffset = 0.0;
+        int stopAfterMillis = -1;  // No auto-stop by default
+        
+        if ("Idk Magician".equalsIgnoreCase(charName)) {
+            soundIndex = switch (skillID) {
+                case 1 -> 11; // Lighting Burst
+                case 2 -> 12; // Thunder Call (start at 1 second mark, stop at animation end)
+                case 3 -> 13; // Plasma Bolt
+                default -> -1;
+            };
+            if (skillID == 2) {
+                timeOffset = 1.0;  // Skill 2 starts at 1 second
+                stopAfterMillis = 1500;  // Stop after ~1.5 seconds (animation duration)
+            }
+        } else if ("Light Mage".equalsIgnoreCase(charName)) {
+            soundIndex = switch (skillID) {
+                case 1 -> 14; // Light Sword
+                case 2 -> 15; // Halo of Aegis
+                case 3 -> 16; // Dawn Piercer
+                default -> -1;
+            };
+            if (skillID == 2) {
+                timeOffset = 1.0;  // Start at 1 second into the audio
+                stopAfterMillis = 2000;  // Play for 2 seconds total
+            }
+        }
+        
+        if (soundIndex >= 0) {
+            sfx.playSkillSFX(soundIndex, timeOffset, stopAfterMillis);
+        }
+    }
+
+    private void executePlayerSkill(int skillID) {
+        if (gameMode == GameMode.PVB && !isP1Turn) return;
+        executeSkill(skillID);
+    }
 
     public void executeSkill(int skillID) {
         if (!roundManager.isRoundInProgress()) return;
@@ -868,10 +941,18 @@ public class ArcadeGamePanel extends JPanel {
             return;
         }
 
+        if (isP1Turn) {
+            setPlayerButtonsEnabled(false);
+        }
+
         stopTurnTimer();
 
         boolean actingP1         = isP1Turn;
         CharacterDef actor       = actingP1 ? currentPlayerDef : currentEnemyDef;
+        
+        // Play skill sound effect if it's Idk Magician
+        playSkillSound(actor, skillID);
+        
         CharacterDef.DefenseFormDef defenseForm = actor != null ? actor.defenseForm : null;
         boolean isDefenseFormToggleSkill = defenseForm != null && skillID == defenseForm.toggleSkillSlot;
         boolean isDefenseFormAltSkill = defenseForm != null
@@ -964,9 +1045,30 @@ public class ArcadeGamePanel extends JPanel {
     }
 
     private void maybeTriggerBotTurn() {
-        if (gameMode != GameMode.PVB || isP1Turn) return;
-        if (p1HP <= 0 || p2HP <= 0) return;
-        if (isPlayerSkillAnimating || isProjectileAnimating) return;  // Don't interrupt player animation
+        if (gameMode != GameMode.PVB) return;
+        if (isP1Turn || p1HP <= 0 || p2HP <= 0) {
+            if (pendingBotTurnRetryTimer != null) {
+                pendingBotTurnRetryTimer.stop();
+                pendingBotTurnRetryTimer = null;
+            }
+            return;
+        }
+        if (botIsThinking) return;
+
+        boolean blockedByAnimation = isPlayerSkillAnimating || isEnemySkillAnimating || isProjectileAnimating;
+        boolean blockedByOverlay = messageOverlay != null && messageOverlay.isAnimating();
+        if (blockedByAnimation || blockedByOverlay) {
+            if (pendingBotTurnRetryTimer == null || !pendingBotTurnRetryTimer.isRunning()) {
+                pendingBotTurnRetryTimer = new Timer(120, e -> {
+                    ((Timer) e.getSource()).stop();
+                    pendingBotTurnRetryTimer = null;
+                    maybeTriggerBotTurn();
+                });
+                pendingBotTurnRetryTimer.setRepeats(false);
+                pendingBotTurnRetryTimer.start();
+            }
+            return;
+        }
 
         botIsThinking = true;
         setPlayerButtonsEnabled(false);
@@ -1003,6 +1105,18 @@ public class ArcadeGamePanel extends JPanel {
 
     private void setPlayerButtonsEnabled(boolean enabled) {
         for (JButton btn : skillButtons) btn.setEnabled(enabled);
+    }
+
+    private void resetIdleTimersForRoundStart() {
+        if (playerTimer != null) {
+            playerTimer.stop();
+            playerTimer = null;
+        }
+        if (enemyTimer != null) {
+            enemyTimer.stop();
+            enemyTimer = null;
+        }
+        ensureIdleTimersRunning();
     }
 
     private void updateGameState() {
@@ -2136,6 +2250,7 @@ public class ArcadeGamePanel extends JPanel {
                     config.skill1Name, config.skill2Name, config.skill3Name,
                     config.skill1Description, config.skill2Description, config.skill3Description,
                     config.skill1Type, config.skill2Type, config.skill3Type,
+                    config.skill1Power, config.skill2Power, config.skill3Power,
                     config.skill1SpritePath, config.skill1FollowUpSpritePath, config.skill2SpritePath, config.skill3SpritePath,
                     config.skill1ForwardOffsetX, config.skill2ForwardOffsetX, config.skill3ForwardOffsetX,
                     config.skill1HurtTriggerBufferSeconds, config.skill2HurtTriggerBufferSeconds,
