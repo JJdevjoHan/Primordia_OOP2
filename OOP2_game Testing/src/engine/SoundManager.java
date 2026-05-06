@@ -14,6 +14,7 @@ public class SoundManager implements Runnable {
     URL[] soundURL = new URL[20];
     private String action = "play";
     private int pendingIndex = -1;
+    private int startFrameOffset = 0;  // Offset in frames for playback start position
     private final Map<Integer, byte[]> audioDataCache = new ConcurrentHashMap<>();
 
     //Constructor para pag assign sa sound | Just follow the current array sa last
@@ -40,6 +41,18 @@ public class SoundManager implements Runnable {
         soundURL[9] = getClass().getResource("/assets/SoundManager/BGM/arcadeMode_TheMagicWithin.wav");
         //Arcade Mode - The Magic Within
         soundURL[10] = getClass().getResource("/assets/SoundManager/BGM/survivalMode_KnifeToTheThroat.wav");
+        //Idk Magician - Skill 1 (Lighting Burst)
+        soundURL[11] = getClass().getResource("/assets/SoundManager/SkillSfx/Idk Magician/Skill1.wav");
+        //Idk Magician - Skill 2 (Thunder Call)
+        soundURL[12] = getClass().getResource("/assets/SoundManager/SkillSfx/Idk Magician/Skill2.wav");
+        //Idk Magician - Skill 3 (Plasma Bolt)
+        soundURL[13] = getClass().getResource("/assets/SoundManager/SkillSfx/Idk Magician/Skill3.wav");
+        //Light Mage - Skill 1 (Light Sword)
+        soundURL[14] = getClass().getResource("/assets/SoundManager/SkillSfx/Light Mage/Skill1.wav");
+        //Light Mage - Skill 2 (Halo of Aegis)
+        soundURL[15] = getClass().getResource("/assets/SoundManager/SkillSfx/Light Mage/Skill2.wav");
+        //Light Mage - Skill 3 (Dawn Piercer)
+        soundURL[16] = getClass().getResource("/assets/SoundManager/SkillSfx/Light Mage/Skill3.wav");
 
 
     }
@@ -47,6 +60,14 @@ public class SoundManager implements Runnable {
     public void setFile(int i) {
         // Defer heavy audio loading to the play/loop thread to avoid blocking caller
         pendingIndex = i;
+        startFrameOffset = 0;  // Reset offset when setting new file
+    }
+
+    public void setTimeOffset(double offsetSeconds) {
+        // Will be converted to frames based on audio format when playing
+        // This is a temporary storage; will be calculated in play() when we know the audio format
+        if (offsetSeconds < 0) offsetSeconds = 0;
+        this.startFrameOffset = (int)(offsetSeconds * 44100);  // Assume 44.1kHz; will be adjusted based on actual format
     }
 
     public void preload(int i) {
@@ -84,7 +105,17 @@ public class SoundManager implements Runnable {
                     }
                     clip = AudioSystem.getClip();
                     clip.open(ais);
-                    clip.setFramePosition(0);
+                    
+                    // Calculate frame position based on actual audio format if offset is set
+                    int framePos = 0;
+                    if (startFrameOffset > 0) {
+                        float sampleRate = ais.getFormat().getSampleRate();
+                        framePos = (int)(startFrameOffset / 44100.0 * sampleRate);
+                        framePos = Math.min(framePos, clip.getFrameLength() - 1);
+                        startFrameOffset = 0;  // Reset for next play
+                    }
+                    
+                    clip.setFramePosition(framePos);
                     clip.start();
                 } catch (Exception e) {
                     System.err.println("Error playing file: " + e.getMessage());
@@ -127,10 +158,84 @@ public class SoundManager implements Runnable {
 
     public void stop() {
         if (clip != null) {
-            clip.stop();
-            clip.close();
-            clip = null;
+            try {
+                if (clip.isRunning()) {
+                    clip.stop();
+                }
+                clip.close();
+            } catch (Exception e) {
+                System.err.println("Error stopping clip: " + e.getMessage());
+            } finally {
+                clip = null;
+            }
         }
+    }
+
+    public void playSkillSFX(int soundIndex, double timeOffsetSeconds) {
+        playSkillSFX(soundIndex, timeOffsetSeconds, -1);  // No auto-stop
+    }
+
+    public void playSkillSFX(int soundIndex, double timeOffsetSeconds, int stopAfterMillis) {
+        if (soundIndex < 0 || soundIndex >= soundURL.length || soundURL[soundIndex] == null) {
+            System.err.println("Invalid skill sound index: " + soundIndex);
+            return;
+        }
+        
+        Thread t = new Thread(() -> {
+            Clip skillClip = null;
+            try {
+                AudioInputStream ais;
+                byte[] cached = audioDataCache.get(soundIndex);
+                if (cached != null) {
+                    ais = AudioSystem.getAudioInputStream(new ByteArrayInputStream(cached));
+                } else {
+                    ais = AudioSystem.getAudioInputStream(soundURL[soundIndex]);
+                }
+                
+                skillClip = AudioSystem.getClip();
+                skillClip.open(ais);
+                
+                // Calculate frame position based on time offset
+                int framePos = 0;
+                if (timeOffsetSeconds > 0) {
+                    float sampleRate = ais.getFormat().getSampleRate();
+                    int frameOffset = (int)(timeOffsetSeconds * 44100);  // Assume 44.1kHz; will be adjusted
+                    framePos = (int)(frameOffset / 44100.0 * sampleRate);
+                    framePos = Math.min(framePos, skillClip.getFrameLength() - 1);
+                }
+                
+                skillClip.setFramePosition(framePos);
+                skillClip.start();
+                
+                // Auto-stop after specified duration if requested
+                if (stopAfterMillis > 0) {
+                    final Clip clipToStop = skillClip;
+                    Thread stopThread = new Thread(() -> {
+                        try {
+                            Thread.sleep(stopAfterMillis);
+                            try {
+                                if (clipToStop != null && clipToStop.isRunning()) {
+                                    clipToStop.stop();
+                                }
+                                if (clipToStop != null) {
+                                    clipToStop.close();
+                                }
+                            } catch (Exception stopException) {
+                                System.err.println("Error during auto-stop: " + stopException.getMessage());
+                            }
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                    });
+                    stopThread.setDaemon(true);
+                    stopThread.start();
+                }
+            } catch (Exception e) {
+                System.err.println("Error playing skill SFX index " + soundIndex + ": " + e.getMessage());
+            }
+        });
+        t.setDaemon(true);
+        t.start();
     }
 
     @Override

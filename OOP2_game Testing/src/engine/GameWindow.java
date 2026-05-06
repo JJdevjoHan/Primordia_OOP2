@@ -12,6 +12,7 @@ public class GameWindow extends JFrame {
     private CardLayout layout;
     private JPanel container;
     private final SoundManager menuBGM = new SoundManager();
+    private CharacterSelectionPanel currentCharacterSelectionPanel;  // Track character selection panel
 
 
     public GameWindow() {
@@ -60,17 +61,18 @@ public class GameWindow extends JFrame {
     public void showCharacterSelection(GameMode mode) {
         stopMenuMusic();
         GamePanel.reloadCharacterDefs();
-        CharacterSelectionPanel panel = new CharacterSelectionPanel(this, mode);
+        currentCharacterSelectionPanel = new CharacterSelectionPanel(this, mode);
 
-        container.add(panel, "CHAR_SELECT");
+        container.add(currentCharacterSelectionPanel, "CHAR_SELECT");
         layout.show(container, "CHAR_SELECT");
 
         container.revalidate();
         container.repaint();
-        SwingUtilities.invokeLater(panel::requestFocusInWindow);
+        SwingUtilities.invokeLater(currentCharacterSelectionPanel::requestFocusInWindow);
     }
 
     public void startPvPMatch(int p1, int p2) {
+        stopCharacterSelectionMusic();
         GamePanel.reloadCharacterDefs();
 
         GamePanel panel = new GamePanel(this,p1, p2);
@@ -84,6 +86,7 @@ public class GameWindow extends JFrame {
     }
 
     public void startSurvivalMatch(int playerIndex) {
+        stopCharacterSelectionMusic();
         GamePanel.reloadCharacterDefs();
 
         int botIndex = (int)(Math.random() * GamePanel.ALL_CHARACTERS.size());
@@ -105,6 +108,7 @@ public class GameWindow extends JFrame {
     }
 
     public void startArcadeMatch(int playerIndex) {
+        stopCharacterSelectionMusic();
         GamePanel.reloadCharacterDefs();
         List<Integer> arcadeOpponents = new ArrayList<>();        for (int i = 0; i < GamePanel.ALL_CHARACTERS.size(); i++) {
             if (i != playerIndex) {
@@ -135,6 +139,12 @@ public class GameWindow extends JFrame {
     public void stopMenuMusic() {
         if (menuBGM != null) {
             menuBGM.stop();
+        }
+    }
+
+    public void stopCharacterSelectionMusic() {
+        if (currentCharacterSelectionPanel != null) {
+            currentCharacterSelectionPanel.stopMusic();
         }
     }
 
