@@ -26,6 +26,7 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
     private static final int PREVIEW_INSET_PX = 12;
     private static final int GRID_INSET_PX = 2;
     private static final int FEET_MARGIN_PX = 3;
+    private static final double GALLERY_PORTRAIT_FILL_RATIO = 1.10;
 
     private final GameWindow window;
     private final List<CharacterDef> characters;
@@ -516,7 +517,8 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
                 BufferedImage thumb = getThumbnail(i);
                 if (thumb != null) {
                     int imageAreaH = cellH - 30;
-                    drawFittedSprite(g2, thumb, cellX + 6, cellY + 4, cellW - 12, imageAreaH - 2, 0.84, null, GRID_INSET_PX, true);
+                    Rectangle portraitBounds = getPortraitBounds(thumb);
+                    drawFittedSprite(g2, thumb, cellX + 6, cellY + 4, cellW - 12, imageAreaH - 2, GALLERY_PORTRAIT_FILL_RATIO, portraitBounds, GRID_INSET_PX, false);
                 }
             } else {
                 g2.setFont(bodyFont.deriveFont(Font.BOLD, 18f));
@@ -529,12 +531,25 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
             }
 
             g2.setFont(bodyFont.deriveFont(Font.BOLD, 18f));
-            g2.setColor(new Color(21, 20, 18));
             if (i < characters.size()) {
                 String name = characters.get(i).name;
                 FontMetrics fm = g2.getFontMetrics();
-                int textX = cellX + Math.max(6, (cellW - fm.stringWidth(name)) / 2);
-                int textY = cellY + cellH - 8;
+                int labelPaddingX = 10;
+                int labelPaddingY = 4;
+                int labelW = Math.min(cellW - 12, fm.stringWidth(name) + labelPaddingX * 2);
+                int labelX = cellX + (cellW - labelW) / 2;
+                int labelH = fm.getHeight() + labelPaddingY * 2 - 2;
+                int labelY = cellY + cellH - labelH - 6;
+
+                g2.setColor(new Color(52, 35, 22, 210));
+                g2.fillRoundRect(labelX, labelY, labelW, labelH, 12, 12);
+                g2.setColor(new Color(241, 233, 218));
+                g2.setStroke(new BasicStroke(1.5f));
+                g2.drawRoundRect(labelX, labelY, labelW, labelH, 12, 12);
+
+                g2.setColor(new Color(249, 244, 236));
+                int textX = labelX + (labelW - fm.stringWidth(name)) / 2;
+                int textY = labelY + labelH - labelPaddingY - 2;
                 g2.drawString(name, textX, textY);
             }
         }
@@ -590,15 +605,94 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
         g2.setColor(new Color(31, 25, 20));
         g2.drawString("Skills", x, y);
 
-        y += 24;
-        g2.setFont(bodyFont);
-        g2.setColor(new Color(44, 36, 28));
-        y = drawWrappedText(g2, "Skill 1: " + selected.skill1Name, x, y, textWidth, 24);
-        y = drawWrappedText(g2, selected.getSkillDescription(1), x + 16, y, textWidth - 16, 22);
-        y = drawWrappedText(g2, "Skill 2: " + selected.skill2Name, x, y + 4, textWidth, 24);
-        y = drawWrappedText(g2, selected.getSkillDescription(2), x + 16, y, textWidth - 16, 22);
-        y = drawWrappedText(g2, "Skill 3: " + selected.skill3Name, x, y + 4, textWidth, 24);
-        drawWrappedText(g2, selected.getSkillDescription(3), x + 16, y, textWidth - 16, 22);
+        y += 22;
+        y = drawSkillsTable(g2, selected, x, y, textWidth);
+    }
+
+    private int drawSkillsTable(Graphics2D g2, CharacterDef selected, int x, int y, int width) {
+        int headerHeight = 28;
+        int rowMinHeight = 64;
+        int rowGap = 8;
+
+        int nameColW = Math.max(170, width / 4);
+        int descColW = Math.max(220, width - nameColW - 16);
+        int tableW = nameColW + descColW + 16;
+        int tableX = x;
+
+        g2.setFont(bodyFont.deriveFont(Font.BOLD, 18f));
+        FontMetrics headerMetrics = g2.getFontMetrics();
+
+        g2.setColor(new Color(58, 42, 28));
+        g2.fillRoundRect(tableX, y, tableW, headerHeight, 12, 12);
+        g2.setColor(new Color(242, 232, 215));
+        g2.drawRoundRect(tableX, y, tableW, headerHeight, 12, 12);
+
+        int headerBaseline = y + headerHeight - 8;
+        g2.drawString("Skill", tableX + 14, headerBaseline);
+        g2.drawString("Details", tableX + nameColW + 28, headerBaseline);
+
+        y += headerHeight + 8;
+        for (int i = 1; i <= 3; i++) {
+            String skillName = selected.getSkillName(i);
+            String skillDesc = selected.getSkillDescription(i);
+
+            int descTextWidth = descColW - 20;
+            int descLines = countWrappedLines(g2, skillDesc, descTextWidth);
+            int rowHeight = Math.max(rowMinHeight, (descLines * 22) + 18);
+
+            g2.setColor(new Color(248, 245, 239));
+            g2.fillRoundRect(tableX, y, tableW, rowHeight, 12, 12);
+            g2.setColor(new Color(53, 44, 34));
+            g2.drawRoundRect(tableX, y, tableW, rowHeight, 12, 12);
+
+            int nameBoxX = tableX + 10;
+            int nameBoxY = y + 10;
+            int nameBoxW = nameColW - 16;
+            int nameBoxH = rowHeight - 20;
+            g2.setColor(new Color(86, 63, 35));
+            g2.fillRoundRect(nameBoxX, nameBoxY, nameBoxW, nameBoxH, 10, 10);
+            g2.setColor(new Color(247, 241, 228));
+            g2.drawRoundRect(nameBoxX, nameBoxY, nameBoxW, nameBoxH, 10, 10);
+
+            g2.setColor(new Color(252, 248, 242));
+            g2.setFont(bodyFont.deriveFont(Font.BOLD, 18f));
+            FontMetrics nameMetrics = g2.getFontMetrics();
+            int nameTextX = nameBoxX + 10;
+            int nameTextY = nameBoxY + (nameBoxH + nameMetrics.getAscent()) / 2 - 2;
+            g2.drawString(skillName, nameTextX, nameTextY);
+
+            g2.setColor(new Color(50, 41, 32));
+            int descX = tableX + nameColW + 24;
+            int descY = y + 18;
+            drawWrappedText(g2, skillDesc, descX, descY, descTextWidth, 22);
+
+            y += rowHeight + rowGap;
+        }
+
+        return y;
+    }
+
+    private int countWrappedLines(Graphics2D g2, String text, int maxWidth) {
+        if (text == null || text.isBlank()) {
+            return 1;
+        }
+
+        FontMetrics metrics = g2.getFontMetrics();
+        String[] words = text.trim().split("\\s+");
+        int lines = 1;
+        StringBuilder line = new StringBuilder();
+
+        for (String word : words) {
+            String candidate = line.isEmpty() ? word : line + " " + word;
+            if (metrics.stringWidth(candidate) <= maxWidth) {
+                line = new StringBuilder(candidate);
+            } else {
+                lines++;
+                line = new StringBuilder(word);
+            }
+        }
+
+        return lines;
     }
 
     private int drawWrappedText(Graphics2D g2, String text, int x, int y, int maxWidth, int lineHeight) {
@@ -721,6 +815,13 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
         }
 
         return new Rectangle(minX, minY, (maxX - minX) + 1, (maxY - minY) + 1);
+    }
+
+    private Rectangle getPortraitBounds(BufferedImage image) {
+        Rectangle bounds = getOpaqueBounds(image);
+        int portraitHeight = Math.max(1, (int) Math.round(bounds.height * 0.68));
+        int portraitY = bounds.y;
+        return new Rectangle(bounds.x, portraitY, bounds.width, portraitHeight);
     }
 
     private Rectangle getOpaqueBounds(BufferedImage image) {

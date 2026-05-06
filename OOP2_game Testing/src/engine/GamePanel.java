@@ -72,7 +72,11 @@ public class GamePanel extends JPanel {
     public static List<CharacterDef> ALL_CHARACTERS = loadCharacterDefs();
 
     // Assets
-    private Image backgroundImage;
+    
+    private List<Image> backgroundLayers = new ArrayList<>();
+    private double[] backgroundLayerOffsets = new double[0];
+    private double[] backgroundLayerSpeeds  = new double[0];
+    private javax.swing.Timer backgroundAnimTimer;
     private Image battleUiBoxImage;
     private long battleUiBoxLastModified = -1;
     private JButton exitButton;
@@ -586,8 +590,19 @@ public class GamePanel extends JPanel {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
 
-        if (backgroundImage != null)
-            g2.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
+        if (backgroundLayers != null && !backgroundLayers.isEmpty()) {
+            // Render layers in order (lowest first so backgroundLayers should be ordered appropriately)
+            int w = getWidth();
+            int h = getHeight();
+            for (int i = 0; i < backgroundLayers.size(); i++) {
+                Image layer = backgroundLayers.get(i);
+                if (layer == null) continue;
+                int ox = (int) Math.round(i < backgroundLayerOffsets.length ? backgroundLayerOffsets[i] : 0.0);
+                // Draw twice to allow horizontal wrapping for continuous movement
+                g2.drawImage(layer, -ox, 0, w, h, this);
+                g2.drawImage(layer, -ox + w, 0, w, h, this);
+            }
+        }
 
         // Player sprite
         if (p1HP <= 0) {
@@ -1113,18 +1128,59 @@ public class GamePanel extends JPanel {
     }
 
     private void loadMapBackground(Document document, String tmxResourcePath, URL tmxUrl) {
-        NodeList imageNodes = document.getElementsByTagName("image");
-        if (imageNodes.getLength() == 0) return;
-        Element imageElement = (Element) imageNodes.item(0);
-        String source = imageElement.getAttribute("source");
-        if (source == null || source.isEmpty()) return;
-        int imageWidth  = parseNumber(imageElement.getAttribute("width"));
-        int imageHeight = parseNumber(imageElement.getAttribute("height"));
-        if (imageWidth  > 0) mapPixelWidth  = imageWidth;
-        if (imageHeight > 0) mapPixelHeight = imageHeight;
-        Image loaded = tryLoadMapImage(source, tmxResourcePath, tmxUrl);
-        if (loaded != null) backgroundImage = loaded;
-        else System.err.println("TMX background image not found: " + source);
+        // Try to read all image layers defined in the TMX
+        NodeList imageNodes = document.getElementsByTagName("imagelayer");
+        backgroundLayers.clear();
+        if (imageNodes.getLength() == 0) {
+            // fallback to old <image> tag used by some editors
+            imageNodes = document.getElementsByTagName("image");
+        }
+
+        for (int i = 0; i < imageNodes.getLength(); i++) {
+            Node node = imageNodes.item(i);
+            if (node.getNodeType() != Node.ELEMENT_NODE) continue;
+            Element imageElement = (Element) node;
+            // support both <imagelayer><image source=.../> and <image source=.../>
+            Element img = imageElement.getTagName().equals("image") ? imageElement : (Element) imageElement.getElementsByTagName("image").item(0);
+            if (img == null) continue;
+            String source = img.getAttribute("source");
+            if (source == null || source.isEmpty()) continue;
+            int imageWidth  = parseNumber(img.getAttribute("width"));
+            int imageHeight = parseNumber(img.getAttribute("height"));
+            if (imageWidth  > 0) mapPixelWidth  = imageWidth;
+            if (imageHeight > 0) mapPixelHeight = imageHeight;
+
+            // Attempt to load a set of ordered layer images from a background folder matching the base name
+            List<Image> layers = tryLoadMapImageLayers(source, tmxResourcePath, tmxUrl);
+            if (layers != null && !layers.isEmpty()) {
+                // Append layers in order (we expect tryLoadMapImageLayers to return lowest-first order)
+                backgroundLayers.addAll(layers);
+            } else {
+                Image loaded = tryLoadMapImage(source, tmxResourcePath, tmxUrl);
+                if (loaded != null) backgroundLayers.add(loaded);
+                else System.err.println("TMX background image not found: " + source);
+            }
+        }
+        // initialize per-layer offsets and speeds for parallax animation
+        int n = backgroundLayers.size();
+        backgroundLayerOffsets = new double[n];
+        backgroundLayerSpeeds  = new double[n];
+        for (int i = 0; i < n; i++) {
+            // layers[0] is the furthest (lowest), so give it the slowest speed
+            double t = n > 1 ? (i / (double) (n - 1)) : 0.0; // 0..1
+            backgroundLayerSpeeds[i] = 0.5 + t * 2.0; // 0.5px/s .. 2.5px/s
+            backgroundLayerOffsets[i] = 0.0;
+        }
+        if (backgroundAnimTimer == null) {
+            backgroundAnimTimer = new javax.swing.Timer(40, e -> {
+                double dt = 40.0 / 1000.0;
+                for (int i = 0; i < backgroundLayerOffsets.length; i++) {
+                    backgroundLayerOffsets[i] = (backgroundLayerOffsets[i] + backgroundLayerSpeeds[i] * dt) % Math.max(1, getWidth());
+                }
+                repaint();
+            });
+            backgroundAnimTimer.start();
+        }
     }
 
     private Image tryLoadMapImage(String source, String tmxResourcePath, URL tmxUrl) {
@@ -1140,6 +1196,96 @@ public class GamePanel extends JPanel {
             }
         } catch (Exception ignored) {}
         return null;
+    }
+
+    private List<Image> tryLoadMapImageLayers(String source, String tmxResourcePath, URL tmxUrl) {
+        List<Image> layers = new ArrayList<>();
+        String baseName = source != null ? source.replaceAll("\\\\", "/") : "";
+        baseName = baseName.contains(".") ? baseName.substring(0, baseName.lastIndexOf('.')) : baseName;
+
+        // Prefer assets/maps/background/<baseName>/
+        try {
+            URL tmxx = getClass().getResource(tmxResourcePath);
+            if (tmxx == null) return layers;
+            Path tmxFilePath = Paths.get(tmxx.toURI());
+            Path mapsDir = tmxFilePath.getParent();
+            if (mapsDir == null) return layers;
+            // If there is a 'backgrounds' directory with multiple battlegrounds, pick one at random
+            Path bgFolder = null;
+            Path backgroundsRoot = mapsDir.resolve("backgrounds");
+            if (Files.exists(backgroundsRoot) && Files.isDirectory(backgroundsRoot)) {
+                List<Path> candidates = new ArrayList<>();
+                try (java.util.stream.Stream<Path> s = Files.list(backgroundsRoot)) {
+                    s.filter(p -> Files.isDirectory(p)).forEach(candidates::add);
+                }
+                if (!candidates.isEmpty()) {
+                    int idx = (int) (Math.random() * candidates.size());
+                    Path chosen = candidates.get(idx);
+                    Path chosenSpecific = chosen.resolve(baseName);
+                    // If chosen folder contains a subfolder named like baseName, prefer that, else use chosen directly
+                    bgFolder = Files.exists(chosenSpecific) && Files.isDirectory(chosenSpecific) ? chosenSpecific : chosen;
+                }
+            }
+            if (bgFolder == null) {
+                bgFolder = mapsDir.resolve("background").resolve(baseName);
+            }
+            if (!Files.exists(bgFolder) || !Files.isDirectory(bgFolder)) {
+                Path alt = mapsDir.resolve("backgrounds").resolve(baseName);
+                if (Files.exists(alt) && Files.isDirectory(alt)) bgFolder = alt;
+                else return layers;
+            }
+
+            // Collect image files (png/jpg) and sort so that higher numeric suffixes come later
+            List<Path> imgs = new ArrayList<>();
+            try (java.util.stream.Stream<Path> stream = Files.list(bgFolder)) {
+                stream.filter(p -> Files.isRegularFile(p) && (p.getFileName().toString().toLowerCase().endsWith(".png") || p.getFileName().toString().toLowerCase().endsWith(".jpg")))
+                        .forEach(imgs::add);
+            }
+            // If no images found directly in bgFolder, look into immediate subdirectories (common layout)
+            if (imgs.isEmpty()) {
+                try (java.util.stream.Stream<Path> stream = Files.list(bgFolder)) {
+                    stream.filter(Files::isDirectory).forEach(dir -> {
+                        try (java.util.stream.Stream<Path> s2 = Files.list(dir)) {
+                            s2.filter(p -> Files.isRegularFile(p) && (p.getFileName().toString().toLowerCase().endsWith(".png") || p.getFileName().toString().toLowerCase().endsWith(".jpg")))
+                                    .forEach(imgs::add);
+                        } catch (Exception ignored) {}
+                    });
+                }
+            }
+            if (imgs.isEmpty()) return layers;
+
+            imgs.sort((a, b) -> {
+                String an = a.getFileName().toString();
+                String bn = b.getFileName().toString();
+                Integer ai = extractTrailingNumber(an);
+                Integer bi = extractTrailingNumber(bn);
+                if (ai != null && bi != null) return ai.compareTo(bi);
+                return an.compareTo(bn);
+            });
+
+            // According to spec: 1 is topmost and largest number (e.g., 7) is lowest and should be rendered first
+            // We want to render lowest first, so sort ascending number and then reverse to have lowest index first? Actually
+            // If filenames are like layer1..layer7 where 1 topmost, 7 lowest, then we want to render 7,6,...,1. So after sorting ascending, reverse.
+            java.util.Collections.reverse(imgs);
+
+            for (Path p : imgs) {
+                try {
+                    layers.add(new ImageIcon(p.toString()).getImage());
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception ignored) {}
+        return layers;
+    }
+
+    private Integer extractTrailingNumber(String name) {
+        String digits = "";
+        for (int i = name.length() - 1; i >= 0; i--) {
+            char c = name.charAt(i);
+            if (Character.isDigit(c)) digits = c + digits;
+            else break;
+        }
+        if (digits.isEmpty()) return null;
+        try { return Integer.parseInt(digits); } catch (Exception e) { return null; }
     }
 
     private void loadSpawnPoint(Document document, String groupName, boolean isPlayerOne) {
