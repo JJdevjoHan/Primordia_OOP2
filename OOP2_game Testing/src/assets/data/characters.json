@@ -576,7 +576,7 @@
     {
       "id": "dark_wizard",
       "name": "Dark Wizard",
-      "backstory": "Placeholder backstory.",
+      "backstory": "A Kumiho who manipulates shadow and soul energy into unpredictable combat magic. She thrives on chaos, overwhelming foes with relentless dark assaults.",
       "elementType": "Dark",
       "weakness": ["Light"],
       "hp": 138,

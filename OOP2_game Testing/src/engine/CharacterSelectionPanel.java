@@ -859,16 +859,17 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
         g2.setFont(bodyFont.deriveFont(Font.PLAIN, 24f));
         g2.setColor(new Color(44, 36, 28));
         int descTextWidth = innerW - 24;
+        FontMetrics backFm = g2.getFontMetrics();
+        int backLineH = Math.max(1, (int) Math.round(backFm.getHeight() * 0.9));
         int descLines = countWrappedLines(g2, selected.backstory == null ? "" : selected.backstory, descTextWidth);
-        int lineH = 24;
         // Add a bit more top padding and size box to content; ensure text starts at top
-        int backBoxH = Math.max(24, descLines * lineH + 12);
+        int backBoxH = Math.max(backLineH, descLines * backLineH + 12);
         g2.setColor(new Color(255, 255, 255, 200));
         g2.fillRoundRect(innerX, backstoryY - 6, innerW, backBoxH + 8, 10, 10);
         g2.setColor(new Color(50, 41, 32));
         int descX = innerX + 12;
         int descY = backstoryY + 12; // start from top padding
-        drawWrappedText(g2, selected.backstory == null ? "" : selected.backstory, descX, descY, descTextWidth, lineH);
+        drawWrappedText(g2, selected.backstory == null ? "" : selected.backstory, descX, descY, descTextWidth, backLineH);
 
         // Skills header strip (colored) and table (preserve layout)
         int skillsHeaderY = backstoryY + backBoxH + 12;
@@ -889,23 +890,26 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
         // Render three skills horizontally to avoid vertical cutoff.
         int boxes = 3;
         int boxGap = 12;
-        int minBoxHeight = 80;
-        int nameBoxInnerH = 36;
+        int minBoxHeight = 120;
+        int nameBoxInnerH = 56;
         int tableX = x + 0;
         int totalGap = boxGap * (boxes - 1);
         int boxW = (width - 16 - totalGap) / boxes;
-
-        // Use larger fonts for better readability
-        g2.setFont(bodyFont.deriveFont(Font.PLAIN, 18f));
-
-        // Compute required height for each box based on wrapped description lines
         int maxBoxH = minBoxHeight;
         int[] boxHeights = new int[boxes];
+
+        // Description font used for measuring and rendering (larger for readability)
+        Font descFont = bodyFont.deriveFont(Font.PLAIN, 26f);
+        g2.setFont(descFont);
+        FontMetrics descFm = g2.getFontMetrics();
+        int descLineH = Math.max(1, (int) Math.round(descFm.getHeight() * 0.9));
+
+        // Compute required height for each box based on wrapped description lines
         for (int i = 0; i < boxes; i++) {
             String desc = selected.getSkillDescription(i + 1);
             int descTextWidth = Math.max(80, boxW - 24);
             int descLines = countWrappedLines(g2, desc == null ? "" : desc, descTextWidth);
-            int h = Math.max(minBoxHeight, nameBoxInnerH + (descLines * 24) + 28);
+            int h = Math.max(minBoxHeight, nameBoxInnerH + (descLines * descLineH) + 32);
             boxHeights[i] = h;
             maxBoxH = Math.max(maxBoxH, h);
         }
@@ -933,20 +937,20 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
             // Skill name
             String skillName = selected.getSkillName(i + 1);
             g2.setColor(new Color(252, 248, 242));
-            g2.setFont(bodyFont.deriveFont(Font.BOLD, 20f));
+            g2.setFont(bodyFont.deriveFont(Font.BOLD, 30f));
             FontMetrics nameMetrics = g2.getFontMetrics();
-            int nameTextX = nameBoxX + 10;
+            int nameTextX = nameBoxX + 12;
             int nameTextY = nameBoxY + (nameBoxH + nameMetrics.getAscent()) / 2 - 2;
             g2.drawString(skillName == null ? "" : skillName, nameTextX, nameTextY);
 
             // Skill description
             String skillDesc = selected.getSkillDescription(i + 1);
             g2.setColor(new Color(50, 41, 32));
-            g2.setFont(bodyFont.deriveFont(Font.PLAIN, 16f));
+            g2.setFont(descFont);
             int descX = bx + 12;
-            int descY = nameBoxY + nameBoxH + 14;
+            int descY = nameBoxY + nameBoxH + 18;
             int descTextWidth = Math.max(80, boxW - 24);
-            drawWrappedText(g2, skillDesc == null ? "" : skillDesc, descX, descY, descTextWidth, 22);
+            drawWrappedText(g2, skillDesc == null ? "" : skillDesc, descX, descY, descTextWidth, descLineH);
         }
 
         return y + maxBoxH + 12;
