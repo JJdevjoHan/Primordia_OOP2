@@ -563,6 +563,7 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
         String selectedName = (focusedIndex >= 0 && focusedIndex < characters.size()) ? characters.get(focusedIndex).name : null;
         PreviewTweak tweak = getPreviewTweak(selectedName);
         double fillRatio = PREVIEW_BASE_FILL_RATIO * tweak.scaleMultiplier;
+        drawPreviewShadow(g2, frame, spriteAreaX, spriteAreaY, spriteAreaW, spriteAreaH, fillRatio, previewBounds, PREVIEW_INSET_PX, tweak.offsetRatioX, tweak.offsetRatioY);
         drawFittedSprite(g2, frame, spriteAreaX, spriteAreaY, spriteAreaW, spriteAreaH, fillRatio, previewBounds, PREVIEW_INSET_PX, true, tweak.offsetRatioX, tweak.offsetRatioY);
 
         // Draw character name overlay inside the preview area (centered near bottom)
@@ -1068,6 +1069,95 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
             sourceY + sourceH,
             this
         );
+    }
+
+    private void drawPreviewShadow(Graphics2D g2,
+                                   BufferedImage image,
+                                   int areaX,
+                                   int areaY,
+                                   int areaW,
+                                   int areaH,
+                                   double fillRatio,
+                                   Rectangle sourceBounds,
+                                   int insetPx,
+                                   double offsetRatioX,
+                                   double offsetRatioY) {
+        Rectangle bounds = getFittedSpriteTargetBounds(image, areaX, areaY, areaW, areaH, fillRatio, sourceBounds, insetPx, true, offsetRatioX, offsetRatioY);
+        if (bounds == null) {
+            return;
+        }
+
+        int shadowW = Math.max(22, (int) Math.round(bounds.width * 0.48));
+        int shadowH = Math.max(8, (int) Math.round(bounds.height * 0.06));
+        int shadowX = bounds.x + (bounds.width - shadowW) / 2;
+        int shadowY = Math.min(bounds.y + bounds.height + 14, areaY + areaH - shadowH - 6);
+
+        Color oldColor = g2.getColor();
+        Composite oldComposite = g2.getComposite();
+        Object oldAA = g2.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
+        Shape oldClip = g2.getClip();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setClip(new Rectangle(areaX, areaY, areaW, areaH));
+        for (int i = 4; i >= 0; i--) {
+            float alpha = switch (i) {
+                case 4 -> 0.04f;
+                case 3 -> 0.07f;
+                case 2 -> 0.12f;
+                case 1 -> 0.18f;
+                default -> 0.24f;
+            };
+            int padX = i * 5;
+            int padY = i * 3;
+            g2.setComposite(AlphaComposite.SrcOver.derive(alpha));
+            g2.setColor(Color.BLACK);
+            g2.fillOval(shadowX - padX, shadowY - padY, shadowW + padX * 2, shadowH + padY * 2);
+        }
+        g2.setComposite(oldComposite);
+        g2.setColor(oldColor);
+        g2.setClip(oldClip);
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA);
+    }
+
+    private Rectangle getFittedSpriteTargetBounds(BufferedImage image,
+                                                  int areaX,
+                                                  int areaY,
+                                                  int areaW,
+                                                  int areaH,
+                                                  double fillRatio,
+                                                  Rectangle sourceBounds,
+                                                  int insetPx,
+                                                  boolean alignFeetToBottom,
+                                                  double offsetRatioX,
+                                                  double offsetRatioY) {
+        if (image == null || areaW <= 0 || areaH <= 0) {
+            return null;
+        }
+
+        int safeInset = Math.max(0, insetPx);
+        int innerX = areaX + safeInset;
+        int innerY = areaY + safeInset;
+        int innerW = Math.max(1, areaW - (safeInset * 2));
+        int innerH = Math.max(1, areaH - (safeInset * 2));
+
+        Rectangle bounds = sourceBounds != null ? sourceBounds : getOpaqueBounds(image);
+        int sourceW = Math.max(1, bounds.width);
+        int sourceH = Math.max(1, bounds.height);
+
+        double scale = Math.min(
+            (innerW * fillRatio) / sourceW,
+            (innerH * fillRatio) / sourceH
+        );
+
+        int targetW = Math.max(1, (int) Math.round(sourceW * scale));
+        int targetH = Math.max(1, (int) Math.round(sourceH * scale));
+        int targetX = innerX + (innerW - targetW) / 2;
+        int targetY = alignFeetToBottom
+            ? (innerY + innerH - targetH - FEET_MARGIN_PX)
+            : (innerY + (innerH - targetH) / 2);
+
+        targetX += (int) Math.round(targetW * offsetRatioX);
+        targetY += (int) Math.round(targetH * offsetRatioY);
+        return new Rectangle(targetX, targetY, targetW, targetH);
     }
 
     private Point2D.Double getPortraitOffsetRatio(String characterName) {
