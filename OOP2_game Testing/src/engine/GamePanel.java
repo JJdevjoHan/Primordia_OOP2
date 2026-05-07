@@ -601,6 +601,9 @@ public class GamePanel extends JPanel {
             }
         }
 
+        drawCharacterShadow(g2, getPlayerFeetAnchorX(), getPlayerFeetAnchorY(), getPlayerDrawWidth(), getPlayerDrawHeight());
+        drawCharacterShadow(g2, getEnemyFeetAnchorX(), getEnemyFeetAnchorY(), getEnemyDrawWidth(), getEnemyDrawHeight());
+
         // Player sprite
         if (p1HP <= 0) {
             if (!playerDeadFrames.isEmpty())
@@ -1122,6 +1125,35 @@ public class GamePanel extends JPanel {
     private int getSkillDrawWidth(BufferedImage frame, int targetHeight, int fallbackWidth) {
         if (frame == null || frame.getHeight() <= 0 || targetHeight <= 0) return fallbackWidth;
         return Math.max(1, Math.round((float) frame.getWidth() * targetHeight / frame.getHeight()));
+    }
+
+    private void drawCharacterShadow(Graphics2D g2, int feetX, int feetY, int drawWidth, int drawHeight) {
+        int shadowW = Math.max(18, (int) Math.round(drawWidth * 0.36));
+        int shadowH = Math.max(12, (int) Math.round(drawHeight * 0.12));
+        int shadowX = feetX - (shadowW / 2) + (feetX < getWidth() / 2 ? -15 : 30);
+        int shadowY = feetY - 25;
+
+        Color oldColor = g2.getColor();
+        Composite oldComposite = g2.getComposite();
+        Object oldAA = g2.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        for (int i = 4; i >= 0; i--) {
+            float alpha = switch (i) {
+                case 4 -> 0.04f;
+                case 3 -> 0.08f;
+                case 2 -> 0.08f;
+                case 1 -> 0.08f;
+                default -> 0.08f;
+            };
+            int padX = i * 5;
+            int padY = i * 3;
+            g2.setComposite(AlphaComposite.SrcOver.derive(alpha));
+            g2.setColor(Color.BLACK);
+            g2.fillOval(shadowX - padX, shadowY - padY, shadowW + padX * 2, shadowH + padY * 2);
+        }
+        g2.setComposite(oldComposite);
+        g2.setColor(oldColor);
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, oldAA);
     }
 
     private void loadMapBackground(Document document, String tmxResourcePath, URL tmxUrl) {
