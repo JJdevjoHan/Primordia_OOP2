@@ -126,6 +126,10 @@ public class SurivivalGamePanel extends JPanel {
     private boolean projectileIsPlayerOne = true;
     private Timer   projectileTimer;
     private boolean isProjectileAnimating = false;
+    
+    // Steel Wizard Skill 2 tracking (for event-based collision trigger)
+    private boolean isSteelWizardSkill2Active = false;
+    private boolean steelWizardSkill2IsPlayerOne = false;
 
     private List<BufferedImage> playerHurtFrames     = new ArrayList<>();
     private List<BufferedImage> enemyHurtFrames      = new ArrayList<>();
@@ -928,6 +932,34 @@ public class SurivivalGamePanel extends JPanel {
         }
     }
 
+    /**
+     * Create the onImpactStart callback for projectiles.
+     * For Steel Wizard Skill 2, this also triggers Skill 2.2 SFX.
+     */
+    private Runnable createOnImpactStartCallback(boolean isDamageSkill, boolean actingPlayerOne) {
+        Runnable hurtCallback = isDamageSkill ? () -> startDelayedHurt(!actingPlayerOne, 0, POST_ATTACK_HURT_MS) : null;
+        
+        if (isSteelWizardSkill2Active && steelWizardSkill2IsPlayerOne == actingPlayerOne) {
+            // Steel Wizard Skill 2: Trigger Skill 2.2 (collision event)
+            Runnable skill2Impact = () -> {
+                sfx.playSkillSFX(23, 0.0, -1);  // Skill 2.2 on collision
+                isSteelWizardSkill2Active = false;  // Clear the flag
+            };
+            
+            if (hurtCallback != null) {
+                // Combine both callbacks
+                return () -> {
+                    skill2Impact.run();
+                    hurtCallback.run();
+                };
+            } else {
+                return skill2Impact;
+            }
+        }
+        
+        return hurtCallback;
+    }
+
     private void playSkillSound(CharacterDef character, int skillID) {
         if (character == null) return;
         String charName = character.name;
@@ -970,6 +1002,36 @@ public class SurivivalGamePanel extends JPanel {
                 stopAfterMillis = 1800;  // Stop after ~1.8 seconds (animation duration)
             } else if (skillID == 3) {
                 timeOffset = 2.0;  // Skill 3 starts at 2.0 seconds
+            }
+        } else if ("Steel Wizard".equalsIgnoreCase(charName)) {
+            // Steel Wizard: Layered (Skill 1), Event-Based (Skill 2), Timed Offset (Skill 3)
+            switch (skillID) {
+                case 1 -> {
+                    // Skill 1: Parallel Synchronized at 1 second mark - play both with offset and stop at animation end
+                    sfx.playSkillSFX(20, 1.0, 1200);  // Skill 1.1 at t=1.0, stop after 1.2s
+                    sfx.playSkillSFX(21, 1.0, 1200);  // Skill 1.2 at t=1.0 (parallel), stop after 1.2s
+                    return;
+                }
+                case 2 -> {
+                    // Skill 2: Event-Based Sequence - play Skill 2.1 immediately
+                    soundIndex = 22;  // Skill 2.1
+                    timeOffset = 0.0;
+                    // Track this skill so we can trigger Skill 2.2 on collision
+                    isSteelWizardSkill2Active = true;
+                    steelWizardSkill2IsPlayerOne = isP1Turn;
+                }
+                case 3 -> {
+                    // Skill 3: Timed Offset - Skill 3.1 louder, Skill 3.2 delayed
+                    sfx.playSkillSFX(24, 0.0, -1, 5.0f);   // Skill 3.1 at t=0 with +5dB volume boost
+                    // Schedule Skill 3.2 to play at 0.7 seconds
+                    Timer delayedSkill3_2 = new Timer(700, e -> {
+                        sfx.playSkillSFX(25, 0.0, -1);  // Skill 3.2 at t=0.7
+                    });
+                    delayedSkill3_2.setRepeats(false);
+                    delayedSkill3_2.start();
+                    return;
+                }
+                default -> soundIndex = -1;
             }
         }
         
@@ -1069,7 +1131,7 @@ public class SurivivalGamePanel extends JPanel {
                         actingPlayerOne,
                         skillID,
                         activeProjectileDef,
-                        isDamageSkill ? () -> startDelayedHurt(!actingPlayerOne, 0, POST_ATTACK_HURT_MS) : null,
+                        createOnImpactStartCallback(isDamageSkill, actingPlayerOne),
                         null);
                 if (projectileSpawnFrame > 1) {
                     scheduleProjectileSpawnAtCastFrame(projectileSpawnFrame, spawnProjectile);
@@ -1086,7 +1148,7 @@ public class SurivivalGamePanel extends JPanel {
                         actingPlayerOne,
                         skillID,
                         activeProjectileDef,
-                        isDamageSkill ? () -> startDelayedHurt(!actingPlayerOne, 0, POST_ATTACK_HURT_MS) : null,
+                        createOnImpactStartCallback(isDamageSkill, actingPlayerOne),
                         holdCastUntilProjectileDone ? () -> stopSkillAnimation(actingPlayerOne) : null);
                 if (isDefenseFormAltSkill) {
                     playNatureFormSkill1CastAnimation(actingPlayerOne, defenseForm, spawnProjectile);

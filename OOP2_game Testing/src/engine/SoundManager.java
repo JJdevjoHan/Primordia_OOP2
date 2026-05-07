@@ -3,6 +3,7 @@ package engine;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
+import javax.sound.sampled.FloatControl;
 import java.net.URL;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -11,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class SoundManager implements Runnable {
     Clip clip;
-    URL[] soundURL = new URL[20];
+    URL[] soundURL = new URL[26];
     private String action = "play";
     private int pendingIndex = -1;
     private int startFrameOffset = 0;  // Offset in frames for playback start position
@@ -59,6 +60,18 @@ public class SoundManager implements Runnable {
         soundURL[18] = getClass().getResource("/assets/SoundManager/SkillSfx/Fire Wizard/Skill2.wav");
         //Fire Wizard - Skill 3 (Meteor Storm)
         soundURL[19] = getClass().getResource("/assets/SoundManager/SkillSfx/Fire Wizard/Skill3.wav");
+        //Steel Wizard - Skill 1.1 (Layered part 1)
+        soundURL[20] = getClass().getResource("/assets/SoundManager/SkillSfx/Steel Wizard/Skill1.1.wav");
+        //Steel Wizard - Skill 1.2 (Layered part 2)
+        soundURL[21] = getClass().getResource("/assets/SoundManager/SkillSfx/Steel Wizard/Skill1.2.wav");
+        //Steel Wizard - Skill 2.1 (Event-based sequence part 1)
+        soundURL[22] = getClass().getResource("/assets/SoundManager/SkillSfx/Steel Wizard/Skill2.1.wav");
+        //Steel Wizard - Skill 2.2 (Event-based sequence part 2 - on collision)
+        soundURL[23] = getClass().getResource("/assets/SoundManager/SkillSfx/Steel Wizard/Skill2.2.wav");
+        //Steel Wizard - Skill 3.1 (Timed offset part 1)
+        soundURL[24] = getClass().getResource("/assets/SoundManager/SkillSfx/Steel Wizard/Skill3.1.wav");
+        //Steel Wizard - Skill 3.2 (Timed offset part 2 - delayed)
+        soundURL[25] = getClass().getResource("/assets/SoundManager/SkillSfx/Steel Wizard/Skill3.2.wav");
     }
 
     public void setFile(int i) {
@@ -176,10 +189,14 @@ public class SoundManager implements Runnable {
     }
 
     public void playSkillSFX(int soundIndex, double timeOffsetSeconds) {
-        playSkillSFX(soundIndex, timeOffsetSeconds, -1);  // No auto-stop
+        playSkillSFX(soundIndex, timeOffsetSeconds, -1, 0.0f);  // No auto-stop, normal volume
     }
 
     public void playSkillSFX(int soundIndex, double timeOffsetSeconds, int stopAfterMillis) {
+        playSkillSFX(soundIndex, timeOffsetSeconds, stopAfterMillis, 0.0f);  // Normal volume
+    }
+
+    public void playSkillSFX(int soundIndex, double timeOffsetSeconds, int stopAfterMillis, float volumeGainDb) {
         if (soundIndex < 0 || soundIndex >= soundURL.length || soundURL[soundIndex] == null) {
             System.err.println("Invalid skill sound index: " + soundIndex);
             return;
@@ -198,6 +215,16 @@ public class SoundManager implements Runnable {
                 
                 skillClip = AudioSystem.getClip();
                 skillClip.open(ais);
+                
+                // Apply volume gain if specified
+                if (volumeGainDb != 0.0f) {
+                    try {
+                        FloatControl gainControl = (FloatControl) skillClip.getControl(FloatControl.Type.MASTER_GAIN);
+                        gainControl.setValue(volumeGainDb);
+                    } catch (IllegalArgumentException e) {
+                        System.err.println("Volume control not available for skill SFX: " + e.getMessage());
+                    }
+                }
                 
                 // Calculate frame position based on time offset
                 int framePos = 0;
