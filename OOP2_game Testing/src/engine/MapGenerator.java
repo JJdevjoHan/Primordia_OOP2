@@ -12,7 +12,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.IntSupplier;
 import org.w3c.dom.Document;
@@ -22,6 +25,22 @@ import org.w3c.dom.NodeList;
 
 public final class MapGenerator {
     private MapGenerator() {}
+
+    // Edit these layer numbers to change which numbered PNGs stay static per battleground.
+    // Layer numbers are 1-based and match the numbered files after render-order reversal.
+    private static final Map<String, int[]> STATIC_BACKGROUND_LAYERS_BY_BACKGROUND = Map.ofEntries(
+            Map.entry("battleground1", new int[] { 1, 2, 3 }),
+            Map.entry("battleground2", new int[] { 1, 4, 5 }),
+            Map.entry("battleground3", new int[] { 1, 4, 5, 6 })
+    );
+
+    // Track how many times each battleground has been loaded for weighted fairness
+    private static final Map<String, Integer> BATTLEGROUND_LOAD_COUNT = new HashMap<>();
+    static {
+        BATTLEGROUND_LOAD_COUNT.put("battleground1", 0);
+        BATTLEGROUND_LOAD_COUNT.put("battleground2", 0);
+        BATTLEGROUND_LOAD_COUNT.put("battleground3", 0);
+    }
 
     public static final class BackgroundState {
         private final List<Image> layers;
@@ -141,6 +160,26 @@ public final class MapGenerator {
         return new BackgroundState(backgroundLayers, offsets, speeds, timer);
     }
 
+    public static boolean shouldAnimateBackgroundLayer(String source, int layerIndex, int layerCount) {
+        if (layerCount <= 0) {
+            return true;
+        }
+
+        String backgroundKey = getBackgroundKey(source);
+        int[] staticLayerNumbers = STATIC_BACKGROUND_LAYERS_BY_BACKGROUND.get(backgroundKey);
+        if (staticLayerNumbers == null || staticLayerNumbers.length == 0) {
+            return true;
+        }
+
+        int layerNumber = layerCount - layerIndex;
+        for (int staticLayerNumber : staticLayerNumbers) {
+            if (staticLayerNumber == layerNumber) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private static Image loadSingleImage(String source, String tmxResourcePath, URL tmxUrl) {
         URL resourceUrl = MapGenerator.class.getResource(resolveResourcePath(tmxResourcePath, source));
         if (resourceUrl != null) {
@@ -180,7 +219,17 @@ public final class MapGenerator {
 
             Path bgFolder = null;
             Path backgroundsRoot = mapsDir.resolve("backgrounds");
+            
+            // First, try to find an exact folder match for baseName (e.g., "Battleground1")
             if (Files.exists(backgroundsRoot) && Files.isDirectory(backgroundsRoot)) {
+                Path exactMatch = backgroundsRoot.resolve(baseName);
+                if (Files.exists(exactMatch) && Files.isDirectory(exactMatch)) {
+                    bgFolder = exactMatch;
+                }
+            }
+            
+            // If no exact match, try random selection (fallback)
+            if (bgFolder == null && Files.exists(backgroundsRoot) && Files.isDirectory(backgroundsRoot)) {
                 List<Path> candidates = new ArrayList<>();
                 try (java.util.stream.Stream<Path> stream = Files.list(backgroundsRoot)) {
                     stream.filter(Files::isDirectory).forEach(candidates::add);
@@ -249,6 +298,81 @@ public final class MapGenerator {
     private static boolean isImageFile(Path path) {
         String name = path.getFileName().toString().toLowerCase();
         return name.endsWith(".png") || name.endsWith(".jpg") || name.endsWith(".jpeg");
+    }
+
+    private static String getBackgroundKey(String source) {
+        if (source == null || source.isBlank()) {
+            return "";
+        }
+
+        String normalized = source.replace('\\', '/').toLowerCase(Locale.ROOT);
+        
+        // Check the full path (not just filename) for battleground directories
+        if (normalized.contains("battleground1")) {
+            return "battleground1";
+        }
+        if (normalized.contains("battleground2")) {
+            return "battleground2";
+        }
+        if (normalized.contains("battleground3")) {
+            return "battleground3";
+        }
+        
+        // Fallback: extract filename without extension
+        int slashIndex = normalized.lastIndexOf('/');
+        String fileName = slashIndex >= 0 ? normalized.substring(slashIndex + 1) : normalized;
+        int dotIndex = fileName.lastIndexOf('.');
+        return dotIndex >= 0 ? fileName.substring(0, dotIndex) : fileName;
+    }
+
+    /**
+     * Selects a battleground from candidates using weighted fairness.
+     * Maps that haven't been loaded recently get higher selection chances.
+     * Guarantees fair distribution over time.
+     */
+    public static Path selectWeightedBattleground(List<Path> candidates) {
+        if (candidates == null || candidates.isEmpty()) {
+            return null;
+        }
+        if (candidates.size() == 1) {
+            String bgName = candidates.get(0).getFileName().toString().toLowerCase();
+            recordBattlegroundLoad(bgName);
+            return candidates.get(0);
+        }
+
+        // Calculate max load count to determine bias
+        int maxCount = BATTLEGROUND_LOAD_COUNT.values().stream().mapToInt(Integer::intValue).max().orElse(0);
+
+        // Build weighted list: candidates with lower load counts get higher weights
+        List<Path> weightedList = new ArrayList<>();
+        for (Path candidate : candidates) {
+            String bgName = candidate.getFileName().toString().toLowerCase();
+            Integer currentCount = BATTLEGROUND_LOAD_COUNT.getOrDefault(bgName, 0);
+            // Weight = (maxCount - currentCount) + 1, so least-loaded gets highest weight
+            int weight = (maxCount - currentCount) + 1;
+            for (int i = 0; i < weight; i++) {
+                weightedList.add(candidate);
+            }
+        }
+
+        // Pick randomly from weighted list
+        Path selected = weightedList.get((int) (Math.random() * weightedList.size()));
+        recordBattlegroundLoad(selected.getFileName().toString().toLowerCase());
+        return selected;
+    }
+
+    /**
+     * Records that a battleground was loaded and increments its counter.
+     */
+    private static void recordBattlegroundLoad(String battlegroundName) {
+        String normalized = battlegroundName.toLowerCase();
+        if (normalized.contains("battleground1")) {
+            BATTLEGROUND_LOAD_COUNT.put("battleground1", BATTLEGROUND_LOAD_COUNT.getOrDefault("battleground1", 0) + 1);
+        } else if (normalized.contains("battleground2")) {
+            BATTLEGROUND_LOAD_COUNT.put("battleground2", BATTLEGROUND_LOAD_COUNT.getOrDefault("battleground2", 0) + 1);
+        } else if (normalized.contains("battleground3")) {
+            BATTLEGROUND_LOAD_COUNT.put("battleground3", BATTLEGROUND_LOAD_COUNT.getOrDefault("battleground3", 0) + 1);
+        }
     }
 
     private static Integer extractTrailingNumber(String name) {

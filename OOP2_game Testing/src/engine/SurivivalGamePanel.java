@@ -79,6 +79,7 @@ public class SurivivalGamePanel extends JPanel {
     private double[] backgroundLayerOffsets = new double[0];
     private double[] backgroundLayerSpeeds  = new double[0];
     private javax.swing.Timer backgroundAnimTimer;
+    private String selectedBattleground = "";  // Track which battleground was actually selected
     private Image battleUiBoxImage;
     private long battleUiBoxLastModified = -1;
 
@@ -1341,6 +1342,7 @@ public class SurivivalGamePanel extends JPanel {
     private void loadMapBackground(Document document, String tmxResourcePath, URL tmxUrl) {
         NodeList imageNodes = document.getElementsByTagName("imagelayer");
         backgroundLayers.clear();
+        String backgroundSource = null;
         if (imageNodes.getLength() == 0) {
             imageNodes = document.getElementsByTagName("image");
         }
@@ -1353,6 +1355,9 @@ public class SurivivalGamePanel extends JPanel {
             if (img == null) continue;
             String source = img.getAttribute("source");
             if (source == null || source.isEmpty()) continue;
+            if (backgroundSource == null) {
+                backgroundSource = source;
+            }
             int imageWidth  = parseNumber(img.getAttribute("width"));
             int imageHeight = parseNumber(img.getAttribute("height"));
             if (imageWidth  > 0) mapPixelWidth  = imageWidth;
@@ -1373,6 +1378,9 @@ public class SurivivalGamePanel extends JPanel {
             double t = n > 1 ? (i / (double) (n - 1)) : 0.0;
             backgroundLayerSpeeds[i] = 0.5 + t * 2.0;
             backgroundLayerOffsets[i] = 0.0;
+            if (!selectedBattleground.isEmpty() && !MapGenerator.shouldAnimateBackgroundLayer(selectedBattleground, i, n)) {
+                backgroundLayerSpeeds[i] = 0.0;
+            }
         }
         if (backgroundAnimTimer == null) {
             backgroundAnimTimer = new javax.swing.Timer(40, e -> {
@@ -1411,29 +1419,54 @@ public class SurivivalGamePanel extends JPanel {
             Path tmxFilePath = Paths.get(tmxx.toURI());
             Path mapsDir = tmxFilePath.getParent();
             if (mapsDir == null) return layers;
+            
             Path bgFolder = null;
             Path backgroundsRoot = mapsDir.resolve("backgrounds");
+            
+            // First, try to find an exact folder match for baseName (e.g., "Battleground1")
             if (Files.exists(backgroundsRoot) && Files.isDirectory(backgroundsRoot)) {
+                Path exactMatch = backgroundsRoot.resolve(baseName);
+                if (Files.exists(exactMatch) && Files.isDirectory(exactMatch)) {
+                    bgFolder = exactMatch;
+                }
+            }
+            
+            // If no exact match, use weighted selection to ensure fair battleground distribution
+            if (bgFolder == null && Files.exists(backgroundsRoot) && Files.isDirectory(backgroundsRoot)) {
                 List<Path> candidates = new ArrayList<>();
                 try (java.util.stream.Stream<Path> s = Files.list(backgroundsRoot)) { s.filter(p -> Files.isDirectory(p)).forEach(candidates::add); }
                 if (!candidates.isEmpty()) {
-                    int idx = (int) (Math.random() * candidates.size());
-                    Path chosen = candidates.get(idx);
-                    Path chosenSpecific = chosen.resolve(baseName);
-                    bgFolder = Files.exists(chosenSpecific) && Files.isDirectory(chosenSpecific) ? chosenSpecific : chosen;
+                    bgFolder = MapGenerator.selectWeightedBattleground(candidates);
                 }
             }
+            
             if (bgFolder == null) bgFolder = mapsDir.resolve("background").resolve(baseName);
             if (!Files.exists(bgFolder) || !Files.isDirectory(bgFolder)) {
                 Path alt = mapsDir.resolve("backgrounds").resolve(baseName);
                 if (Files.exists(alt) && Files.isDirectory(alt)) bgFolder = alt;
                 else return layers;
             }
+            
+            // Extract and store the battleground name from the selected folder
+            String bgFolderName = bgFolder.getFileName().toString().toLowerCase();
+            if (bgFolderName.contains("battleground")) {
+                selectedBattleground = bgFolderName;
+            }
 
             List<Path> imgs = new ArrayList<>();
             try (java.util.stream.Stream<Path> stream = Files.list(bgFolder)) {
                 stream.filter(p -> Files.isRegularFile(p) && (p.getFileName().toString().toLowerCase().endsWith(".png") || p.getFileName().toString().toLowerCase().endsWith(".jpg")))
                         .forEach(imgs::add);
+            }
+            if (imgs.isEmpty()) {
+                try (java.util.stream.Stream<Path> stream = Files.list(bgFolder)) {
+                    stream.filter(Files::isDirectory).forEach(dir -> {
+                        try (java.util.stream.Stream<Path> nested = Files.list(dir)) {
+                            nested.filter(p -> Files.isRegularFile(p) && (p.getFileName().toString().toLowerCase().endsWith(".png") || p.getFileName().toString().toLowerCase().endsWith(".jpg")))
+                                    .forEach(imgs::add);
+                        } catch (Exception ignored) {}
+                    });
+                }
             }
             if (imgs.isEmpty()) return layers;
 

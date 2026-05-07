@@ -2,7 +2,7 @@
 <map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="1920" height="1080" tilewidth="1" tileheight="1" infinite="0" nextlayerid="10" nextobjectid="23">
  <tileset firstgid="1" source="BackgroundBox.tsx"/>
  <imagelayer id="2" name="Image Layer 1">
-  <image source="Battleground1.png" width="1920" height="1080"/>
+  <image source="Battleground.png" width="1920" height="1080"/>
  </imagelayer>
  <objectgroup id="8" name="Spawn_Player1">
   <object id="20" x="610" y="690">
