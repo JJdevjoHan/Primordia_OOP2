@@ -242,6 +242,13 @@ public class CharacterDef {
     public final DefenseFormDef defenseForm;
     public final int drawWidth;
     public final int drawHeight;
+    // Wind Wizard specific scaling (defaults for other characters)
+    public final int skill2Player2OffsetX;
+    public final int skill3OffsetX;
+    public final int skill3OffsetY;
+    public final int shadowOffsetX;
+    public final double skill3Scale;
+    public final double shadowScale;
 
     public CharacterDef(String name,
                         String backstory,
@@ -253,18 +260,20 @@ public class CharacterDef {
                         double skill1HurtTriggerBufferSeconds, double skill2HurtTriggerBufferSeconds, double skill3HurtTriggerBufferSeconds,
                         AnimationDef idleAnimation, AnimationDef hurtAnimation, AnimationDef deadAnimation,
                         int drawWidth, int drawHeight) {
-                this(name, backstory,
-                    skill1Name, skill2Name, skill3Name,
-                    skill1Description, skill2Description, skill3Description,
-                    skill1Type, skill2Type, skill3Type,
-                    skill1SpritePath, skill1FollowUpSpritePath, skill2SpritePath, skill3SpritePath,
-                    skill1ForwardOffsetX, skill2ForwardOffsetX, skill3ForwardOffsetX,
-                    skill1HurtTriggerBufferSeconds, skill2HurtTriggerBufferSeconds, skill3HurtTriggerBufferSeconds,
-                    idleAnimation, hurtAnimation, deadAnimation,
-                    null, null, null,
-                    null,
-                    drawWidth, drawHeight);
-                }
+        this(name, backstory,
+            skill1Name, skill2Name, skill3Name,
+            skill1Description, skill2Description, skill3Description,
+            skill1Type, skill2Type, skill3Type,
+            10, 10, 25,
+            skill1SpritePath, skill1FollowUpSpritePath, skill2SpritePath, skill3SpritePath,
+            skill1ForwardOffsetX, skill2ForwardOffsetX, skill3ForwardOffsetX,
+            skill1HurtTriggerBufferSeconds, skill2HurtTriggerBufferSeconds, skill3HurtTriggerBufferSeconds,
+            idleAnimation, hurtAnimation, deadAnimation,
+            null, null, null,
+            null,
+            drawWidth, drawHeight,
+                0, 0, 0, 0, 1.0, 1.0);
+        }
 
     public CharacterDef(String name,
                         String backstory,
@@ -288,7 +297,8 @@ public class CharacterDef {
                 idleAnimation, hurtAnimation, deadAnimation,
                 null, null, null,
                 null,
-                drawWidth, drawHeight);
+                drawWidth, drawHeight,
+                        0, 0, 0, 0, 1.0, 1.0);
     }
 
     public CharacterDef(String name,
@@ -305,13 +315,15 @@ public class CharacterDef {
                 skill1Name, skill2Name, skill3Name,
                 skill1Description, skill2Description, skill3Description,
                 skill1Type, skill2Type, skill3Type,
+                10, 10, 25,
                 skill1SpritePath, null, skill2SpritePath, skill3SpritePath,
                 skill1ForwardOffsetX, skill2ForwardOffsetX, skill3ForwardOffsetX,
                 skill1HurtTriggerBufferSeconds, skill2HurtTriggerBufferSeconds, skill3HurtTriggerBufferSeconds,
                 idleAnimation, hurtAnimation, deadAnimation,
                 null, null, null,
                 null,
-                drawWidth, drawHeight);
+                drawWidth, drawHeight,
+                0, 0, 0, 0, 1.0, 1.0);
     }
 
                 public CharacterDef(String name,
@@ -326,7 +338,10 @@ public class CharacterDef {
                         AnimationDef idleAnimation, AnimationDef hurtAnimation, AnimationDef deadAnimation,
                         ProjectileDef skill1Projectile, ProjectileDef skill2Projectile, ProjectileDef skill3Projectile,
                         DefenseFormDef defenseForm,
-                        int drawWidth, int drawHeight) {
+                        int drawWidth, int drawHeight,
+                        int skill2Player2OffsetX, int skill3OffsetX, int skill3OffsetY,
+                        int shadowOffsetX,
+                        double skill3Scale, double shadowScale) {
         this.name = name;
         this.backstory = backstory == null ? "" : backstory;
         this.skill1Name = skill1Name;
@@ -360,6 +375,12 @@ public class CharacterDef {
         this.defenseForm = defenseForm;
         this.drawWidth = drawWidth;
         this.drawHeight = drawHeight;
+        this.skill2Player2OffsetX = skill2Player2OffsetX;
+        this.skill3OffsetX = skill3OffsetX;
+        this.skill3OffsetY = skill3OffsetY;
+        this.shadowOffsetX = shadowOffsetX;
+        this.skill3Scale = skill3Scale;
+        this.shadowScale = shadowScale;
     }
 
     public CharacterDef(String name,
@@ -385,7 +406,8 @@ public class CharacterDef {
                 idleAnimation, hurtAnimation, deadAnimation,
                 skill1Projectile, skill2Projectile, skill3Projectile,
                 null,
-                drawWidth, drawHeight);
+                drawWidth, drawHeight,
+                0, 0, 0, 0, 1.0, 1.0);
     }
 
     public CharacterDef(String name,
@@ -411,7 +433,37 @@ public class CharacterDef {
                 idleAnimation, hurtAnimation, deadAnimation,
                 skill1Projectile, skill2Projectile, skill3Projectile,
                 defenseForm,
-                drawWidth, drawHeight);
+                drawWidth, drawHeight,
+                0, 0, 0, 0, 1.0, 1.0);
+    }
+
+    // Constructor for characters with custom Wind Wizard scaling (used by Wind Wizard and other special characters)
+    public CharacterDef(String name,
+                        String backstory,
+                        String skill1Name, String skill2Name, String skill3Name,
+                        String skill1Description, String skill2Description, String skill3Description,
+                        String skill1Type, String skill2Type, String skill3Type,
+                        String skill1SpritePath, String skill1FollowUpSpritePath, String skill2SpritePath, String skill3SpritePath,
+                        int skill1ForwardOffsetX, int skill2ForwardOffsetX, int skill3ForwardOffsetX,
+                        double skill1HurtTriggerBufferSeconds, double skill2HurtTriggerBufferSeconds, double skill3HurtTriggerBufferSeconds,
+                        AnimationDef idleAnimation, AnimationDef hurtAnimation, AnimationDef deadAnimation,
+                        int drawWidth, int drawHeight,
+                        int skill2Player2OffsetX, int skill3OffsetX, int skill3OffsetY,
+                        int shadowOffsetX,
+                        double skill3Scale, double shadowScale) {
+        this(name, backstory,
+                skill1Name, skill2Name, skill3Name,
+                skill1Description, skill2Description, skill3Description,
+                skill1Type, skill2Type, skill3Type,
+                10, 10, 25,  // Default skill powers
+                skill1SpritePath, skill1FollowUpSpritePath, skill2SpritePath, skill3SpritePath,
+                skill1ForwardOffsetX, skill2ForwardOffsetX, skill3ForwardOffsetX,
+                skill1HurtTriggerBufferSeconds, skill2HurtTriggerBufferSeconds, skill3HurtTriggerBufferSeconds,
+                idleAnimation, hurtAnimation, deadAnimation,
+                null, null, null,  // No projectiles
+                null,  // No defense form
+                drawWidth, drawHeight,
+                skill2Player2OffsetX, skill3OffsetX, skill3OffsetY, shadowOffsetX, skill3Scale, shadowScale);
     }
 
     public int getSkillPower(int skillID) {
