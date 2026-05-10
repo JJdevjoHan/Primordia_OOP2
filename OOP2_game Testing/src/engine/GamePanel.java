@@ -605,8 +605,8 @@ public class GamePanel extends JPanel {
             }
         }
 
-        drawCharacterShadow(g2, getPlayerFeetAnchorX(), getPlayerFeetAnchorY(), getPlayerDrawWidth(), getPlayerDrawHeight());
-        drawCharacterShadow(g2, getEnemyFeetAnchorX(), getEnemyFeetAnchorY(), getEnemyDrawWidth(), getEnemyDrawHeight());
+        drawCharacterShadow(g2, currentPlayerDef, getPlayerFeetAnchorX(), getPlayerFeetAnchorY(), getPlayerDrawWidth(), getPlayerDrawHeight());
+        drawCharacterShadow(g2, currentEnemyDef, getEnemyFeetAnchorX(), getEnemyFeetAnchorY(), getEnemyDrawWidth(), getEnemyDrawHeight());
 
         // Player sprite
         if (p1HP <= 0) {
@@ -1190,10 +1190,12 @@ public class GamePanel extends JPanel {
         return Math.max(1, Math.round((float) frame.getWidth() * targetHeight / frame.getHeight()));
     }
 
-    private void drawCharacterShadow(Graphics2D g2, int feetX, int feetY, int drawWidth, int drawHeight) {
-        int shadowW = Math.max(18, (int) Math.round(drawWidth * 0.36));
-        int shadowH = Math.max(12, (int) Math.round(drawHeight * 0.12));
-        int shadowX = feetX - (shadowW / 2) + (feetX < getWidth() / 2 ? -15 : 30);
+    private void drawCharacterShadow(Graphics2D g2, CharacterDef character, int feetX, int feetY, int drawWidth, int drawHeight) {
+        double shadowScale = character != null ? character.shadowScale : 1.0;
+        int shadowW = Math.max(18, (int) Math.round(drawWidth * 0.36 * shadowScale));
+        int shadowH = Math.max(12, (int) Math.round(drawHeight * 0.12 * shadowScale));
+        int sideDirection = feetX < getWidth() / 2 ? 1 : -1;
+        int shadowX = feetX - (shadowW / 2) + (sideDirection > 0 ? -15 : 30) + sideDirection * (character != null ? character.shadowOffsetX : 0);
         int shadowY = feetY - 25;
 
         Color oldColor = g2.getColor();
@@ -2394,7 +2396,9 @@ public class GamePanel extends JPanel {
                     new CharacterDef.AnimationDef(config.deathSpritePath, DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_DEAD_DELAY_MS),
                     config.skill1Projectile, config.skill2Projectile, config.skill3Projectile,
                     config.defenseForm,
-                    drawWidth, drawHeight));
+                    drawWidth, drawHeight,
+                    config.skill2Player2OffsetX, config.skill3OffsetX, config.skill3OffsetY,
+                    config.shadowOffsetX, config.skill3Scale, config.shadowScale));
         }
         if (!defs.isEmpty()) return List.copyOf(defs);
 

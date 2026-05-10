@@ -117,7 +117,21 @@ public class GameWindow extends JFrame {
         }
     }
 
+    public void stopGameMusic() {
+        // Stop music from any active game panel
+        if (currentGamePanel != null) {
+            if (currentGamePanel instanceof GamePanel) {
+                ((GamePanel) currentGamePanel).stopMusic();
+            } else if (currentGamePanel instanceof SurivivalGamePanel) {
+                ((SurivivalGamePanel) currentGamePanel).stopMusic();
+            } else if (currentGamePanel instanceof ArcadeGamePanel) {
+                ((ArcadeGamePanel) currentGamePanel).stopMusic();
+            }
+        }
+    }
+
     public void showMenu(){
+        stopGameMusic();  // Stop battle music before returning to menu
         currentGamePanel = null;
         currentPanelCard = "MENU";
         layout.show(container,"MENU");
@@ -241,6 +255,7 @@ public class GameWindow extends JFrame {
     }
 
     public void showCredits() {
+        stopGameMusic();  // Stop battle music before showing credits
         currentGamePanel = null;
         currentPanelCard = "CREDITS";
         layout.show(container,"CREDITS");

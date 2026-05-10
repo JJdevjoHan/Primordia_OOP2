@@ -525,6 +525,12 @@
       "mana": 138,
       "drawWidth": 620,
       "drawHeight": 620,
+      "skill2Player2OffsetX": 400,
+      "skill3OffsetX": 80,
+      "skill3OffsetY": 0,
+      "shadowOffsetX": 0,
+      "skill3Scale": 2.2,
+      "shadowScale": 0.05,
       "skills": [
         {
           "slot": 1,

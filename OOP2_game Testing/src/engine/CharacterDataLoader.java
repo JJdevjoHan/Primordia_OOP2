@@ -42,6 +42,12 @@ public final class CharacterDataLoader {
         public final double skill1HurtTriggerBufferSeconds;
         public final double skill2HurtTriggerBufferSeconds;
         public final double skill3HurtTriggerBufferSeconds;
+        public final int skill2Player2OffsetX;
+        public final int skill3OffsetX;
+        public final int skill3OffsetY;
+        public final int shadowOffsetX;
+        public final double skill3Scale;
+        public final double shadowScale;
         public final int drawWidth;
         public final int drawHeight;
         public final String idleSpritePath;
@@ -77,6 +83,12 @@ public final class CharacterDataLoader {
             double skill1HurtTriggerBufferSeconds,
             double skill2HurtTriggerBufferSeconds,
             double skill3HurtTriggerBufferSeconds,
+            int skill2Player2OffsetX,
+            int skill3OffsetX,
+            int skill3OffsetY,
+            int shadowOffsetX,
+            double skill3Scale,
+            double shadowScale,
             int drawWidth,
             int drawHeight,
             String idleSpritePath,
@@ -111,6 +123,12 @@ public final class CharacterDataLoader {
             this.skill1HurtTriggerBufferSeconds = skill1HurtTriggerBufferSeconds;
             this.skill2HurtTriggerBufferSeconds = skill2HurtTriggerBufferSeconds;
             this.skill3HurtTriggerBufferSeconds = skill3HurtTriggerBufferSeconds;
+            this.skill2Player2OffsetX = skill2Player2OffsetX;
+            this.skill3OffsetX = skill3OffsetX;
+            this.skill3OffsetY = skill3OffsetY;
+            this.shadowOffsetX = shadowOffsetX;
+            this.skill3Scale = skill3Scale;
+            this.shadowScale = shadowScale;
             this.drawWidth = drawWidth;
             this.drawHeight = drawHeight;
             this.idleSpritePath = idleSpritePath;
@@ -180,6 +198,12 @@ public final class CharacterDataLoader {
                 double skill1HurtTriggerBufferSeconds = getSkillHurtTriggerBufferSeconds(skills, 0);
                 double skill2HurtTriggerBufferSeconds = getSkillHurtTriggerBufferSeconds(skills, 1);
                 double skill3HurtTriggerBufferSeconds = getSkillHurtTriggerBufferSeconds(skills, 2);
+                int skill2Player2OffsetX = getOptionalInt(characterMap, "skill2Player2OffsetX");
+                int skill3OffsetX = getOptionalInt(characterMap, "skill3OffsetX");
+                int skill3OffsetY = getOptionalInt(characterMap, "skill3OffsetY");
+                int shadowOffsetX = getOptionalInt(characterMap, "shadowOffsetX");
+                double skill3Scale = getOptionalDouble(characterMap, "skill3Scale", 1.0);
+                double shadowScale = getOptionalDouble(characterMap, "shadowScale", 1.0);
                 int drawWidth = getOptionalInt(characterMap, "drawWidth");
                 int drawHeight = getOptionalInt(characterMap, "drawHeight");
                 String idleSpritePath = normalizeResourcePath(toStringValue(sprites.get("idle")));
@@ -215,6 +239,12 @@ public final class CharacterDataLoader {
                     skill1HurtTriggerBufferSeconds,
                     skill2HurtTriggerBufferSeconds,
                     skill3HurtTriggerBufferSeconds,
+                    skill2Player2OffsetX,
+                    skill3OffsetX,
+                    skill3OffsetY,
+                    shadowOffsetX,
+                    skill3Scale,
+                    shadowScale,
                     drawWidth,
                     drawHeight,
                     idleSpritePath,
@@ -391,6 +421,21 @@ public final class CharacterDataLoader {
             }
         }
         return 0;
+    }
+
+    private static double getOptionalDouble(Map<?, ?> map, String key, double fallback) {
+        Object raw = map.get(key);
+        if (raw instanceof Number number) {
+            return number.doubleValue();
+        }
+        if (raw != null) {
+            try {
+                return Double.parseDouble(String.valueOf(raw));
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        }
+        return fallback;
     }
 
     private static int getMapInt(Map<?, ?> map, String key, int fallback) {
