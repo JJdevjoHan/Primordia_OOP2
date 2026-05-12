@@ -155,6 +155,10 @@ public class SurivivalGamePanel extends JPanel {
     private int   enemyDeadFrameIndex  = 0;
     private Timer playerDeadTimer;
     private Timer enemyDeadTimer;
+    private boolean pendingPlayerDeathAnimation = false;
+    private boolean pendingEnemyDeathAnimation = false;
+    private boolean holdPlayerDeathFrameUntilNextRound = false;
+    private boolean holdEnemyDeathFrameUntilNextRound = false;
 
     private int p1SpriteX = 350;
     private int p1SpriteY = 300;
@@ -655,10 +659,22 @@ public class SurivivalGamePanel extends JPanel {
         drawCharacterShadow(g2, currentEnemyDef, getEnemyFeetAnchorX(), getEnemyFeetAnchorY(), getEnemyDrawWidth(), getEnemyDrawHeight());
 
         // Player
-        if (p1HP <= 0) {
+        if (p1HP <= 0 && (playerDeadTimer != null || holdPlayerDeathFrameUntilNextRound)) {
             if (!playerDeadFrames.isEmpty())
                 g2.drawImage(playerDeadFrames.get(playerDeadFrameIndex),
                         p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
+        } else if (p1HP <= 0 && pendingPlayerDeathAnimation) {
+            if (isPlayerHurtAnimating && !playerHurtFrames.isEmpty()) {
+                BufferedImage hurtFrame = playerHurtFrames.get(playerHurtFrameIndex);
+                if (playerHurtFlashing) {
+                    hurtFrame = applyRedTintToNonTransparent(hurtFrame);
+                }
+                g2.drawImage(hurtFrame,
+                        p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
+            } else if (!playerFrames.isEmpty()) {
+                g2.drawImage(playerFrames.get(playerFrameIndex),
+                        p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
+            }
         } else if (isPlayerHurtAnimating && !playerHurtFrames.isEmpty()) {
             BufferedImage hurtFrame = playerHurtFrames.get(playerHurtFrameIndex);
             if (playerHurtFlashing) {
@@ -688,10 +704,22 @@ public class SurivivalGamePanel extends JPanel {
         }
 
         // Enemy (mirrored)
-        if (p2HP <= 0) {
+        if (p2HP <= 0 && (enemyDeadTimer != null || holdEnemyDeathFrameUntilNextRound)) {
             if (!enemyDeadFrames.isEmpty())
                 g2.drawImage(enemyDeadFrames.get(enemyDeadFrameIndex),
                         p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
+        } else if (p2HP <= 0 && pendingEnemyDeathAnimation) {
+            if (isEnemyHurtAnimating && !enemyHurtFrames.isEmpty()) {
+                BufferedImage hurtFrame = enemyHurtFrames.get(enemyHurtFrameIndex);
+                if (enemyHurtFlashing) {
+                    hurtFrame = applyRedTintToNonTransparent(hurtFrame);
+                }
+                g2.drawImage(hurtFrame,
+                        p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
+            } else if (!enemyFrames.isEmpty()) {
+                g2.drawImage(enemyFrames.get(enemyFrameIndex),
+                        p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
+            }
         } else if (isEnemyHurtAnimating && !enemyHurtFrames.isEmpty()) {
             BufferedImage hurtFrame = enemyHurtFrames.get(enemyHurtFrameIndex);
             if (enemyHurtFlashing) {
@@ -816,6 +844,8 @@ public class SurivivalGamePanel extends JPanel {
 
         if (playerDeadTimer != null) { playerDeadTimer.stop(); playerDeadTimer = null; }
         if (enemyDeadTimer  != null) { enemyDeadTimer.stop();  enemyDeadTimer  = null; }
+        pendingPlayerDeathAnimation = false;
+        pendingEnemyDeathAnimation = false;
         playerHurtFrames     = loadHurtFrames(playerDef);
         enemyHurtFrames      = loadHurtFrames(enemyDef);
         playerHurtFrameIndex = 0;
@@ -877,6 +907,8 @@ public class SurivivalGamePanel extends JPanel {
     private void startSurvivalEncounter(int encounterNumber) {
         survivalEncounter = encounterNumber;
         resetNatureDefenseForms();
+        holdPlayerDeathFrameUntilNextRound = false;
+        holdEnemyDeathFrameUntilNextRound = false;
         if (encounterNumber > 1) {
             p1HP = Math.min(100, p1HP + SURVIVAL_ROUND_HEAL_AMOUNT);
             pickNewSurvivalEnemy();
@@ -1410,21 +1442,25 @@ public class SurivivalGamePanel extends JPanel {
         if (p1MpBar     != null) p1MpBar.updateValue(p1MP);
         if (p2MpBar     != null) p2MpBar.updateValue(p2MP);
 
-        if (p1HP <= 0 && playerDeadTimer == null) startDeadAnimation(true);
-        if (p2HP <= 0 && enemyDeadTimer  == null) startDeadAnimation(false);
+        if (p1HP <= 0) {
+            if (playerDeadTimer == null) {
+                if (isAnyCombatAnimationActive()) pendingPlayerDeathAnimation = true;
+                else startDeadAnimation(true);
+            }
+        } else {
+            pendingPlayerDeathAnimation = false;
+        }
+        if (p2HP <= 0) {
+            if (enemyDeadTimer == null) {
+                if (isAnyCombatAnimationActive()) pendingEnemyDeathAnimation = true;
+                else startDeadAnimation(false);
+            }
+        } else {
+            pendingEnemyDeathAnimation = false;
+        }
 
         if (p1HP <= 0 || p2HP <= 0) {
             stopTurnTimer();
-            if (gameMode == GameMode.SURVIVAL) {
-                boolean p1WonRound = p2HP <= 0;
-                // In survival, delay encounter end until death animation completes
-                scheduleDelayedSurvivalEncounterEnd(p1WonRound);
-            } else {
-                if (!roundManager.isMatchOver()) {
-                    boolean p1WonRound = p2HP <= 0;
-                    roundManager.recordRoundResult(p1WonRound);
-                }
-            }
             return;
         }
 
@@ -1975,6 +2011,7 @@ public class SurivivalGamePanel extends JPanel {
                 && !isPlayerSkillAnimating
                 && !isEnemySkillAnimating
                 && !isProjectileAnimating) {
+            tryStartPendingDeathAnimations();
             if (messageOverlay == null || !messageOverlay.isAnimating()) {
                 if (p1HP > 0 && p2HP > 0) {
                     updateGameState();
@@ -1984,6 +2021,26 @@ public class SurivivalGamePanel extends JPanel {
         }
         // Ensure idle timers are running after animations complete
         ensureIdleTimersRunning();
+    }
+
+    private boolean isAnyCombatAnimationActive() {
+        return isPlayerSkillAnimating || isEnemySkillAnimating || isProjectileAnimating;
+    }
+
+    private void tryStartPendingDeathAnimations() {
+        if (isAnyCombatAnimationActive()) return;
+        if (pendingPlayerDeathAnimation && p1HP <= 0 && playerDeadTimer == null) {
+            pendingPlayerDeathAnimation = false;
+            startDeadAnimation(true);
+        }
+        if (pendingEnemyDeathAnimation && p2HP <= 0 && enemyDeadTimer == null) {
+            pendingEnemyDeathAnimation = false;
+            startDeadAnimation(false);
+        }
+    }
+
+    private void handleDeathAnimationComplete(boolean isPlayer) {
+        handleSurvivalEncounterEnd(!isPlayer);
     }
 
     private void ensureIdleTimersRunning() {
@@ -2534,6 +2591,7 @@ public class SurivivalGamePanel extends JPanel {
                 && !isPlayerSkillAnimating
                 && !isEnemySkillAnimating
                 && !isProjectileAnimating) {
+            tryStartPendingDeathAnimations();
             if (messageOverlay == null || !messageOverlay.isAnimating()) {
                 if (p1HP > 0 && p2HP > 0) {
                     updateGameState();
@@ -2692,7 +2750,12 @@ public class SurivivalGamePanel extends JPanel {
             playerDeadTimer = new Timer(delay, null);
             playerDeadTimer.addActionListener(e -> {
                 if (playerDeadFrameIndex < playerDeadFrames.size() - 1) playerDeadFrameIndex++;
-                else playerDeadTimer.stop();
+                else {
+                    playerDeadTimer.stop();
+                    playerDeadTimer = null;
+                    holdPlayerDeathFrameUntilNextRound = true;
+                    handleDeathAnimationComplete(true);
+                }
                 repaint();
             });
             playerDeadTimer.start();
@@ -2705,7 +2768,12 @@ public class SurivivalGamePanel extends JPanel {
             enemyDeadTimer = new Timer(delay, null);
             enemyDeadTimer.addActionListener(e -> {
                 if (enemyDeadFrameIndex < enemyDeadFrames.size() - 1) enemyDeadFrameIndex++;
-                else enemyDeadTimer.stop();
+                else {
+                    enemyDeadTimer.stop();
+                    enemyDeadTimer = null;
+                    holdEnemyDeathFrameUntilNextRound = true;
+                    handleDeathAnimationComplete(false);
+                }
                 repaint();
             });
             enemyDeadTimer.start();

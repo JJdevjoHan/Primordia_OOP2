@@ -1,5 +1,4 @@
 package assets.Utility;
-import assets.Utility.FontManager;
 import engine.GameWindow;
 import javax.swing.*;
 import java.awt.*;
@@ -7,9 +6,19 @@ import java.awt.*;
 public class ExitButton {
 
     public JButton createExitButton(JPanel panel) {
-        JButton exitButton = new JButton("X");
+        final String label = "X";
+        JButton exitButton = new JButton("") {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                assets.Utility.ButtonTextRenderer.drawCenteredText(g2, this, label, 5);
+                g2.dispose();
+            }
+        };
 
-        exitButton.setFont(FontManager.getFont(30f));
+        exitButton.setFont(assets.Utility.FontManager.getFont(30f));
         //exitButton.setFont(new Font("Arial", Font.BOLD, 16));
         exitButton.setForeground(Color.WHITE);
         exitButton.setBackground(new Color(180, 40, 40));

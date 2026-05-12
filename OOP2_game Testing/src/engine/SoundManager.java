@@ -19,6 +19,7 @@ import java.util.Collections;
 
 public class SoundManager implements Runnable {
     private static final List<SoundManager> INSTANCES = Collections.synchronizedList(new ArrayList<>());
+    private static final List<Clip> ACTIVE_SFX_CLIPS = Collections.synchronizedList(new ArrayList<>());
 
     Clip clip;
     URL[] soundURL = new URL[45];
@@ -139,14 +140,27 @@ public class SoundManager implements Runnable {
     }
 
     private static void applyGainToActiveClips(boolean applyBgmGain) {
-        synchronized (INSTANCES) {
-            for (SoundManager manager : INSTANCES) {
-                Clip activeClip = manager.clip;
+        if (applyBgmGain) {
+            synchronized (INSTANCES) {
+                for (SoundManager manager : INSTANCES) {
+                    Clip activeClip = manager.clip;
+                    if (activeClip == null) continue;
+                    try {
+                        FloatControl gainControl = (FloatControl) activeClip.getControl(FloatControl.Type.MASTER_GAIN);
+                        gainControl.setValue(clampGainToControl(gainControl, masterBgmGainDb));
+                    } catch (IllegalArgumentException ignored) {
+                    }
+                }
+            }
+            return;
+        }
+
+        synchronized (ACTIVE_SFX_CLIPS) {
+            for (Clip activeClip : ACTIVE_SFX_CLIPS) {
                 if (activeClip == null) continue;
                 try {
                     FloatControl gainControl = (FloatControl) activeClip.getControl(FloatControl.Type.MASTER_GAIN);
-                    float requestedGain = applyBgmGain ? masterBgmGainDb : masterSfxGainDb;
-                    gainControl.setValue(clampGainToControl(gainControl, requestedGain));
+                    gainControl.setValue(clampGainToControl(gainControl, masterSfxGainDb));
                 } catch (IllegalArgumentException ignored) {
                 }
             }
@@ -571,6 +585,20 @@ public class SoundManager implements Runnable {
                 
                 skillClip = AudioSystem.getClip();
                 skillClip.open(ais);
+
+                synchronized (ACTIVE_SFX_CLIPS) {
+                    ACTIVE_SFX_CLIPS.add(skillClip);
+                }
+
+                final Clip activeSkillClip = skillClip;
+                skillClip.addLineListener(event -> {
+                    if (event.getType() == javax.sound.sampled.LineEvent.Type.STOP
+                            || event.getType() == javax.sound.sampled.LineEvent.Type.CLOSE) {
+                        synchronized (ACTIVE_SFX_CLIPS) {
+                            ACTIVE_SFX_CLIPS.remove(activeSkillClip);
+                        }
+                    }
+                });
                 
                 // Apply BGM/SFX separation: use masterSfxGainDb + per-SFX volumeGainDb
                 try {

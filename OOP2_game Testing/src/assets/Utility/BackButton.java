@@ -26,7 +26,7 @@ public class BackButton {
             System.out.println("Back button pressed!"); // <- see if this prints
             int confirm = JOptionPane.showConfirmDialog(
                     panel,
-                    "Return to menu?",
+                "Return to intro?",
                     "Confirm",
                     JOptionPane.YES_NO_OPTION
             );
@@ -40,7 +40,7 @@ public class BackButton {
                 } else if (panel instanceof ArcadeGamePanel arcadeGamePanel) {
                     arcadeGamePanel.stopMusic();
                 }
-                SwingUtilities.invokeLater(() -> window.showMenu());
+                SwingUtilities.invokeLater(window::showIntro);
             }
         });
 

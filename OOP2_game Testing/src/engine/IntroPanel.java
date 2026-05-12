@@ -1,8 +1,6 @@
 package engine;
 
 import assets.Utility.ButtonTextRenderer;
-import assets.Utility.CreditsButton;
-import assets.Utility.ExitButton;
 import assets.Utility.FontManager;
 import javax.swing.*;
 import java.awt.*;
@@ -12,8 +10,10 @@ public class IntroPanel extends JPanel {
 
     private Image backgroundImage;
     private GameWindow window;
+    private JButton startButton;
     private JButton creditsButton;
-    private JButton exitButton;
+    private JButton settingsButton;
+    private JButton quitButton;
 
     private final int tileSize = 128;
     private final int screenWidth = tileSize * 12;
@@ -25,95 +25,110 @@ public class IntroPanel extends JPanel {
         this.setPreferredSize(new Dimension(screenWidth, screenHeight));
         this.setLayout(null);
         loadBackground("/assets/maps/splashscreen.png");
-        createStartButton();
-
-        creditsButton = new CreditsButton().createCreditsButton(window, sound);
-        exitButton = new ExitButton().createExitButton(this);
-        add(exitButton);
-        add(creditsButton);
+        createButtons();
     }
 
-    private void createStartButton() {
-        final String startLabel = "START";
-        JButton startButton = new JButton("") {
-            @Override
-            protected void paintComponent(Graphics g) {
+    private void createButtons() {
+        startButton = createStyledButton("START");
+        creditsButton = createStyledButton("CREDITS");
+        settingsButton = createStyledButton("SETTINGS");
+        quitButton = createStyledButton("QUIT");
 
-                /*
-
-                label.setFont(FontManager.getFont(24f));
-                title.setFont(FontManager.getFont(32f));
-
-                 */
-
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-                // Rounded background
-                g2.setColor(getBackground());
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 30, 30);
-
-                // Rounded border
-                g2.setColor(Color.BLACK);
-                g2.setStroke(new BasicStroke(4));
-                g2.drawRoundRect(0, 0, getWidth()-1, getHeight()-1, 30, 30);
-
-                super.paintComponent(g2);
-
-                ButtonTextRenderer.drawCenteredText(g2, this, startLabel, 5);
-                g2.dispose();
-            }
-        };
-
-        int btnWidth = 220;
-        int btnHeight = 50;
-
-        startButton.setBounds(
-                screenWidth / 2 - btnWidth / 2,
-                screenHeight / 2 - btnHeight / 2,
-                btnWidth,
-                btnHeight
-        );
-
-        startButton.setFont(FontManager.getFont(35).deriveFont(Font.BOLD));
-        startButton.setForeground(Color.WHITE);
-        startButton.setBackground(new Color(30,30,50));
-        startButton.setFocusPainted(false);
-        startButton.setBorder(BorderFactory.createLineBorder(new Color(200,160,40),1));
-
-        // Hover effects
-        startButton.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
-                startButton.setBackground(new Color(70, 70, 100));
-            }
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                startButton.setBackground(new Color(30, 30, 50));
-            }
-        });
-
-        Toolkit.getDefaultToolkit().beep();
         startButton.addActionListener(e -> {
-
             sound.setFile(8);
             sound.play();
             window.showMenu();
         });
 
+        creditsButton.addActionListener(e -> {
+            sound.setFile(8);
+            sound.play();
+            window.showCredits();
+        });
+
+        settingsButton.addActionListener(e -> {
+            sound.setFile(8);
+            sound.play();
+            window.showSettingsMenu();
+        });
+
+        quitButton.addActionListener(e -> {
+            sound.setFile(8);
+            sound.play();
+            System.exit(0);
+        });
+
         add(startButton);
+        add(creditsButton);
+        add(settingsButton);
+        add(quitButton);
+    }
+
+    private JButton createStyledButton(String label) {
+        JButton button = new JButton("") {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                g2.setColor(getBackground());
+                    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+
+                GradientPaint gp = new GradientPaint(0, 0, new Color(160, 130, 100, 40), 0, getHeight(), new Color(0, 0, 0, 0));
+                g2.setPaint(gp);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight() / 2, 12, 12);
+                g2.setPaint(null);
+
+                g2.setColor(new Color(40, 30, 22, 180));
+                g2.setStroke(new BasicStroke(2f));
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 12, 12);
+
+                g2.setFont(FontManager.getFont(35).deriveFont(Font.BOLD));
+                g2.setColor(new Color(246, 244, 240));
+                ButtonTextRenderer.drawCenteredText(g2, this, label, 5);
+                g2.dispose();
+            }
+        };
+
+        button.setFont(FontManager.getFont(35).deriveFont(Font.BOLD));
+        button.setForeground(new Color(246, 244, 240));
+        button.setBackground(new Color(115, 90, 60));
+        button.setFocusPainted(false);
+        button.setBorder(BorderFactory.createEmptyBorder());
+
+        button.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent evt) {
+                button.setBackground(new Color(140, 110, 80));
+            }
+            public void mouseExited(java.awt.event.MouseEvent evt) {
+                button.setBackground(new Color(115, 90, 60));
+            }
+        });
+
+        return button;
     }
 
 
     @Override
     public void doLayout() {
         super.doLayout();
-        int margin = 20;
-        if (creditsButton != null) {
-            int leftMargin = 40;
-            int bottomMargin = 60;
-            creditsButton.setBounds(leftMargin, getHeight() - 40 - bottomMargin, 150, 40);
+        int btnWidth = 220;
+        int btnHeight = 60;
+        int centerX = getWidth() / 2 - btnWidth / 2;
+        int centerY = getHeight() / 2 - btnHeight / 2;
+        int gap = 20;
+
+        if (startButton != null) {
+            startButton.setBounds(centerX, centerY, btnWidth, btnHeight);
         }
-        if (exitButton != null) {
-            exitButton.setBounds(getWidth() - 50 - margin, margin, 40, 40);
+        if (settingsButton != null) {
+            settingsButton.setBounds(centerX, centerY + btnHeight + gap, btnWidth, btnHeight);
+        }
+        if (creditsButton != null) {
+            creditsButton.setBounds(centerX, centerY + (btnHeight + gap) * 2, btnWidth, btnHeight);
+        }
+        if (quitButton != null) {
+            quitButton.setBounds(centerX, centerY + (btnHeight + gap) * 3, btnWidth, btnHeight);
         }
     }
 
