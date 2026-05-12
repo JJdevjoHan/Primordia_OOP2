@@ -2,7 +2,6 @@ package engine;
 
 import assets.Utility.FontManager;
 
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
@@ -29,8 +28,6 @@ public class PauseMenuPanel extends JPanel {
 
     private final Font titleFont = FontManager.getFont(38f).deriveFont(Font.BOLD);
     private final Font subtitleFont = FontManager.getFont(24f).deriveFont(Font.BOLD);
-    private final Font bodyFont = FontManager.getFont(20f).deriveFont(Font.PLAIN);
-
     public PauseMenuPanel(GameWindow window, String previousPanelCard, Component previousComponent) {
         this.window = window;
         this.previousPanelCard = previousPanelCard;
@@ -246,7 +243,7 @@ public class PauseMenuPanel extends JPanel {
     }
 
     private void goToMainMenu() {
-        window.showMenu();
+        window.showIntro();
     }
 
     private void quitGame() {

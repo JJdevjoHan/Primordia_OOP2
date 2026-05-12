@@ -3,8 +3,6 @@ package engine;
 
 //Mag add rakog comments ari guys ugma duka na
 import javax.swing.*;
-import javax.swing.event.AncestorListener;
-import javax.swing.event.AncestorEvent;
 import java.awt.*;
 import java.awt.event.WindowEvent;
 import java.util.ArrayList;
@@ -117,6 +115,36 @@ public class GameWindow extends JFrame {
         }
     }
 
+    public void showSettingsMenu() {
+        System.out.println("showSettingsMenu() called");
+        Component prev = cardMap.get(currentPanelCard);
+        SettingsMenuPanel settingsMenu = new SettingsMenuPanel(this, currentPanelCard, prev);
+        container.add(settingsMenu, "SETTINGS");
+        cardMap.put("SETTINGS", settingsMenu);
+        layout.show(container, "SETTINGS");
+        container.revalidate();
+        container.repaint();
+        settingsMenu.requestFocusInWindow();
+        System.out.println("Settings menu shown");
+    }
+
+    public void closeSettings(String previousPanelCard) {
+        layout.show(container, previousPanelCard);
+        // remove settings overlay component if present
+        Component settingsComp = cardMap.remove("SETTINGS");
+        if (settingsComp != null) {
+            container.remove(settingsComp);
+            container.revalidate();
+            container.repaint();
+        }
+        if (previousPanelCard.equals("INTRO")) {
+            Component prev = cardMap.get("INTRO");
+            if (prev instanceof JComponent) {
+                ((JComponent) prev).requestFocusInWindow();
+            }
+        }
+    }
+
     public void stopGameMusic() {
         // Stop music from any active game panel
         if (currentGamePanel != null) {
@@ -135,6 +163,14 @@ public class GameWindow extends JFrame {
         currentGamePanel = null;
         currentPanelCard = "MENU";
         layout.show(container,"MENU");
+        playMenuMusic(6);
+    }
+
+    public void showIntro() {
+        stopGameMusic();
+        currentGamePanel = null;
+        currentPanelCard = "INTRO";
+        layout.show(container, "INTRO");
         playMenuMusic(6);
     }
 

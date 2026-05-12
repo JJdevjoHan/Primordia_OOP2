@@ -160,6 +160,10 @@ public class GamePanel extends JPanel {
     private int enemyDeadFrameIndex  = 0;
     private Timer playerDeadTimer;
     private Timer enemyDeadTimer;
+    private boolean pendingPlayerDeathAnimation = false;
+    private boolean pendingEnemyDeathAnimation = false;
+    private boolean holdPlayerDeathFrameUntilNextRound = false;
+    private boolean holdEnemyDeathFrameUntilNextRound = false;
 
     // Sprite placement
     private int p1SpriteX = 350;
@@ -298,6 +302,8 @@ public class GamePanel extends JPanel {
                     System.out.println("Round " + round + " Start!");
 
                     resetNatureDefenseForms();
+                    holdPlayerDeathFrameUntilNextRound = false;
+                    holdEnemyDeathFrameUntilNextRound = false;
                     p1HP = 100;
                     p2HP = 100;
                     // Restore MP fully at the start of every round
@@ -609,10 +615,22 @@ public class GamePanel extends JPanel {
         drawCharacterShadow(g2, currentEnemyDef, getEnemyFeetAnchorX(), getEnemyFeetAnchorY(), getEnemyDrawWidth(), getEnemyDrawHeight());
 
         // Player sprite
-        if (p1HP <= 0) {
+        if (p1HP <= 0 && (playerDeadTimer != null || holdPlayerDeathFrameUntilNextRound)) {
             if (!playerDeadFrames.isEmpty())
                 g2.drawImage(playerDeadFrames.get(playerDeadFrameIndex),
                         p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
+        } else if (p1HP <= 0 && pendingPlayerDeathAnimation) {
+            if (isPlayerHurtAnimating && !playerHurtFrames.isEmpty()) {
+                BufferedImage hurtFrame = playerHurtFrames.get(playerHurtFrameIndex);
+                if (playerHurtFlashing) {
+                    hurtFrame = applyRedTintToNonTransparent(hurtFrame);
+                }
+                g2.drawImage(hurtFrame,
+                        p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
+            } else if (!playerFrames.isEmpty()) {
+                g2.drawImage(playerFrames.get(playerFrameIndex),
+                        p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
+            }
         } else if (isPlayerHurtAnimating && !playerHurtFrames.isEmpty()) {
             BufferedImage hurtFrame = playerHurtFrames.get(playerHurtFrameIndex);
             if (playerHurtFlashing) {
@@ -642,10 +660,22 @@ public class GamePanel extends JPanel {
         }
 
         // Enemy sprite (mirrored)
-        if (p2HP <= 0) {
+        if (p2HP <= 0 && (enemyDeadTimer != null || holdEnemyDeathFrameUntilNextRound)) {
             if (!enemyDeadFrames.isEmpty())
                 g2.drawImage(enemyDeadFrames.get(enemyDeadFrameIndex),
                         p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
+        } else if (p2HP <= 0 && pendingEnemyDeathAnimation) {
+            if (isEnemyHurtAnimating && !enemyHurtFrames.isEmpty()) {
+                BufferedImage hurtFrame = enemyHurtFrames.get(enemyHurtFrameIndex);
+                if (enemyHurtFlashing) {
+                    hurtFrame = applyRedTintToNonTransparent(hurtFrame);
+                }
+                g2.drawImage(hurtFrame,
+                        p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
+            } else if (!enemyFrames.isEmpty()) {
+                g2.drawImage(enemyFrames.get(enemyFrameIndex),
+                        p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
+            }
         } else if (isEnemyHurtAnimating && !enemyHurtFrames.isEmpty()) {
             BufferedImage hurtFrame = enemyHurtFrames.get(enemyHurtFrameIndex);
             if (enemyHurtFlashing) {
@@ -733,6 +763,10 @@ public class GamePanel extends JPanel {
         stopProjectileAnimation(false);
         stopHurtTimeline(true);
         stopHurtTimeline(false);
+        pendingPlayerDeathAnimation = false;
+        pendingEnemyDeathAnimation = false;
+        holdPlayerDeathFrameUntilNextRound = false;
+        holdEnemyDeathFrameUntilNextRound = false;
 
         CharacterDef playerDef = ALL_CHARACTERS.get(playerIdx);
         CharacterDef enemyDef  = ALL_CHARACTERS.get(enemyIdx);
@@ -770,6 +804,10 @@ public class GamePanel extends JPanel {
 
         if (playerDeadTimer != null) { playerDeadTimer.stop(); playerDeadTimer = null; }
         if (enemyDeadTimer  != null) { enemyDeadTimer.stop();  enemyDeadTimer  = null; }
+        pendingPlayerDeathAnimation = false;
+        pendingEnemyDeathAnimation = false;
+        holdPlayerDeathFrameUntilNextRound = false;
+        holdEnemyDeathFrameUntilNextRound = false;
         playerHurtFrames = loadHurtFrames(playerDef);
         enemyHurtFrames  = loadHurtFrames(enemyDef);
         playerHurtFrameIndex = 0;
@@ -1176,15 +1214,25 @@ public class GamePanel extends JPanel {
         if (p1MpBar     != null) p1MpBar.updateValue(p1MP);
         if (p2MpBar     != null) p2MpBar.updateValue(p2MP);
 
-        if (p1HP <= 0 && playerDeadTimer == null) startDeadAnimation(true);
-        if (p2HP <= 0 && enemyDeadTimer  == null) startDeadAnimation(false);
+        if (p1HP <= 0) {
+            if (playerDeadTimer == null) {
+                if (isAnyCombatAnimationActive()) pendingPlayerDeathAnimation = true;
+                else startDeadAnimation(true);
+            }
+        } else {
+            pendingPlayerDeathAnimation = false;
+        }
+        if (p2HP <= 0) {
+            if (enemyDeadTimer == null) {
+                if (isAnyCombatAnimationActive()) pendingEnemyDeathAnimation = true;
+                else startDeadAnimation(false);
+            }
+        } else {
+            pendingEnemyDeathAnimation = false;
+        }
 
         if (p1HP <= 0 || p2HP <= 0) {
             stopTurnTimer();
-            if (!roundManager.isMatchOver()) {
-                boolean p1WonRound = p2HP <= 0;
-                roundManager.recordRoundResult(p1WonRound);
-            }
             return;
         }
 
@@ -1781,6 +1829,7 @@ public class GamePanel extends JPanel {
                 && !isPlayerSkillAnimating
                 && !isEnemySkillAnimating
                 && !isProjectileAnimating) {
+            tryStartPendingDeathAnimations();
             if (messageOverlay == null || !messageOverlay.isAnimating()) {
                 if (p1HP > 0 && p2HP > 0) {
                     updateGameState();
@@ -2340,6 +2389,7 @@ public class GamePanel extends JPanel {
                 && !isPlayerSkillAnimating
                 && !isEnemySkillAnimating
                 && !isProjectileAnimating) {
+            tryStartPendingDeathAnimations();
             if (messageOverlay == null || !messageOverlay.isAnimating()) {
                 if (p1HP > 0 && p2HP > 0) {
                     updateGameState();
@@ -2487,6 +2537,27 @@ public class GamePanel extends JPanel {
         return tinted;
     }
 
+    private boolean isAnyCombatAnimationActive() {
+        return isPlayerSkillAnimating || isEnemySkillAnimating || isProjectileAnimating;
+    }
+
+    private void tryStartPendingDeathAnimations() {
+        if (isAnyCombatAnimationActive()) return;
+        if (pendingPlayerDeathAnimation && p1HP <= 0 && playerDeadTimer == null) {
+            pendingPlayerDeathAnimation = false;
+            startDeadAnimation(true);
+        }
+        if (pendingEnemyDeathAnimation && p2HP <= 0 && enemyDeadTimer == null) {
+            pendingEnemyDeathAnimation = false;
+            startDeadAnimation(false);
+        }
+    }
+
+    private void handleDeathAnimationComplete(boolean isPlayer) {
+        if (roundManager.isMatchOver()) return;
+        roundManager.recordRoundResult(!isPlayer);
+    }
+
     private void startDeadAnimation(boolean isPlayer) {
         if (isPlayer) {
             if (playerTimer != null) playerTimer.stop();
@@ -2497,7 +2568,12 @@ public class GamePanel extends JPanel {
             playerDeadTimer = new Timer(delay, null);
             playerDeadTimer.addActionListener(e -> {
                 if (playerDeadFrameIndex < playerDeadFrames.size() - 1) playerDeadFrameIndex++;
-                else playerDeadTimer.stop();
+                else {
+                    playerDeadTimer.stop();
+                    playerDeadTimer = null;
+                    holdPlayerDeathFrameUntilNextRound = true;
+                    handleDeathAnimationComplete(true);
+                }
                 repaint();
             });
             playerDeadTimer.start();
@@ -2510,7 +2586,12 @@ public class GamePanel extends JPanel {
             enemyDeadTimer = new Timer(delay, null);
             enemyDeadTimer.addActionListener(e -> {
                 if (enemyDeadFrameIndex < enemyDeadFrames.size() - 1) enemyDeadFrameIndex++;
-                else enemyDeadTimer.stop();
+                else {
+                    enemyDeadTimer.stop();
+                    enemyDeadTimer = null;
+                    holdEnemyDeathFrameUntilNextRound = true;
+                    handleDeathAnimationComplete(false);
+                }
                 repaint();
             });
             enemyDeadTimer.start();

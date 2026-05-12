@@ -1,6 +1,6 @@
 package engine;
 
-import assets.Utility.FontManager;
+import assets.Utility.BackButton;
 import javax.swing.*;
 import java.awt.*;
 import java.net.URL;
@@ -8,27 +8,29 @@ import java.net.URL;
 public class CreditsPanel extends JPanel {
 
     private Image backgroundImage;
-    private GameWindow window;
+    private JButton backButton;
 
     private final int tileSize = 128;
     private final int screenWidth = tileSize * 12;
     private final int screenHeight = tileSize * 7;
 
-    private final SoundManager sound = new SoundManager();
-
     public CreditsPanel(GameWindow window) {
-        this.window = window;
-
         this.setPreferredSize(new Dimension(screenWidth, screenHeight));
         this.setLayout(null);
 
         loadBackground("/assets/maps/credits.png");
+        backButton = new BackButton().createBackButton(window, this);
+        add(backButton);
     }
 
     @Override
     public void doLayout() {
         super.doLayout();
-        // No back button anymore.
+        if (backButton != null) {
+            int margin = 20;
+            int buttonSize = 72;
+            backButton.setBounds(getWidth() - buttonSize - margin, margin, buttonSize, 36);
+        }
     }
 
     private void loadBackground(String path) {
