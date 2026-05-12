@@ -942,7 +942,7 @@ public class SurivivalGamePanel extends JPanel {
         if (isSteelWizardSkill2Active && steelWizardSkill2IsPlayerOne == actingPlayerOne) {
             // Steel Wizard Skill 2: Trigger Skill 2.2 (collision event)
             Runnable skill2Impact = () -> {
-                sfx.playSkillSFX(23, 0.0, -1);  // Skill 2.2 on collision
+                sfx.playMappedSkillSFX("Steel Wizard", "Skill2.2", 0.0, -1, 0.0f);  // Skill 2.2 on collision
                 isSteelWizardSkill2Active = false;  // Clear the flag
             };
             
@@ -960,13 +960,14 @@ public class SurivivalGamePanel extends JPanel {
         return hurtCallback;
     }
 
-    private void playSkillSound(CharacterDef character, int skillID) {
+    private void playSkillSound(CharacterDef character, int skillID, int castDurationMs, CharacterDef.DefenseFormDef defenseForm, boolean isNatureDefenseFormAltSkill) {
         if (character == null) return;
         String charName = character.name;
         
         int soundIndex = -1;
         double timeOffset = 0.0;
         int stopAfterMillis = -1;  // No auto-stop by default
+        float volumeGainDb = 0.0f; // per-sound volume adjustment (dB)
         
         if ("Idk Magician".equalsIgnoreCase(charName)) {
             soundIndex = switch (skillID) {
@@ -1008,8 +1009,8 @@ public class SurivivalGamePanel extends JPanel {
             switch (skillID) {
                 case 1 -> {
                     // Skill 1: Parallel Synchronized at 1 second mark - play both with offset and stop at animation end
-                    sfx.playSkillSFX(20, 1.0, 1200);  // Skill 1.1 at t=1.0, stop after 1.2s
-                    sfx.playSkillSFX(21, 1.0, 1200);  // Skill 1.2 at t=1.0 (parallel), stop after 1.2s
+                    sfx.playMappedSkillSFX("Steel Wizard", "Skill1.1", 1.0, 1200, 0.0f);  // Skill 1.1 at t=1.0, stop after 1.2s
+                    sfx.playMappedSkillSFX("Steel Wizard", "Skill1.2", 1.0, 1200, 0.0f);  // Skill 1.2 at t=1.0 (parallel), stop after 1.2s
                     return;
                 }
                 case 2 -> {
@@ -1022,10 +1023,10 @@ public class SurivivalGamePanel extends JPanel {
                 }
                 case 3 -> {
                     // Skill 3: Timed Offset - Skill 3.1 louder, Skill 3.2 delayed
-                    sfx.playSkillSFX(24, 0.0, -1, 5.0f);   // Skill 3.1 at t=0 with +5dB volume boost
+                    sfx.playMappedSkillSFX("Steel Wizard", "Skill3.1", 0.0, -1, 0.0f);   // Skill 3.1 volume comes from JSON mapping
                     // Schedule Skill 3.2 to play at 0.7 seconds
                     Timer delayedSkill3_2 = new Timer(700, e -> {
-                        sfx.playSkillSFX(25, 0.0, -1);  // Skill 3.2 at t=0.7
+                        sfx.playMappedSkillSFX("Steel Wizard", "Skill3.2", 0.0, -1, 0.0f);  // Skill 3.2 at t=0.7
                     });
                     delayedSkill3_2.setRepeats(false);
                     delayedSkill3_2.start();
@@ -1033,11 +1034,158 @@ public class SurivivalGamePanel extends JPanel {
                 }
                 default -> soundIndex = -1;
             }
+        } else if ("Wind Wizard".equalsIgnoreCase(charName)) {
+            switch (skillID) {
+                case 1 -> soundIndex = 38; // Wind Wizard - Skill 1
+                case 2 -> {
+                    sfx.playMappedSkillSFX("Wind Wizard", "Skill2.1", 0.0, -1, 0.0f); // Skill 2.1
+                    Thread delayedWindSkill2_2 = new Thread(() -> {
+                        try {
+                            Thread.sleep(900);
+                            sfx.playMappedSkillSFX("Wind Wizard", "Skill2.2", 0.0, -1, 0.0f); // Skill 2.2 volume comes from JSON mapping
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                    });
+                    delayedWindSkill2_2.setDaemon(true);
+                    delayedWindSkill2_2.start();
+                    return;
+                }
+                case 3 -> {
+                    final int windSkill3LoopDelay = Math.max(1, sfx.getSkillSoundDurationMillis(41, 0.0));
+                    final long windSkill3EndAt = System.currentTimeMillis() + Math.max(0, castDurationMs);
+                    Thread windSkill3Loop = new Thread(() -> {
+                        long nextStart = System.currentTimeMillis() + windSkill3LoopDelay;
+                        while (nextStart < windSkill3EndAt) {
+                            long sleepMs = nextStart - System.currentTimeMillis();
+                            if (sleepMs > 0) {
+                                try {
+                                    Thread.sleep(sleepMs);
+                                } catch (InterruptedException e) {
+                                    Thread.currentThread().interrupt();
+                                    return;
+                                }
+                            }
+                            if (System.currentTimeMillis() >= windSkill3EndAt) break;
+                            sfx.playMappedSkillSFX("Wind Wizard", "Skill3.1", 0.0, -1, 0.0f); // Skill 3.1
+                            Thread windSkill3AfterEffect = new Thread(() -> {
+                                try {
+                                    Thread.sleep(Math.max(1, windSkill3LoopDelay / 2));
+                                    sfx.playMappedSkillSFX("Wind Wizard", "Skill3.2", 0.0, -1, 0.0f); // Skill 3.2 mid-clip
+                                } catch (InterruptedException e) {
+                                    Thread.currentThread().interrupt();
+                                }
+                            });
+                            windSkill3AfterEffect.setDaemon(true);
+                            windSkill3AfterEffect.start();
+                            nextStart += windSkill3LoopDelay;
+                        }
+                    });
+                    windSkill3Loop.setDaemon(true);
+                    windSkill3Loop.start();
+                    sfx.playMappedSkillSFX("Wind Wizard", "Skill3.1", 0.0, -1, 0.0f); // initial Skill 3.1
+                    Thread initialWindSkill3AfterEffect = new Thread(() -> {
+                        try {
+                            Thread.sleep(Math.max(1, windSkill3LoopDelay / 2));
+                            sfx.playMappedSkillSFX("Wind Wizard", "Skill3.2", 0.0, -1, 0.0f); // Skill 3.2 mid-clip
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                    });
+                    initialWindSkill3AfterEffect.setDaemon(true);
+                    initialWindSkill3AfterEffect.start();
+                    return;
+                }
+                default -> soundIndex = -1;
+            }
+        } else if ("Water Wizard".equalsIgnoreCase(charName)) {
+            int waterSkillIndex = switch (skillID) {
+                case 1 -> 34; // Water Wizard - Skill 1
+                case 2 -> 35; // Water Wizard - Skill 2
+                case 3 -> 36; // Water Wizard - Skill 3.1
+                default -> -1;
+            };
+            if (waterSkillIndex >= 0) {
+                if (skillID == 1 || skillID == 2) {
+                    sfx.playMappedSkillSFX("Water Wizard", "SkillHold", 0.0, -1, 0.0f);
+                    final String delayedWaterSkillKey = (skillID == 1) ? "Skill1" : "Skill2";
+                    Thread delayedWaterSkill = new Thread(() -> {
+                        try {
+                            Thread.sleep(600);
+                            sfx.playMappedSkillSFX("Water Wizard", delayedWaterSkillKey, 0.0, -1, 0.0f);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                    });
+                    delayedWaterSkill.setDaemon(true);
+                    delayedWaterSkill.start();
+                    return;
+                }
+                if (skillID == 3) {
+                    sfx.playMappedSkillSFX("Water Wizard", "Skill3.1", 0.0, -1, 0.0f);
+                    final int waterSkill3Delay = sfx.getSkillSoundDurationMillis(36, 0.0);
+                    Thread delayedWaterSkill3_2 = new Thread(() -> {
+                        try {
+                            Thread.sleep(Math.max(0, waterSkill3Delay));
+                            sfx.playMappedSkillSFX("Water Wizard", "Skill3.2", 0.0, -1, 0.0f);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                    });
+                    delayedWaterSkill3_2.setDaemon(true);
+                    delayedWaterSkill3_2.start();
+                    return;
+                }
+            }
+        } else if ("Dark Wizard".equalsIgnoreCase(charName)) {
+            soundIndex = switch (skillID) {
+                case 1 -> 30; // Dark Wizard - Skill 1
+                case 2 -> 31; // Dark Wizard - Skill 2
+                case 3 -> 32; // Dark Wizard - Skill 3
+                default -> -1;
+            };
+            if (soundIndex >= 0) {
+                // Ensure Dark Wizard SFX play fully and boost 2/3 (skill3 boosted more)
+                stopAfterMillis = -1;
+            }
+        } else if ("Nature Wizard".equalsIgnoreCase(charName)) {
+            soundIndex = switch (skillID) {
+                case 1 -> isNatureDefenseFormAltSkill ? 27 : 26;
+                case 2 -> 28;
+                case 3 -> 29;
+                default -> -1;
+            };
+            if (soundIndex >= 0) {
+                if (skillID == 2) {
+                    // Let Nature Wizard Skill 2 audio play fully (don't auto-stop)
+                    stopAfterMillis = -1;
+                    timeOffset = 0.3; // start Nature skill2 at 0.3s
+                } else {
+                    stopAfterMillis = skillID == 1 && isNatureDefenseFormAltSkill
+                            ? getNatureDefenseFormCastDurationMs(defenseForm)
+                            : castDurationMs;
+                }
+            }
         }
-        
+
         if (soundIndex >= 0) {
-            sfx.playSkillSFX(soundIndex, timeOffset, stopAfterMillis);
+            // Try mapped playback first (data-driven). The mapping keys use "Character Name:SkillKey".
+            String mappedSkillKey = "Skill" + skillID;
+            if ("Nature Wizard".equalsIgnoreCase(charName) && skillID == 1) {
+                mappedSkillKey = isNatureDefenseFormAltSkill ? "Skill1.defense" : "Skill1.normal";
+            } else if ("Water Wizard".equalsIgnoreCase(charName) && skillID == 3) {
+                mappedSkillKey = "Skill3.1"; // water skill3 uses 3.1/3.2
+            } else if ("Steel Wizard".equalsIgnoreCase(charName) && skillID == 1) {
+                mappedSkillKey = "Skill1.1"; // handled earlier but keep fallback
+            }
+            sfx.playMappedSkillSFX(charName, mappedSkillKey, timeOffset, stopAfterMillis, volumeGainDb);
         }
+    }
+
+    private int getNatureDefenseFormCastDurationMs(CharacterDef.DefenseFormDef defenseForm) {
+        List<BufferedImage> frames = loadNatureShotFrames(defenseForm);
+        if (frames.isEmpty()) return DEFAULT_SKILL_DELAY_MS;
+        return frames.size() * DEFAULT_SKILL_DELAY_MS;
     }
 
     public void executeSkill(int skillID) {
@@ -1077,10 +1225,7 @@ public class SurivivalGamePanel extends JPanel {
 
         boolean actingPlayerOne  = isP1Turn;
         CharacterDef actor       = actingPlayerOne ? currentPlayerDef : currentEnemyDef;
-        
-        // Play skill sound effect if it's Idk Magician
-        playSkillSound(actor, skillID);
-        
+
         CharacterDef.DefenseFormDef defenseForm = actor != null ? actor.defenseForm : null;
         boolean isDefenseFormToggleSkill = defenseForm != null && skillID == defenseForm.toggleSkillSlot;
         boolean isDefenseFormAltSkill = defenseForm != null
@@ -1094,6 +1239,8 @@ public class SurivivalGamePanel extends JPanel {
         boolean hasProjectileAnimation = projectileDef != null;
         boolean startProjectileDuringCast = hasProjectileAnimation && projectileDef.startDuringCast;
         boolean holdCastUntilProjectileDone = hasProjectileAnimation && projectileDef.beam && !startProjectileDuringCast;
+
+        playSkillSound(actor, skillID, getSkillCastDurationMs(actingPlayerOne, skillID), defenseForm, isDefenseFormAltSkill);
 
         if (isP1Turn) {
             switch (skillID) {
