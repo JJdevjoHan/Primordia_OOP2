@@ -30,7 +30,7 @@ public class SurvivalLeaderboardPopupDialog extends JDialog {
         private boolean hoverBack;
 
         private final Font titleFont = FontManager.getFont(38f).deriveFont(Font.BOLD);
-        private final Font rowFont = FontManager.getFont(22f).deriveFont(Font.BOLD);
+        private final Font rowFont = FontManager.getFont(28f).deriveFont(Font.BOLD);
         private final Font buttonFont = FontManager.getFont(24f).deriveFont(Font.BOLD);
 
         PopupPanel(Window owner) {

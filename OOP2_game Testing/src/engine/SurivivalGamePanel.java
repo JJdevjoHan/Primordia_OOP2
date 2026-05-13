@@ -126,6 +126,7 @@ public class SurivivalGamePanel extends JPanel {
     private Timer   projectileTimer;
     private boolean isProjectileAnimating = false;
     private boolean isProjectileQueued = false;
+    private int     projectileAnimationDelayMs = DEFAULT_SKILL_DELAY_MS;
     
     // Steel Wizard Skill 2 tracking (for event-based collision trigger)
     private boolean isSteelWizardSkill2Active = false;
@@ -1023,8 +1024,24 @@ public class SurivivalGamePanel extends JPanel {
      * Create the onImpactStart callback for projectiles.
      * For Steel Wizard Skill 2, this also triggers Skill 2.2 SFX.
      */
-    private Runnable createOnImpactStartCallback(boolean isDamageSkill, boolean actingPlayerOne) {
-        Runnable hurtCallback = isDamageSkill ? () -> startDelayedHurt(!actingPlayerOne, 0, POST_ATTACK_HURT_MS) : null;
+    private Runnable createOnImpactStartCallback(boolean isHurtSkill, boolean actingPlayerOne) {
+        final Runnable hurtCallback = isHurtSkill ? () -> {
+            int durationMs = POST_ATTACK_HURT_MS;
+            int animDelay = projectileAnimationDelayMs > 0 ? projectileAnimationDelayMs : DEFAULT_SKILL_DELAY_MS;
+            if (isProjectileAnimating) {
+                if (!projectileImpactFrames.isEmpty()) {
+                    durationMs = Math.max(1, projectileImpactFrames.size() * animDelay);
+                } else if (projectileImpactStartIndex >= 0 && projectileImpactEndIndex >= projectileImpactStartIndex) {
+                    int count = Math.max(1, projectileImpactEndIndex - projectileImpactStartIndex + 1);
+                    durationMs = Math.max(1, count * animDelay);
+                } else if (projectileInImpactPhase) {
+                    durationMs = Math.max(1, activeProjectileFrames.size() * animDelay);
+                } else if (!activeProjectileFrames.isEmpty()) {
+                    durationMs = Math.max(1, activeProjectileFrames.size() * animDelay);
+                }
+            }
+            startDelayedHurt(!actingPlayerOne, 0, durationMs);
+        } : null;
         
         if (isSteelWizardSkill2Active && steelWizardSkill2IsPlayerOne == actingPlayerOne) {
             // Steel Wizard Skill 2: Trigger Skill 2.2 (collision event)
@@ -1316,9 +1333,10 @@ public class SurivivalGamePanel extends JPanel {
         CharacterDef.DefenseFormDef defenseForm = actor != null ? actor.defenseForm : null;
         boolean isDefenseFormToggleSkill = defenseForm != null && skillID == defenseForm.toggleSkillSlot;
         boolean isDefenseFormAltSkill = defenseForm != null
-                && skillID == defenseForm.altSkillSlot
-                && isNatureDefenseFormActive(actingPlayerOne);
-        boolean isDamageSkill    = actor != null && "damage".equalsIgnoreCase(actor.getSkillType(skillID));
+            && skillID == defenseForm.altSkillSlot
+            && isNatureDefenseFormActive(actingPlayerOne);
+        String skillType = actor != null ? actor.getSkillType(skillID) : null;
+        boolean isHurtSkill    = skillType != null && ("damage".equalsIgnoreCase(skillType) || "debuff".equalsIgnoreCase(skillType));
         CharacterDef.ProjectileDef projectileDef = actor != null ? actor.getSkillProjectile(skillID) : null;
         if (isDefenseFormAltSkill) {
             projectileDef = buildDefenseFormAltProjectileDef(defenseForm);
@@ -1332,24 +1350,25 @@ public class SurivivalGamePanel extends JPanel {
 
         playSkillSound(actor, skillID, getSkillCastDurationMs(actingPlayerOne, skillID), defenseForm, isDefenseFormAltSkill);
 
-        if (isP1Turn) {
-            switch (skillID) {
-                case 1 -> p2HP = Math.max(0, p2HP - Math.max(0, actor != null ? actor.getSkillPower(skillID) : 0));
-                case 2 -> p1HP = Math.min(100, p1HP + 10);
-                case 3 -> p2HP = Math.max(0, p2HP - Math.max(0, actor != null ? actor.getSkillPower(skillID) : 0));
+        int skillPower = actor != null ? actor.getSkillPower(skillID) : 0;
+        if (isHurtSkill) {
+            if (isP1Turn) {
+                p2HP = Math.max(0, p2HP - Math.max(0, skillPower));
+            } else {
+                p1HP = Math.max(0, p1HP - Math.max(0, skillPower));
             }
         } else {
-            switch (skillID) {
-                case 1 -> p1HP = Math.max(0, p1HP - Math.max(0, actor != null ? actor.getSkillPower(skillID) : 0));
-                case 2 -> p2HP = Math.min(100, p2HP + 10);
-                case 3 -> p1HP = Math.max(0, p1HP - Math.max(0, actor != null ? actor.getSkillPower(skillID) : 0));
+            if (isP1Turn) {
+                p1HP = Math.min(100, p1HP + 10);
+            } else {
+                p2HP = Math.min(100, p2HP + 10);
             }
         }
 
         // Spend MP for the attacker and regen for the defender
         spendAndRegenMP(actingPlayerOne, skillID);
 
-        if (isDamageSkill && !hasProjectileAnimation) {
+        if (isHurtSkill && !hasProjectileAnimation) {
             scheduleHurtTimeline(actingPlayerOne, skillID);
         }
 
@@ -1368,7 +1387,7 @@ public class SurivivalGamePanel extends JPanel {
                         actingPlayerOne,
                         skillID,
                         activeProjectileDef,
-                        createOnImpactStartCallback(isDamageSkill, actingPlayerOne),
+                        createOnImpactStartCallback(isHurtSkill, actingPlayerOne),
                         null);
                 if (projectileSpawnFrame > 1) {
                     scheduleProjectileSpawnAtCastFrame(projectileSpawnFrame, spawnProjectile);
@@ -1381,12 +1400,18 @@ public class SurivivalGamePanel extends JPanel {
                     playSkillAnimation(actingPlayerOne, skillID, false, null);
                 }
             } else {
-                Runnable spawnProjectile = () -> startProjectileAnimation(
+                Runnable spawnProjectile = () -> {
+                    if (actor != null && "Wind Wizard".equalsIgnoreCase(actor.name)
+                        && activeProjectileDef != null && activeProjectileDef.beam) {
+                        stopSkillAnimation(actingPlayerOne);
+                    }
+                    startProjectileAnimation(
                         actingPlayerOne,
                         skillID,
                         activeProjectileDef,
-                        createOnImpactStartCallback(isDamageSkill, actingPlayerOne),
-                        holdCastUntilProjectileDone ? () -> stopSkillAnimation(actingPlayerOne) : null);
+                        createOnImpactStartCallback(isHurtSkill, actingPlayerOne),
+                        null);
+                };
                 if (isDefenseFormAltSkill) {
                     playNatureFormSkill1CastAnimation(actingPlayerOne, defenseForm, spawnProjectile);
                 } else {
@@ -2284,9 +2309,9 @@ public class SurivivalGamePanel extends JPanel {
             activePlayerSkillFrames = frames;
             playerSkillFrameIndex = 0;
             isPlayerSkillAnimating = true;
-            int altSkillSlot = defenseForm != null ? defenseForm.altSkillSlot : 1;
-            activePlayerSkillID = altSkillSlot;
-            activePlayerSkillOffsetX = currentPlayerDef != null ? currentPlayerDef.getSkillForwardOffsetX(altSkillSlot) : 0;
+            int altSlot = defenseForm != null ? defenseForm.altSkillSlot : 1;
+            activePlayerSkillID = altSlot;
+            activePlayerSkillOffsetX = currentPlayerDef != null ? currentPlayerDef.getSkillForwardOffsetX(altSlot) : 0;
             playerSkillTimer = new Timer(DEFAULT_SKILL_DELAY_MS, null);
             playerSkillTimer.addActionListener(e -> {
                 if (playerSkillFrameIndex < activePlayerSkillFrames.size() - 1) {
@@ -2303,9 +2328,9 @@ public class SurivivalGamePanel extends JPanel {
             activeEnemySkillFrames = frames;
             enemySkillFrameIndex = 0;
             isEnemySkillAnimating = true;
-            int altSkillSlot = defenseForm != null ? defenseForm.altSkillSlot : 1;
-            activeEnemySkillID = altSkillSlot;
-            activeEnemySkillOffsetX = -(currentEnemyDef != null ? currentEnemyDef.getSkillForwardOffsetX(altSkillSlot) : 0);
+            int altSlotE = defenseForm != null ? defenseForm.altSkillSlot : 1;
+            activeEnemySkillID = altSlotE;
+            activeEnemySkillOffsetX = -(currentEnemyDef != null ? currentEnemyDef.getSkillForwardOffsetX(altSlotE) : 0);
             enemySkillTimer = new Timer(DEFAULT_SKILL_DELAY_MS, null);
             enemySkillTimer.addActionListener(e -> {
                 if (enemySkillFrameIndex < activeEnemySkillFrames.size() - 1) {
@@ -2498,6 +2523,7 @@ public class SurivivalGamePanel extends JPanel {
         }
         int stopBoundary = targetCenterX - (projW / 2);
         int animationDelay = projectileDef.animationFrameDelay > 0 ? projectileDef.animationFrameDelay : DEFAULT_SKILL_DELAY_MS;
+        projectileAnimationDelayMs = animationDelay;
         projectileTimer = new Timer(animationDelay, null);
         projectileTimer.addActionListener(e -> {
             if (!isProjectileAnimating || activeProjectileFrames.isEmpty()) {
@@ -2663,7 +2689,7 @@ public class SurivivalGamePanel extends JPanel {
         int castDurationMs     = getSkillCastDurationMs(attackerIsPlayerOne, skillID);
         int configuredBufferMs = (int) Math.round(attacker.getSkillHurtTriggerBufferSeconds(skillID) * 1000.0);
         int effectiveBufferMs  = Math.max(0, Math.min(configuredBufferMs, castDurationMs));
-        int hurtDurationMs     = Math.max(1, (castDurationMs - effectiveBufferMs) + POST_ATTACK_HURT_MS);
+        int hurtDurationMs     = Math.max(1, castDurationMs - effectiveBufferMs);
         startDelayedHurt(!attackerIsPlayerOne, effectiveBufferMs, hurtDurationMs);
     }
 

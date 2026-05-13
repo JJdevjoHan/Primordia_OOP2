@@ -3,9 +3,9 @@ package engine;
 import assets.Utility.ButtonTextRenderer;
 import assets.Utility.FontManager;
 import assets.Utility.SurvivalLeaderboardPopupDialog;
-import javax.swing.*;
 import java.awt.*;
 import java.net.URL;
+import javax.swing.*;
 
 public class IntroPanel extends JPanel {
 
