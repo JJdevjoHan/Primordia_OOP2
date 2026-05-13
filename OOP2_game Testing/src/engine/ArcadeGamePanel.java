@@ -130,6 +130,7 @@ public class ArcadeGamePanel extends JPanel {
     private boolean projectileIsPlayerOne = true;
     private Timer   projectileTimer;
     private boolean isProjectileAnimating = false;
+    private boolean isProjectileQueued = false;
     
     // Steel Wizard Skill 2 tracking (for event-based collision trigger)
     private boolean isSteelWizardSkill2Active = false;
@@ -191,6 +192,7 @@ public class ArcadeGamePanel extends JPanel {
     private final List<JButton> skillButtons = new ArrayList<>();
     private JLabel              skillPanelTitle;
     private JLabel              turnLabel, p1HPLabel, p2HPLabel;
+    private JLabel              arcadeTallyLabel;
 
     private GameBar p1HealthBar, p2HealthBar;
     private GameBar p1MpBar,     p2MpBar;
@@ -255,6 +257,13 @@ public class ArcadeGamePanel extends JPanel {
         turnLabel.setBounds(0, 10, screenWidth, 50);
         turnLabel.setVisible(false);
         add(turnLabel);
+
+        // Arcade tally label (shows defeated count like "0/7")
+        arcadeTallyLabel = new JLabel("", SwingConstants.CENTER);
+        arcadeTallyLabel.setFont(FontManager.getFont(32).deriveFont(Font.BOLD));
+        arcadeTallyLabel.setForeground(Color.WHITE);
+        arcadeTallyLabel.setVisible(false);
+        add(arcadeTallyLabel);
 
         // HP labels hidden — values shown inside bars
         p1HPLabel = new JLabel("", SwingConstants.CENTER);
@@ -525,12 +534,27 @@ public class ArcadeGamePanel extends JPanel {
     }
 
     private void updateArcadeModeUI() {
-        if (!isArcadeMode) return;
-        
-        int totalOpponents = arcadeOpponentIndices.size();
-        int currentMatch = currentArcadeOpponentIndex + 1;
-        String arcadeInfo = "ARCADE: " + currentMatch + "/" + totalOpponents + " | WINS: " + arcadeWinsInRun;
+        // Support both the 'run' arcade mode (isArcadeMode=true) and the standard Arcade game mode
+        int totalOpponents;
+        int displayWins = arcadeWinsInRun;
+        int currentMatch = 0;
+        if (isArcadeMode && arcadeOpponentIndices != null && !arcadeOpponentIndices.isEmpty()) {
+            totalOpponents = arcadeOpponentIndices.size();
+            currentMatch = currentArcadeOpponentIndex + 1;
+        } else {
+            // Fallback for plain GameMode.ARCADE: use all other characters as opponents
+            totalOpponents = Math.max(1, ALL_CHARACTERS.size() - 1);
+            currentMatch = Math.min(totalOpponents, currentArcadeOpponentIndex + 1);
+        }
+
+        String arcadeInfo = "ARCADE: " + (currentMatch > 0 ? currentMatch + "/" : "") + totalOpponents + " | WINS: " + displayWins;
         turnLabel.setText(arcadeInfo);
+        // Update centered tally above timer: defeated count / total
+        if (arcadeTallyLabel != null) {
+            arcadeTallyLabel.setText(displayWins + "/" + totalOpponents);
+            // Make visible when in Arcade modes
+            arcadeTallyLabel.setVisible(gameMode == GameMode.ARCADE || isArcadeMode);
+        }
     }
 
     @Override
@@ -1276,6 +1300,9 @@ public class ArcadeGamePanel extends JPanel {
         boolean hasProjectileAnimation = projectileDef != null;
         boolean startProjectileDuringCast = hasProjectileAnimation && projectileDef.startDuringCast;
         boolean holdCastUntilProjectileDone = hasProjectileAnimation && projectileDef.beam && !startProjectileDuringCast;
+        if (hasProjectileAnimation) {
+            isProjectileQueued = true;
+        }
 
         playSkillSound(actor, skillID, getSkillCastDurationMs(actingP1, skillID), defenseForm, isDefenseFormAltSkill);
 
@@ -1367,7 +1394,7 @@ public class ArcadeGamePanel extends JPanel {
         }
         if (botIsThinking) return;
 
-        boolean blockedByAnimation = isPlayerSkillAnimating || isEnemySkillAnimating || isProjectileAnimating;
+        boolean blockedByAnimation = isPlayerSkillAnimating || isEnemySkillAnimating || isProjectileAnimating || isProjectileQueued;
         boolean blockedByOverlay = messageOverlay != null && messageOverlay.isAnimating();
         if (blockedByAnimation || blockedByOverlay) {
             if (pendingBotTurnRetryTimer == null || !pendingBotTurnRetryTimer.isRunning()) {
@@ -1528,6 +1555,17 @@ public class ArcadeGamePanel extends JPanel {
         if (p2RoundsWon != null) p2RoundsWon.setBounds(rightX, barTop + hpHeight + barSpacing - 2, indicatorWidth, 28);
 
         if (countdownLabel != null) countdownLabel.setBounds(centerX, barTop - 4, centerDiameter, centerDiameter);
+
+        // Position arcade tally centered above the timer (only visible in arcade runs)
+        if (arcadeTallyLabel != null && (isArcadeMode || gameMode == GameMode.ARCADE)) {
+            int tallyW = 240;
+            int tallyH = 30;
+            int tallyX = (panelW - tallyW) / 2;
+            int tallyY = Math.max(8, barTop - tallyH - 8);
+            arcadeTallyLabel.setBounds(tallyX, tallyY, tallyW, tallyH);
+        } else if (arcadeTallyLabel != null) {
+            arcadeTallyLabel.setVisible(false);
+        }
 
         if (skillButtonPanel != null) {
             int panelW2 = Math.max(SKILL_PANEL_MIN_WIDTH, Math.min(SKILL_PANEL_MAX_WIDTH, getWidth() - SKILL_PANEL_SIDE_MARGIN * 2));
@@ -2314,14 +2352,14 @@ public class ArcadeGamePanel extends JPanel {
         int verticalOffset = projectileDef.verticalOffset;
         projectileDirection   = aX <= tX ? 1 : -1;
         int horizontalSpawnOffset = projectileDef.spawnOffsetX * projectileDirection;
+        int targetCenterX = tX + (tW / 2);
+        int targetCenterY = isPlayerOne ? p2SpriteY + (getEnemyDrawHeight() / 2) : p1SpriteY + (getPlayerDrawHeight() / 2);
         projectileIsPlayerOne = isPlayerOne;
         projectileDrawWidth   = pW;
         projectileDrawHeight  = pH;
         projectileSpeed       = Math.max(1, projectileDef.speed);
         projectileImpactFrames = impactFrames;
         if (projectileDef.anchorOnTargetCenter) {
-            int targetCenterX = tX + (tW / 2);
-            int targetCenterY = (isPlayerOne ? p2SpriteY : p1SpriteY) + ((isPlayerOne ? getEnemyDrawHeight() : getPlayerDrawHeight()) / 2);
             projectileX = targetCenterX - (pW / 2) + projectileDef.spawnOffsetX;
             projectileY = targetCenterY - (pH / 2) + verticalOffset;
         } else if (projectileDef.anchorOnTarget) {
@@ -2352,9 +2390,7 @@ public class ArcadeGamePanel extends JPanel {
         if (projectileDef.beam && onImpactStart != null) {
             onImpactStart.run();
         }
-        int stopBoundary = projectileDirection > 0
-                ? (tX + (tW / 2)) - (pW / 2)
-                : (tX + (tW / 2)) + (pW / 2);
+        int stopBoundary = targetCenterX - (pW / 2);
         int animationDelay = projectileDef.animationFrameDelay > 0 ? projectileDef.animationFrameDelay : DEFAULT_SKILL_DELAY_MS;
         projectileTimer = new Timer(animationDelay, null);
         projectileTimer.addActionListener(e -> {
@@ -2400,14 +2436,8 @@ public class ArcadeGamePanel extends JPanel {
                         projectileFrameIndex = 0;
                         projectileDrawWidth = projectileDef.impactDrawWidth > 0 ? projectileDef.impactDrawWidth : pW;
                         projectileDrawHeight = projectileDef.impactDrawHeight > 0 ? projectileDef.impactDrawHeight : pH;
-                        
-                        // If impact should be anchored on target center, reposition it
-                        if (projectileDef.anchorImpactOnTargetCenter) {
-                            int targetCenterX = stopBoundary;
-                            int targetCenterY = isPlayerOne ? p2SpriteY + (getEnemyDrawHeight() / 2) : p1SpriteY + (getPlayerDrawHeight() / 2);
-                            projectileX = targetCenterX - (projectileDrawWidth / 2);
-                            projectileY = targetCenterY - (projectileDrawHeight / 2);
-                        }
+                        projectileX = targetCenterX - (projectileDrawWidth / 2);
+                        projectileY = targetCenterY - (projectileDrawHeight / 2);
                     } else if (projectileImpactStartIndex >= 0) {
                         if (onImpactStart != null) {
                             onImpactStart.run();
@@ -2494,6 +2524,7 @@ public class ArcadeGamePanel extends JPanel {
     private void stopProjectileAnimation(boolean allowTurnResume) {
         if (projectileTimer != null) { projectileTimer.stop(); projectileTimer = null; }
         isProjectileAnimating = false; projectileFrameIndex = 0;
+        isProjectileQueued = false;
         projectileDrawWidth = DEFAULT_PROJECTILE_DRAW_SIZE;
         projectileDrawHeight = DEFAULT_PROJECTILE_DRAW_SIZE;
         projectileSpeed = DEFAULT_PROJECTILE_SPEED;

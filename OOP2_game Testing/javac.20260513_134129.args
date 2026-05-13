@@ -1,0 +1,7 @@
+-encoding
+UTF-8
+-cp
+../out/production/Primordia_OOP2
+-d
+../out/production/Primordia_OOP2
+src/engine/SurivivalGamePanel.java

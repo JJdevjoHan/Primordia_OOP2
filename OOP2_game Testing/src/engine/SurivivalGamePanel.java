@@ -126,6 +126,7 @@ public class SurivivalGamePanel extends JPanel {
     private boolean projectileIsPlayerOne = true;
     private Timer   projectileTimer;
     private boolean isProjectileAnimating = false;
+    private boolean isProjectileQueued = false;
     
     // Steel Wizard Skill 2 tracking (for event-based collision trigger)
     private boolean isSteelWizardSkill2Active = false;
@@ -296,8 +297,8 @@ public class SurivivalGamePanel extends JPanel {
 
 
         scoreLabel = new JLabel("Score: 0", SwingConstants.CENTER);
-        scoreLabel.setFont(FontManager.getFont(22).deriveFont(Font.BOLD));
-        scoreLabel.setForeground(new Color(180, 255, 180));
+        scoreLabel.setFont(FontManager.getFont(32).deriveFont(Font.BOLD));
+        scoreLabel.setForeground(Color.WHITE);
         scoreLabel.setVisible(gameMode == GameMode.SURVIVAL);
         this.add(scoreLabel);
 
@@ -476,7 +477,11 @@ public class SurivivalGamePanel extends JPanel {
     private void skipTurn() {
         stopTurnTimer();
         if (p1HP <= 0 || p2HP <= 0) return;
-        if (!roundManager.isRoundInProgress()) return;
+        if (gameMode == GameMode.SURVIVAL) {
+            if (!survivalActive) return;
+        } else if (!roundManager.isRoundInProgress()) {
+            return;
+        }
 
         String skippedPlayer = isP1Turn ? "PLAYER 1" : "PLAYER 2";
         // Still grant regen to the player whose turn was skipped
@@ -1291,6 +1296,9 @@ public class SurivivalGamePanel extends JPanel {
         boolean hasProjectileAnimation = projectileDef != null;
         boolean startProjectileDuringCast = hasProjectileAnimation && projectileDef.startDuringCast;
         boolean holdCastUntilProjectileDone = hasProjectileAnimation && projectileDef.beam && !startProjectileDuringCast;
+        if (hasProjectileAnimation) {
+            isProjectileQueued = true;
+        }
 
         playSkillSound(actor, skillID, getSkillCastDurationMs(actingPlayerOne, skillID), defenseForm, isDefenseFormAltSkill);
 
@@ -1376,7 +1384,7 @@ public class SurivivalGamePanel extends JPanel {
         boolean isBotMode = (gameMode == GameMode.PVB || gameMode == GameMode.SURVIVAL);
         if (!isBotMode || isP1Turn) return;
         if (p1HP <= 0 || p2HP <= 0) return;
-        if (isPlayerSkillAnimating || isProjectileAnimating) return;  // Don't interrupt player animation
+        if (isPlayerSkillAnimating || isProjectileAnimating || isProjectileQueued) return;  // Don't interrupt player animation
 
         botIsThinking = true;
         setPlayerButtonsEnabled(false);
@@ -1565,8 +1573,13 @@ public class SurivivalGamePanel extends JPanel {
             skillButtonPanel.setBounds(panelX, panelY, panelW2, SKILL_PANEL_HEIGHT);
         }
 
-        if (scoreLabel != null && gameMode == GameMode.SURVIVAL)
-            scoreLabel.setBounds(screenWidth - 220, 60, 200, 30);
+        if (scoreLabel != null && gameMode == GameMode.SURVIVAL) {
+            int scoreWidth = 240;
+            int scoreHeight = 30;
+            int scoreX = (panelW - scoreWidth) / 2;
+            int scoreY = Math.max(8, barTop - scoreHeight - 8);
+            scoreLabel.setBounds(scoreX, scoreY, scoreWidth, scoreHeight);
+        }
         if (messageOverlay != null) messageOverlay.setBounds(0, 0, getWidth(), getHeight());
     }
 
@@ -2415,14 +2428,14 @@ public class SurivivalGamePanel extends JPanel {
         int verticalOffset = projectileDef.verticalOffset;
         projectileDirection    = attackerX <= targetX ? 1 : -1;
         int horizontalSpawnOffset = projectileDef.spawnOffsetX * projectileDirection;
+        int targetCenterX = targetX + (targetWidth / 2);
+        int targetCenterY = isPlayerOne ? p2SpriteY + (getEnemyDrawHeight() / 2) : p1SpriteY + (getPlayerDrawHeight() / 2);
         projectileIsPlayerOne  = isPlayerOne;
         projectileDrawWidth    = projW;
         projectileDrawHeight   = projH;
         projectileSpeed        = Math.max(1, projectileDef.speed);
         projectileImpactFrames = impactFrames;
         if (projectileDef.anchorOnTargetCenter) {
-            int targetCenterX = targetX + (targetWidth / 2);
-            int targetCenterY = isPlayerOne ? p2SpriteY + (getEnemyDrawHeight() / 2) : p1SpriteY + (getPlayerDrawHeight() / 2);
             projectileX = targetCenterX - (projW / 2) + projectileDef.spawnOffsetX;
             projectileY = targetCenterY - (projH / 2) + verticalOffset;
         } else if (projectileDef.anchorOnTarget) {
@@ -2453,9 +2466,7 @@ public class SurivivalGamePanel extends JPanel {
         if (projectileDef.beam && onImpactStart != null) {
             onImpactStart.run();
         }
-        int stopBoundary = projectileDirection > 0
-                ? (targetX + (targetWidth / 2)) - (projW / 2)
-                : (targetX + (targetWidth / 2)) + (projW / 2);
+        int stopBoundary = targetCenterX - (projW / 2);
         int animationDelay = projectileDef.animationFrameDelay > 0 ? projectileDef.animationFrameDelay : DEFAULT_SKILL_DELAY_MS;
         projectileTimer = new Timer(animationDelay, null);
         projectileTimer.addActionListener(e -> {
@@ -2501,14 +2512,8 @@ public class SurivivalGamePanel extends JPanel {
                         projectileFrameIndex = 0;
                         projectileDrawWidth = projectileDef.impactDrawWidth > 0 ? projectileDef.impactDrawWidth : projW;
                         projectileDrawHeight = projectileDef.impactDrawHeight > 0 ? projectileDef.impactDrawHeight : projH;
-                        
-                        // If impact should be anchored on target center, reposition it
-                        if (projectileDef.anchorImpactOnTargetCenter) {
-                            int targetCenterX = stopBoundary;
-                            int targetCenterY = isPlayerOne ? p2SpriteY + (getEnemyDrawHeight() / 2) : p1SpriteY + (getPlayerDrawHeight() / 2);
-                            projectileX = targetCenterX - (projectileDrawWidth / 2);
-                            projectileY = targetCenterY - (projectileDrawHeight / 2);
-                        }
+                        projectileX = targetCenterX - (projectileDrawWidth / 2);
+                        projectileY = targetCenterY - (projectileDrawHeight / 2);
                     } else if (projectileImpactStartIndex >= 0) {
                         if (onImpactStart != null) {
                             onImpactStart.run();
@@ -2595,6 +2600,7 @@ public class SurivivalGamePanel extends JPanel {
     private void stopProjectileAnimation(boolean allowTurnResume) {
         if (projectileTimer != null) { projectileTimer.stop(); projectileTimer = null; }
         isProjectileAnimating  = false; projectileFrameIndex = 0;
+        isProjectileQueued = false;
         projectileDrawWidth = DEFAULT_PROJECTILE_DRAW_SIZE;
         projectileDrawHeight = DEFAULT_PROJECTILE_DRAW_SIZE;
         projectileSpeed = DEFAULT_PROJECTILE_SPEED;

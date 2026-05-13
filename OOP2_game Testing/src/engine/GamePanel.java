@@ -2196,14 +2196,14 @@ public class GamePanel extends JPanel {
         int verticalOffset = projectileDef.verticalOffset;
         projectileDirection   = attackerX <= targetX ? 1 : -1;
         int horizontalSpawnOffset = projectileDef.spawnOffsetX * projectileDirection;
+        int targetCenterX = targetX + (targetWidth / 2);
+        int targetCenterY = isPlayerOne ? p2SpriteY + (getEnemyDrawHeight() / 2) : p1SpriteY + (getPlayerDrawHeight() / 2);
         projectileIsPlayerOne = isPlayerOne;
         projectileDrawWidth   = projW;
         projectileDrawHeight  = projH;
         projectileSpeed       = Math.max(1, projectileDef.speed);
         projectileImpactFrames = impactFrames;
         if (projectileDef.anchorOnTargetCenter) {
-            int targetCenterX = targetX + (targetWidth / 2);
-            int targetCenterY = isPlayerOne ? p2SpriteY + (getEnemyDrawHeight() / 2) : p1SpriteY + (getPlayerDrawHeight() / 2);
             projectileX = targetCenterX - (projW / 2) + projectileDef.spawnOffsetX;
             projectileY = targetCenterY - (projH / 2) + verticalOffset;
         } else if (projectileDef.anchorOnTarget) {
@@ -2234,9 +2234,7 @@ public class GamePanel extends JPanel {
         if (projectileDef.beam && onImpactStart != null) {
             onImpactStart.run();
         }
-        int stopBoundary = projectileDirection > 0
-                ? (targetX + (targetWidth / 2)) - (projW / 2)
-                : (targetX + (targetWidth / 2)) + (projW / 2);
+        int stopBoundary = targetCenterX - (projW / 2);
         int animationDelay = projectileDef.animationFrameDelay > 0 ? projectileDef.animationFrameDelay : DEFAULT_SKILL_DELAY_MS;
         projectileTimer = new Timer(animationDelay, null);
         projectileTimer.addActionListener(e -> {
@@ -2282,14 +2280,8 @@ public class GamePanel extends JPanel {
                         projectileFrameIndex = 0;
                         projectileDrawWidth = projectileDef.impactDrawWidth > 0 ? projectileDef.impactDrawWidth : projW;
                         projectileDrawHeight = projectileDef.impactDrawHeight > 0 ? projectileDef.impactDrawHeight : projH;
-                        
-                        // If impact should be anchored on target center, reposition it
-                        if (projectileDef.anchorImpactOnTargetCenter) {
-                            int targetCenterX = stopBoundary;
-                            int targetCenterY = isPlayerOne ? p2SpriteY + (getEnemyDrawHeight() / 2) : p1SpriteY + (getPlayerDrawHeight() / 2);
-                            projectileX = targetCenterX - (projectileDrawWidth / 2);
-                            projectileY = targetCenterY - (projectileDrawHeight / 2);
-                        }
+                        projectileX = targetCenterX - (projectileDrawWidth / 2);
+                        projectileY = targetCenterY - (projectileDrawHeight / 2);
                     } else if (projectileImpactStartIndex >= 0) {
                         if (onImpactStart != null) {
                             onImpactStart.run();
