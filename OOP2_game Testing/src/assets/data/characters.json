@@ -2,23 +2,23 @@
   "version": 1,
   "description": "Pokemon-style character data for battle setup.",
   "elementWeaknessChart": {
-    "Fire": ["Water", "Earth"],
+    "Fire": ["Water", "Steel"],
     "Water": ["Thunder", "Nature"],
     "Nature": ["Fire", "Ice"],
-    "Thunder": ["Earth"],
-    "Wind": ["Earth", "Ice"],
+    "Thunder": ["Steel"],
+    "Wind": ["Steel", "Ice"],
     "Light": ["Dark"],
     "Dark": ["Light"],
-    "Earth": ["Nature", "Water"],
+    "Steel": ["Nature", "Water"],
     "Ice": ["Fire"]
   },
   "characters": [
     {
       "id": "idk_magician",
-      "name": "Idk Magician",
-      "backstory": "A wandering arcane prodigy who learned unstable spellcraft in ancient ruins. He channels volatile energy through improvised sigils, making every fight unpredictable.",
+      "name": "Caedric Thunderbound",
+      "backstory": "Caedric is a restless lightning prodigy raised among ruined ley shrines. He channels raw storm-energy through improvised sigils, preferring unpredictable, high-risk finishes that leave foes reeling.",
       "elementType": "Thunder",
-      "weakness": ["Earth"],
+      "weakness": ["Steel"],
       "hp": 120,
       "mana": 140,
       "skills": [
@@ -85,21 +85,17 @@
             "impactStartFrame": 7,
             "impactEndFrame": 9
           },
-          "description": "Fires an unstable plasma bolt that deals massive damage and reduces an enemy's attack for 2 turns.",
+          "description": "Fires an unstable plasma bolt that deals massive damage to one enemy.",
           "manaCost": 30,
           "power": 26,
-          "attackDownPercent": 20,
           "durationTurns": 2,
-          "target": "all_enemies"
+          "target": "single_enemy"
         }
       ],
       "sprites": {
         "skill1": "src/assets/spritesheet/Idk Magician/Attack_1.png",
         "skill2": "src/assets/spritesheet/Idk Magician/Attack_2.png",
         "skill3": "src/assets/spritesheet/Idk Magician/Magic_sphere.png",
-      "weakness": ["Light"],
-      "hp": 138,
-      "mana": 130,
         "idle": "src/assets/spritesheet/Idk Magician/Idle.png",
         "death": "src/assets/spritesheet/Idk Magician/Dead.png",
         "hurt": "src/assets/spritesheet/Idk Magician/Hurt.png"
@@ -107,8 +103,8 @@
     },
     {
       "id": "light_mage",
-      "name": "Light Mage",
-      "backstory": "A former temple guardian who forged sacred combat arts to protect frontier villages. Her blade techniques weave healing light and tactical control.",
+      "name": "Gwyneth Verdantide",
+      "backstory": "Gwyneth trained as a temple guardian, blending martial bladework with restorative light. She balances offense and support, weaving shields and steady regeneration to keep allies standing.",
       "elementType": "Light",
       "weakness": ["Dark"],
       "hp": 145,
@@ -176,10 +172,10 @@
     },
     {
       "id": "fire_wizard",
-      "name": "Fire Wizard",
-      "backstory": "A volcanic battlemage who forged flames into disciplined sword and jet techniques. He overwhelms foes with relentless heat and explosive finishers.",
+      "name": "Myrrik Flameheart",
+      "backstory": "Myrrik is a volcanic battlemage who tempers wildfire into disciplined strikes. His style favors pressure and explosive follow-ups, burning openings with relentless force.",
       "elementType": "Fire",
-      "weakness": ["Water", "Earth"],
+      "weakness": ["Water", "Steel"],
       "hp": 136,
       "mana": 132,
       "skills": [
@@ -234,7 +230,7 @@
           "hurtTriggerBufferSeconds": 0.22,
           "description": "Unleashes a powerful jet of flame that scorches one enemy for massive fire damage.",
           "manaCost": 28,
-          "power": 999,
+          "power": 80,
           "cooldownTurns": 0,
           "target": "single_enemy"
         }
@@ -250,9 +246,9 @@
     },
     {
       "id": "steel_wizard",
-      "name": "Steel Wizard",
-      "backstory": "An ironclad rune-smith who bends metal currents into blunt force spells. His style mixes heavy strikes with fortified casting.",
-      "elementType": "Earth",
+      "name": "Faecyrion Vhaloris",
+      "backstory": "Faecyrion is an ironclad duelist who bends tempered metal into precise, punishing strikes. Her steelwork prioritizes control — chain, spike and blade — delivered with surgical timing.",
+      "elementType": "Steel",
       "weakness": ["Nature", "Water"],
       "hp": 150,
       "mana": 118,
@@ -262,7 +258,7 @@
           "name": "Iron Breaker",
           "type": "damage",
           "hurtTriggerBufferSeconds": 0.14,
-          "description": "Smashes one enemy with reinforced steel magic for high physical-impact damage.",
+          "description": "Smashes an enemy with reinforced steel chain whip for high physical-impact damage.",
           "manaCost": 19,
           "power": 39,
           "cooldownTurns": 0,
@@ -270,8 +266,8 @@
         },
         {
           "slot": 2,
-          "name": "Fortify Cast",
-          "type": "defense",
+          "name": "Explosive Dart",
+          "type": "damage",
           "projectile": {
             "sprite": "src/assets/spritesheet/Steel Wizard/Spine-Sheet.png",
             "frameWidth": 10,
@@ -288,15 +284,15 @@
             "impactDrawHeight": 500,
             "anchorImpactOnTargetCenter": true
           },
-          "description": "Hardens the caster with layered steel wards, reducing incoming damage for 2 turns.",
+          "description": "Launches a dart of compressed steel that explodes on impact, dealing damage to a single enemy.",
           "manaCost": 23,
-          "shieldValue": 30,
-          "durationTurns": 2,
-          "target": "self"
+          "power": 40,
+          "cooldownTurns": 0,
+          "target": "single_enemy"
         },
         {
           "slot": 3,
-          "name": "Spine Barrage",
+          "name": "Spiky Snack",
           "type": "debuff",
           "projectile": {
             "sprite": "src/assets/spritesheet/Steel Wizard/Charge-Sheet.png",
@@ -312,12 +308,11 @@
             "anchorOnTarget": true,
             "animationFrameDelay": 200
           },
-          "description": "Erupts jagged steel spines to pierce all enemies and lower their attack for 2 turns.",
+          "description": "Eats a snack and unleashes jagged steel spines to pierce one enemy.",
           "manaCost": 29,
           "power": 28,
-          "attackDownPercent": 18,
           "durationTurns": 2,
-          "target": "all_enemies"
+          "target": "single_enemy"
         }
       ],
       "sprites": {
@@ -332,8 +327,8 @@
     },
     {
       "id": "nature_wizard",
-      "name": "Nature Wizard",
-      "backstory": "A forest tactician who commands roots, spores, and thorned projectiles. She wears down opponents while sustaining battlefield control.",
+      "name": "Earl Froggington",
+      "backstory": "Ayla is a forest tactician who commands roots and spores to control space and sap strength. She favors attrition — shields of growth and steady pressure that outlast reckless attackers.",
       "elementType": "Nature",
       "weakness": ["Fire", "Ice"],
       "hp": 140,
@@ -363,7 +358,7 @@
         {
           "slot": 1,
           "name": "Thorn Swipe",
-          "type": "damage",
+          "type": "debuff",
           "hurtTriggerBufferSeconds": 0.12,
           "projectile": {
             "sprite": "src/assets/spritesheet/Nature Wizard/Charge-Sheet.png",
@@ -378,7 +373,7 @@
             "startDuringCast": true,
             "anchorOnTarget": true
           },
-          "description": "Slashes one enemy with thorned vines and deals steady nature damage.",
+          "description": "Uses his knife to summon thorned vines that deal damage and apply poison to one enemy.",
           "manaCost": 18,
           "power": 35,
           "cooldownTurns": 0,
@@ -386,8 +381,8 @@
         },
         {
           "slot": 2,
-          "name": "Wild Veil",
-          "type": "defense",
+          "name": "Frog Kiss",
+          "type": "debuff",
           "projectile": {
             "sprite": "src/assets/spritesheet/Nature Wizard/Charge2-Sheet.png",
             "frameWidth": 128,
@@ -401,7 +396,7 @@
             "startDuringCast": true,
             "anchorOnTargetCenter": true
           },
-          "description": "Cloaks the caster in living foliage that grants a shield and minor regeneration for 2 turns.",
+          "description": "Lace poison on his knife and marks the target with a poison.",
           "manaCost": 24,
           "shieldValue": 22,
           "healPerTurn": 7,
@@ -410,14 +405,13 @@
         },
         {
           "slot": 3,
-          "name": "Bramble Shot",
-          "type": "debuff",
-          "description": "Fires seeded brambles across all enemies, dealing damage and lowering attack for 2 turns.",
+          "name": "Natures Embrace",
+          "type": "defense",
+          "description": "With his cloak of leaves, he embraces nature to heal himself and takes a defensive stance. Use it again to break the stance.",
           "manaCost": 28,
           "power": 27,
-          "attackDownPercent": 16,
           "durationTurns": 2,
-          "target": "all_enemies"
+          "target": "single_enemy"
         }
       ],
       "sprites": {
@@ -431,8 +425,8 @@
     },
     {
       "id": "water_wizard",
-      "name": "Water Wizard",
-      "backstory": "A tidebound mage who shapes pressure, mist, and currents into disciplined battlefield control. He wears foes down with forceful strikes and relentless flow.",
+      "name": "Ondine",
+      "backstory": "Orin channels tides and pressure into disciplined bladework. He controls tempo with flowing strikes and shifting barriers, shaping the battlefield like a current.",
       "elementType": "Water",
       "weakness": ["Thunder", "Nature"],
       "hp": 140,
@@ -442,7 +436,7 @@
       "skills": [
         {
           "slot": 1,
-          "name": "Tidal Blade",
+          "name": "Tidal Shot",
           "type": "damage",
           "hurtTriggerBufferSeconds": 0.14,
           "projectile": {
@@ -459,7 +453,7 @@
             "impactStartFrame": 7,
             "impactEndFrame": 8
           },
-          "description": "Slices one enemy with a pressurized water blade that deals steady damage.",
+          "description": "Fires a pressurized water shot at one enemy, dealing steady damage.",
           "manaCost": 19,
           "power": 36,
           "cooldownTurns": 0,
@@ -467,8 +461,8 @@
         },
         {
           "slot": 2,
-          "name": "Barrier Surge",
-          "type": "defense",
+          "name": "Water Beam",
+          "type": "damage",
           "projectile": {
             "sprite": "src/assets/spritesheet/Water Wizard/Charge2-Sheet.png",
             "frameWidth": 72,
@@ -480,15 +474,15 @@
             "spawnOffsetX": 310,
             "beam": true
           },
-          "description": "Raises a flowing shield that softens incoming damage for 2 turns.",
+          "description": "Fires a concentrated beam of water at one enemy, dealing significant damage.",
           "manaCost": 24,
-          "shieldValue": 27,
+          "power": 38,
           "durationTurns": 2,
-          "target": "self"
+          "target": "single_enemy"
         },
         {
           "slot": 3,
-          "name": "Undertow Hex",
+          "name": "Frigid Current",
           "type": "debuff",
           "projectile": {
             "sprite": "src/assets/spritesheet/Water Wizard/Charge3-Sheet.png",
@@ -503,12 +497,11 @@
             "startDuringCast": true,
             "anchorOnTarget": true
           },
-          "description": "Whips up a dragging current that lowers all enemies' attack for 2 turns.",
+          "description": "Whips up a dragging current into a ball then freezes it.",
           "manaCost": 28,
           "power": 25,
-          "attackDownPercent": 18,
           "durationTurns": 2,
-          "target": "all_enemies"
+          "target": "single_enemy"
         }
       ],
       "sprites": {
@@ -522,10 +515,10 @@
     },
     {
       "id": "wind_wizard",
-      "name": "Wind Wizard",
-      "backstory": "A sky runner who bends pressure and razor gusts into elegant battlefield control. She dances through combat, striking fast and breaking enemy rhythm.",
+      "name": "Ali Morningstart",
+      "backstory": "Ali moves like a gust incarnate — quick, precise, and disruptive. His razor winds punish openings and keep opponents off-balance, favoring mobility over brute force.",
       "elementType": "Wind",
-      "weakness": ["Earth", "Ice"],
+      "weakness": ["Steel", "Ice"],
       "hp": 128,
       "mana": 138,
       "drawWidth": 750,
@@ -550,24 +543,36 @@
         },
         {
           "slot": 2,
-          "name": "Cyclone Guard",
-          "type": "defense",
-          "description": "Wraps the caster in a spinning wind barrier that reduces incoming damage for 2 turns.",
+          "name": "Judgement Cyclone",
+          "type": "damage",
+          "description": "Uses gale cut then wraps the caster in a spinning wind current throwing it towards enemies.",
           "manaCost": 23,
-          "shieldValue": 25,
+          "power": 30,
           "durationTurns": 2,
           "target": "self"
         },
         {
           "slot": 3,
-          "name": "Tempest Lash",
-          "type": "debuff",
-          "description": "Unleashes a sweeping gale that lowers all enemies' attack for 2 turns.",
+          "name": "Tempest Slash",
+          "type": "damage",
+          "projectile": {
+            "sprite": "src/assets/spritesheet/Wind WIzard/Attack3-Sheet.png",
+            "frameWidth": 288,
+            "frameHeight": 128,
+            "drawWidth": 1656,
+            "drawHeight": 736,
+            "speed": 44,
+            "verticalOffset": 0,
+            "spawnOffsetX": 0,
+            "beam": true,
+            "startDuringCast": true,
+            "anchorOnTargetCenter": true
+          },
+          "description": "Unleashes a beam of wind slashes that strikes one enemy.",
           "manaCost": 29,
           "power": 27,
-          "attackDownPercent": 17,
           "durationTurns": 2,
-          "target": "all_enemies"
+          "target": "single_enemy"
         }
       ],
       "sprites": {
@@ -582,7 +587,7 @@
     {
       "id": "dark_wizard",
       "name": "Dark Wizard",
-      "backstory": "A Kumiho who manipulates shadow and soul energy into unpredictable combat magic. She thrives on chaos, overwhelming foes with relentless dark assaults.",
+      "backstory": "Neris is a shadow-touched sorceress who shapes soul-threads into corrosive magic. Her unpredictable assaults erode resolve and exploit dark openings with ruthless efficiency.",
       "elementType": "Dark",
       "weakness": ["Light"],
       "hp": 138,
@@ -592,7 +597,7 @@
       "skills": [
         {
           "slot": 1,
-          "name": "Shadow Bolt",
+          "name": "Shadow Tail",
           "type": "damage",
           "projectile": {
             "sprite": "src/assets/spritesheet/Dark Wizard/Fire_3-Sheet.png",
@@ -607,7 +612,7 @@
             "anchorOnTargetCenter": true
           },
           "hurtTriggerBufferSeconds": 0.15,
-          "description": "Placeholder description.",
+          "description": "Strikes one enemy with a shadowy tail whip, dealing dark damage and burning them.",
           "manaCost": 19,
           "power": 35,
           "cooldownTurns": 0,
@@ -615,8 +620,8 @@
         },
         {
           "slot": 2,
-          "name": "Night Veil",
-          "type": "defense",
+          "name": "Mystic Flame",
+          "type": "damage",
           "projectile": {
             "sprite": "src/assets/spritesheet/Dark Wizard/Fire_1-Sheet.png",
             "frameWidth": 64,
@@ -631,16 +636,16 @@
             "impactStartFrame": 8,
             "impactEndFrame": 14
           },
-          "description": "Placeholder description.",
+          "description": "Unleashes a burst of mystical flames that damage one enemy and heal the caster for a portion of the damage dealt.",
           "manaCost": 24,
-          "shieldValue": 24,
+          "power": 30,
           "durationTurns": 2,
           "target": "self"
         },
         {
           "slot": 3,
-          "name": "Abyss Grasp",
-          "type": "debuff",
+          "name": "Sacrificial Fire",
+          "type": "damage",
           "projectile": {
             "sprite": "src/assets/spritesheet/Dark Wizard/Fire_2-Sheet.png",
             "frameWidth": 64,
@@ -655,12 +660,11 @@
             "impactStartFrame": 6,
             "impactEndFrame": 11
           },
-          "description": "Placeholder description.",
+          "description": "Unleashes a flame overflowing with dark energy that damages one enemy.",
           "manaCost": 28,
           "power": 27,
-          "attackDownPercent": 18,
           "durationTurns": 2,
-          "target": "all_enemies"
+          "target": "single_enemy"
         }
       ],
       "sprites": {

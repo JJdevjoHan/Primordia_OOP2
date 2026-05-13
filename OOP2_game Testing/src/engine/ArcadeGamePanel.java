@@ -129,6 +129,7 @@ public class ArcadeGamePanel extends JPanel {
     private Timer   projectileTimer;
     private boolean isProjectileAnimating = false;
     private boolean isProjectileQueued = false;
+    private int     projectileAnimationDelayMs = DEFAULT_SKILL_DELAY_MS;
     
     // Steel Wizard Skill 2 tracking (for event-based collision trigger)
     private boolean isSteelWizardSkill2Active = false;
@@ -821,6 +822,8 @@ public class ArcadeGamePanel extends JPanel {
             }
             g2.drawImage(hurtFrame,
                     p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
+        } else if (isWindWizardSkill3ProjectileActive(true)) {
+            // Wind Wizard skill 3 is rendered by the projectile beam; hide the caster sprite.
         } else if (isTargetOverlayAttack3(true) && shouldHideCasterDuringOverlaySkill3(true)) {
             // Wind Wizard skill 3 hides the caster while the target overlay animation plays.
         } else if (isPlayerSkillAnimating && !activePlayerSkillFrames.isEmpty() && !isTargetOverlayAttack3(true)) {
@@ -866,6 +869,8 @@ public class ArcadeGamePanel extends JPanel {
             }
             g2.drawImage(hurtFrame,
                     p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
+        } else if (isWindWizardSkill3ProjectileActive(false)) {
+            // Wind Wizard skill 3 is rendered by the projectile beam; hide the caster sprite.
         } else if (isTargetOverlayAttack3(false) && shouldHideCasterDuringOverlaySkill3(false)) {
             // Wind Wizard skill 3 hides the caster while the target overlay animation plays.
         } else if (isEnemySkillAnimating && !activeEnemySkillFrames.isEmpty() && !isTargetOverlayAttack3(false)) {
@@ -892,18 +897,6 @@ public class ArcadeGamePanel extends JPanel {
             g2.drawImage(enemyFrames.get(enemyFrameIndex),
                     p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
         }
-
-        if (isTargetOverlayAttack3(true) && !activePlayerSkillFrames.isEmpty()) {
-            drawAnchoredSkillFrame(g2, activePlayerSkillFrames.get(playerSkillFrameIndex),
-                getEnemyFeetAnchorX(), getEnemyFeetAnchorY(),
-                getPlayerDrawWidth(), getPlayerDrawHeight(), true);
-        }
-        if (isTargetOverlayAttack3(false) && !activeEnemySkillFrames.isEmpty()) {
-            drawAnchoredSkillFrame(g2, activeEnemySkillFrames.get(enemySkillFrameIndex),
-                getPlayerFeetAnchorX(), getPlayerFeetAnchorY(),
-                getEnemyDrawWidth(), getEnemyDrawHeight(), false);
-        }
-        
 
         // Projectile
         if (isProjectileAnimating && !activeProjectileFrames.isEmpty()) {
@@ -996,8 +989,24 @@ public class ArcadeGamePanel extends JPanel {
      * Create the onImpactStart callback for projectiles.
      * For Steel Wizard Skill 2, this also triggers Skill 2.2 SFX.
      */
-    private Runnable createOnImpactStartCallback(boolean isDamageSkill, boolean actingPlayerOne) {
-        Runnable hurtCallback = isDamageSkill ? () -> startDelayedHurt(!actingPlayerOne, 0, POST_ATTACK_HURT_MS) : null;
+    private Runnable createOnImpactStartCallback(boolean isHurtSkill, boolean actingPlayerOne) {
+        final Runnable hurtCallback = isHurtSkill ? () -> {
+            int durationMs = POST_ATTACK_HURT_MS;
+            int animDelay = projectileAnimationDelayMs > 0 ? projectileAnimationDelayMs : DEFAULT_SKILL_DELAY_MS;
+            if (isProjectileAnimating) {
+                if (!projectileImpactFrames.isEmpty()) {
+                    durationMs = Math.max(1, projectileImpactFrames.size() * animDelay);
+                } else if (projectileImpactStartIndex >= 0 && projectileImpactEndIndex >= projectileImpactStartIndex) {
+                    int count = Math.max(1, projectileImpactEndIndex - projectileImpactStartIndex + 1);
+                    durationMs = Math.max(1, count * animDelay);
+                } else if (projectileInImpactPhase) {
+                    durationMs = Math.max(1, activeProjectileFrames.size() * animDelay);
+                } else if (!activeProjectileFrames.isEmpty()) {
+                    durationMs = Math.max(1, activeProjectileFrames.size() * animDelay);
+                }
+            }
+            startDelayedHurt(!actingPlayerOne, 0, durationMs);
+        } : null;
         
         if (isSteelWizardSkill2Active && steelWizardSkill2IsPlayerOne == actingPlayerOne) {
             // Steel Wizard Skill 2: Trigger Skill 2.2 (collision event)
@@ -1288,9 +1297,10 @@ public class ArcadeGamePanel extends JPanel {
         CharacterDef.DefenseFormDef defenseForm = actor != null ? actor.defenseForm : null;
         boolean isDefenseFormToggleSkill = defenseForm != null && skillID == defenseForm.toggleSkillSlot;
         boolean isDefenseFormAltSkill = defenseForm != null
-                && skillID == defenseForm.altSkillSlot
-                && isNatureDefenseFormActive(actingP1);
-        boolean isDamageSkill    = actor != null && "damage".equalsIgnoreCase(actor.getSkillType(skillID));
+            && skillID == defenseForm.altSkillSlot
+            && isNatureDefenseFormActive(actingP1);
+        String skillType = actor != null ? actor.getSkillType(skillID) : null;
+        boolean isHurtSkill    = skillType != null && ("damage".equalsIgnoreCase(skillType) || "debuff".equalsIgnoreCase(skillType));
         CharacterDef.ProjectileDef projectileDef = actor != null ? actor.getSkillProjectile(skillID) : null;
         if (isDefenseFormAltSkill) {
             projectileDef = buildDefenseFormAltProjectileDef(defenseForm);
@@ -1304,23 +1314,24 @@ public class ArcadeGamePanel extends JPanel {
 
         playSkillSound(actor, skillID, getSkillCastDurationMs(actingP1, skillID), defenseForm, isDefenseFormAltSkill);
 
-        if (isP1Turn) {
-            switch (skillID) {
-                case 1 -> p2HP = Math.max(0, p2HP - Math.max(0, actor != null ? actor.getSkillPower(skillID) : 0));
-                case 2 -> p1HP = Math.min(100, p1HP + 10);
-                case 3 -> p2HP = Math.max(0, p2HP - Math.max(0, actor != null ? actor.getSkillPower(skillID) : 0));
+        int skillPower = actor != null ? actor.getSkillPower(skillID) : 0;
+        if (isHurtSkill) {
+            if (isP1Turn) {
+                p2HP = Math.max(0, p2HP - Math.max(0, skillPower));
+            } else {
+                p1HP = Math.max(0, p1HP - Math.max(0, skillPower));
             }
         } else {
-            switch (skillID) {
-                case 1 -> p1HP = Math.max(0, p1HP - Math.max(0, actor != null ? actor.getSkillPower(skillID) : 0));
-                case 2 -> p2HP = Math.min(100, p2HP + 10);
-                case 3 -> p1HP = Math.max(0, p1HP - Math.max(0, actor != null ? actor.getSkillPower(skillID) : 0));
+            if (isP1Turn) {
+                p1HP = Math.min(100, p1HP + 10);
+            } else {
+                p2HP = Math.min(100, p2HP + 10);
             }
         }
 
         spendAndRegenMP(actingP1, skillID);
 
-        if (isDamageSkill && !hasProjectileAnimation) {
+        if (isHurtSkill && !hasProjectileAnimation) {
             scheduleHurtTimeline(actingP1, skillID);
         }
 
@@ -1339,7 +1350,7 @@ public class ArcadeGamePanel extends JPanel {
                         actingP1,
                         skillID,
                         activeProjectileDef,
-                        createOnImpactStartCallback(isDamageSkill, actingP1),
+                        createOnImpactStartCallback(isHurtSkill, actingP1),
                         null);
                 if (projectileSpawnFrame > 1) {
                     scheduleProjectileSpawnAtCastFrame(projectileSpawnFrame, spawnProjectile);
@@ -1352,12 +1363,18 @@ public class ArcadeGamePanel extends JPanel {
                     playSkillAnimation(actingP1, skillID, false, null);
                 }
             } else {
-                Runnable spawnProjectile = () -> startProjectileAnimation(
+                Runnable spawnProjectile = () -> {
+                    if (actor != null && "Wind Wizard".equalsIgnoreCase(actor.name)
+                        && activeProjectileDef != null && activeProjectileDef.beam) {
+                        stopSkillAnimation(actingP1);
+                    }
+                    startProjectileAnimation(
                         actingP1,
                         skillID,
                         activeProjectileDef,
-                        createOnImpactStartCallback(isDamageSkill, actingP1),
-                        holdCastUntilProjectileDone ? () -> stopSkillAnimation(actingP1) : null);
+                        createOnImpactStartCallback(isHurtSkill, actingP1),
+                        null);
+                };
                 if (isDefenseFormAltSkill) {
                     playNatureFormSkill1CastAnimation(actingP1, defenseForm, spawnProjectile);
                 } else {
@@ -2200,9 +2217,9 @@ public class ArcadeGamePanel extends JPanel {
             activePlayerSkillFrames = frames;
             playerSkillFrameIndex = 0;
             isPlayerSkillAnimating = true;
-            int altSkillSlot = defenseForm != null ? defenseForm.altSkillSlot : 1;
-            activePlayerSkillID = altSkillSlot;
-            activePlayerSkillOffsetX = currentPlayerDef != null ? currentPlayerDef.getSkillForwardOffsetX(altSkillSlot) : 0;
+            int altSlot = defenseForm != null ? defenseForm.altSkillSlot : 1;
+            activePlayerSkillID = altSlot;
+            activePlayerSkillOffsetX = currentPlayerDef != null ? currentPlayerDef.getSkillForwardOffsetX(altSlot) : 0;
             playerSkillTimer = new Timer(DEFAULT_SKILL_DELAY_MS, null);
             playerSkillTimer.addActionListener(e -> {
                 if (playerSkillFrameIndex < activePlayerSkillFrames.size() - 1) {
@@ -2219,9 +2236,9 @@ public class ArcadeGamePanel extends JPanel {
             activeEnemySkillFrames = frames;
             enemySkillFrameIndex = 0;
             isEnemySkillAnimating = true;
-            int altSkillSlot = defenseForm != null ? defenseForm.altSkillSlot : 1;
-            activeEnemySkillID = altSkillSlot;
-            activeEnemySkillOffsetX = -(currentEnemyDef != null ? currentEnemyDef.getSkillForwardOffsetX(altSkillSlot) : 0);
+            int altSlotE = defenseForm != null ? defenseForm.altSkillSlot : 1;
+            activeEnemySkillID = altSlotE;
+            activeEnemySkillOffsetX = -(currentEnemyDef != null ? currentEnemyDef.getSkillForwardOffsetX(altSlotE) : 0);
             enemySkillTimer = new Timer(DEFAULT_SKILL_DELAY_MS, null);
             enemySkillTimer.addActionListener(e -> {
                 if (enemySkillFrameIndex < activeEnemySkillFrames.size() - 1) {
@@ -2276,6 +2293,16 @@ public class ArcadeGamePanel extends JPanel {
 
     private boolean shouldHideCasterDuringOverlaySkill3(boolean isPlayerOne) {
         return isWindWizardAttack3(isPlayerOne);
+    }
+
+    private boolean isWindWizardSkill3ProjectileActive(boolean isPlayerOne) {
+        CharacterDef actor = isPlayerOne ? currentPlayerDef : currentEnemyDef;
+        int activeSkillID = isPlayerOne ? activePlayerSkillID : activeEnemySkillID;
+        return isProjectileAnimating
+                && projectileIsPlayerOne == isPlayerOne
+                && actor != null
+                && "Wind Wizard".equalsIgnoreCase(actor.name)
+                && activeSkillID == 3;
     }
 
     private boolean isWindWizardSkill2(boolean isPlayerOne) {
@@ -2390,6 +2417,7 @@ public class ArcadeGamePanel extends JPanel {
         }
         int stopBoundary = targetCenterX - (pW / 2);
         int animationDelay = projectileDef.animationFrameDelay > 0 ? projectileDef.animationFrameDelay : DEFAULT_SKILL_DELAY_MS;
+        projectileAnimationDelayMs = animationDelay;
         projectileTimer = new Timer(animationDelay, null);
         projectileTimer.addActionListener(e -> {
             if (!isProjectileAnimating || activeProjectileFrames.isEmpty()) {
@@ -2582,7 +2610,7 @@ public class ArcadeGamePanel extends JPanel {
         int castMs   = getSkillCastDurationMs(attackerIsPlayerOne, skillID);
         int bufferMs = (int) Math.round(attacker.getSkillHurtTriggerBufferSeconds(skillID) * 1000.0);
         int effBuf   = Math.max(0, Math.min(bufferMs, castMs));
-        int hurtMs   = Math.max(1, (castMs - effBuf) + POST_ATTACK_HURT_MS);
+        int hurtMs   = Math.max(1, castMs - effBuf);
         startDelayedHurt(!attackerIsPlayerOne, effBuf, hurtMs);
     }
 
