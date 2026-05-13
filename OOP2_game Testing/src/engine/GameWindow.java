@@ -158,9 +158,33 @@ public class GameWindow extends JFrame {
         }
     }
 
+    private void detachCurrentGamePanel() {
+        if (currentGamePanel == null) {
+            return;
+        }
+
+        Component current = currentGamePanel;
+        pauseTimersForComponent(current);
+
+        if (currentPanelCard != null) {
+            Component cardComponent = cardMap.remove(currentPanelCard);
+            if (cardComponent != null) {
+                container.remove(cardComponent);
+            } else {
+                container.remove(current);
+            }
+        } else {
+            container.remove(current);
+        }
+
+        currentGamePanel = null;
+        container.revalidate();
+        container.repaint();
+    }
+
     public void showMenu(){
         stopGameMusic();  // Stop battle music before returning to menu
-        currentGamePanel = null;
+        detachCurrentGamePanel();
         currentPanelCard = "MENU";
         layout.show(container,"MENU");
         playMenuMusic(6);
@@ -168,7 +192,7 @@ public class GameWindow extends JFrame {
 
     public void showIntro() {
         stopGameMusic();
-        currentGamePanel = null;
+        detachCurrentGamePanel();
         currentPanelCard = "INTRO";
         layout.show(container, "INTRO");
         playMenuMusic(6);
@@ -191,6 +215,15 @@ public class GameWindow extends JFrame {
     public void showCharacterSelection(GameMode mode) {
         stopMenuMusic();
         GamePanel.reloadCharacterDefs();
+        detachCurrentGamePanel();
+
+        Component previousSelection = cardMap.remove("CHAR_SELECT");
+        if (previousSelection != null) {
+            container.remove(previousSelection);
+            container.revalidate();
+            container.repaint();
+        }
+
         currentCharacterSelectionPanel = new CharacterSelectionPanel(this, mode);
         currentGamePanel = null;  // Character selection is not a game
         currentPanelCard = "CHAR_SELECT";
@@ -208,6 +241,11 @@ public class GameWindow extends JFrame {
         stopCharacterSelectionMusic();
         GamePanel.reloadCharacterDefs();
 
+        Component previousGame = cardMap.remove("GAME");
+        if (previousGame != null) {
+            container.remove(previousGame);
+        }
+
         GamePanel panel = new GamePanel(this,p1, p2);
         currentGamePanel = panel;
         currentPanelCard = "GAME";
@@ -224,6 +262,11 @@ public class GameWindow extends JFrame {
     public void startSurvivalMatch(int playerIndex) {
         stopCharacterSelectionMusic();
         GamePanel.reloadCharacterDefs();
+
+        Component previousSurvival = cardMap.remove("SURVIVAL");
+        if (previousSurvival != null) {
+            container.remove(previousSurvival);
+        }
 
         int botIndex = (int)(Math.random() * GamePanel.ALL_CHARACTERS.size());
 
@@ -249,6 +292,10 @@ public class GameWindow extends JFrame {
     public void startArcadeMatch(int playerIndex) {
         stopCharacterSelectionMusic();
         GamePanel.reloadCharacterDefs();
+        Component previousArcade = cardMap.remove("ARCADE");
+        if (previousArcade != null) {
+            container.remove(previousArcade);
+        }
         List<Integer> arcadeOpponents = new ArrayList<>();        for (int i = 0; i < GamePanel.ALL_CHARACTERS.size(); i++) {
             if (i != playerIndex) {
                 arcadeOpponents.add(i);
@@ -292,7 +339,7 @@ public class GameWindow extends JFrame {
 
     public void showCredits() {
         stopGameMusic();  // Stop battle music before showing credits
-        currentGamePanel = null;
+        detachCurrentGamePanel();
         currentPanelCard = "CREDITS";
         layout.show(container,"CREDITS");
     }
