@@ -2,6 +2,7 @@ package engine;
 
 import assets.Utility.ButtonTextRenderer;
 import assets.Utility.FontManager;
+import assets.Utility.SurvivalLeaderboardPopupDialog;
 import javax.swing.*;
 import java.awt.*;
 import java.net.URL;
@@ -14,6 +15,7 @@ public class IntroPanel extends JPanel {
     private JButton creditsButton;
     private JButton settingsButton;
     private JButton quitButton;
+    private JButton leaderboardButton;
 
     private final int tileSize = 128;
     private final int screenWidth = tileSize * 12;
@@ -33,6 +35,7 @@ public class IntroPanel extends JPanel {
         creditsButton = createStyledButton("CREDITS");
         settingsButton = createStyledButton("SETTINGS");
         quitButton = createStyledButton("QUIT");
+        leaderboardButton = createStyledButton("LEADERBOARD");
 
         startButton.addActionListener(e -> {
             sound.setFile(8);
@@ -58,10 +61,19 @@ public class IntroPanel extends JPanel {
             System.exit(0);
         });
 
+        leaderboardButton.addActionListener(e -> {
+            sound.setFile(8);
+            sound.play();
+            SurvivalLeaderboardPopupDialog popup = new SurvivalLeaderboardPopupDialog(window);
+            popup.setLocationRelativeTo(window);
+            popup.setVisible(true);
+        });
+
         add(startButton);
         add(creditsButton);
         add(settingsButton);
         add(quitButton);
+        add(leaderboardButton);
     }
 
     private JButton createStyledButton(String label) {
@@ -129,6 +141,13 @@ public class IntroPanel extends JPanel {
         }
         if (quitButton != null) {
             quitButton.setBounds(centerX, centerY + (btnHeight + gap) * 3, btnWidth, btnHeight);
+        }
+        if (leaderboardButton != null) {
+            int leaderboardWidth = 180;
+            int leaderboardHeight = 44;
+            int bottomLeftX = 24;
+            int bottomLeftY = getHeight() - leaderboardHeight - 24;
+            leaderboardButton.setBounds(bottomLeftX, bottomLeftY, leaderboardWidth, leaderboardHeight);
         }
     }
 

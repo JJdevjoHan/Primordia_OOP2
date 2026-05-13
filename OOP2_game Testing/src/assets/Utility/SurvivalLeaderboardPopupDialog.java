@@ -4,19 +4,15 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.awt.image.ConvolveOp;
 import java.awt.image.Kernel;
+import java.util.List;
 import javax.swing.*;
 
-public class MatchResultPopupDialog extends JDialog {
+public class SurvivalLeaderboardPopupDialog extends JDialog {
     private static final int DEFAULT_SCREEN_WIDTH = 1536;
     private static final int DEFAULT_SCREEN_HEIGHT = 896;
 
-    private final Runnable onYes;
-    private final Runnable onBackToMenu;
-
-    public MatchResultPopupDialog(Window owner, Runnable onYes, Runnable onBackToMenu) {
+    public SurvivalLeaderboardPopupDialog(Window owner) {
         super(owner, ModalityType.APPLICATION_MODAL);
-        this.onYes = onYes;
-        this.onBackToMenu = onBackToMenu;
         setUndecorated(true);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setContentPane(new PopupPanel(owner));
@@ -28,28 +24,13 @@ public class MatchResultPopupDialog extends JDialog {
         setSize(size);
     }
 
-    private void chooseYes() {
-        dispose();
-        if (onYes != null) {
-            onYes.run();
-        }
-    }
-
-    private void chooseBackToMenu() {
-        dispose();
-        if (onBackToMenu != null) {
-            onBackToMenu.run();
-        }
-    }
-
     private final class PopupPanel extends JPanel {
         private final Window owner;
-        private Rectangle yesButton;
         private Rectangle backButton;
-        private boolean hoverYes;
         private boolean hoverBack;
 
         private final Font titleFont = FontManager.getFont(38f).deriveFont(Font.BOLD);
+        private final Font rowFont = FontManager.getFont(22f).deriveFont(Font.BOLD);
         private final Font buttonFont = FontManager.getFont(24f).deriveFont(Font.BOLD);
 
         PopupPanel(Window owner) {
@@ -75,13 +56,17 @@ public class MatchResultPopupDialog extends JDialog {
             addKeyListener(new java.awt.event.KeyAdapter() {
                 @Override
                 public void keyPressed(java.awt.event.KeyEvent e) {
-                    if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
-                        chooseYes();
-                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ESCAPE) {
-                        chooseBackToMenu();
+                    if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ESCAPE || e.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
+                        dispose();
                     }
                 }
             });
+        }
+
+        @Override
+        public void addNotify() {
+            super.addNotify();
+            SwingUtilities.invokeLater(this::requestFocusInWindow);
         }
 
         @Override
@@ -115,7 +100,9 @@ public class MatchResultPopupDialog extends JDialog {
                     int size = 5;
                     float weight = 1.0f / (size * size);
                     float[] data = new float[size * size];
-                    for (int i = 0; i < data.length; i++) data[i] = weight;
+                    for (int i = 0; i < data.length; i++) {
+                        data[i] = weight;
+                    }
                     ConvolveOp op = new ConvolveOp(new Kernel(size, size, data), ConvolveOp.EDGE_NO_OP, null);
                     BufferedImage dst = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
                     op.filter(buf, dst);
@@ -137,27 +124,37 @@ public class MatchResultPopupDialog extends JDialog {
         }
 
         private void paintPopup(Graphics2D g2) {
-            String title = "Play again?";
-            String yesText = "Yes";
-            String backText = "Back to Menu";
+            String title = "Survival Leaderboard";
+            String backText = "Back";
+
+            List<SurvivalLeaderboardManager.Entry> entries = SurvivalLeaderboardManager.loadEntries();
+            if (entries.size() > 10) {
+                entries = entries.subList(0, 10);
+            }
 
             FontMetrics titleFm = g2.getFontMetrics(titleFont);
+            FontMetrics rowFm = g2.getFontMetrics(rowFont);
             FontMetrics btnFm = g2.getFontMetrics(buttonFont);
 
             int padX = 36;
             int padY = 22;
             int btnPadX = 28;
             int btnPadY = 14;
-            int btnGap = 14;
+            int rowGap = 8;
 
-            int titleW = titleFm.stringWidth(title);
-            int b1 = btnFm.stringWidth(yesText.toUpperCase()) + btnPadX * 2;
-            int b2 = btnFm.stringWidth(backText.toUpperCase()) + btnPadX * 2;
-            int buttonWidth = Math.max(b1, b2);
+            int contentWidth = titleFm.stringWidth(title);
+            for (int i = 0; i < entries.size(); i++) {
+                String rowText = formatRow(i + 1, entries.get(i));
+                contentWidth = Math.max(contentWidth, rowFm.stringWidth(rowText));
+            }
+            contentWidth = Math.max(contentWidth, btnFm.stringWidth(backText.toUpperCase()) + btnPadX * 2);
+
+            int rowHeight = rowFm.getHeight();
+            int listHeight = Math.max(rowHeight, entries.size() * (rowHeight + rowGap));
             int buttonHeight = btnFm.getHeight() + btnPadY * 2;
 
-            int panelWidth = Math.max(titleW, buttonWidth) + padX * 2;
-            int panelHeight = padY * 2 + titleFm.getHeight() + btnGap + buttonHeight * 2 + btnGap;
+            int panelWidth = contentWidth + padX * 2;
+            int panelHeight = padY * 2 + titleFm.getHeight() + 18 + listHeight + 20 + buttonHeight;
 
             int panelX = (getWidth() - panelWidth) / 2;
             int panelY = (getHeight() - panelHeight) / 2;
@@ -174,18 +171,39 @@ public class MatchResultPopupDialog extends JDialog {
 
             g2.setFont(titleFont);
             g2.setColor(new Color(245, 242, 238));
+            int titleW = titleFm.stringWidth(title);
             int titleX = panelX + (panelWidth - titleW) / 2;
             int titleY = panelY + padY + titleFm.getAscent();
             g2.drawString(title, titleX, titleY);
 
+            g2.setFont(rowFont);
+            g2.setColor(new Color(246, 244, 240));
+            int startY = titleY + 18;
+            if (entries.isEmpty()) {
+                String emptyText = "No survival scores yet.";
+                int emptyW = rowFm.stringWidth(emptyText);
+                int emptyX = panelX + (panelWidth - emptyW) / 2;
+                int emptyY = startY + rowFm.getAscent();
+                g2.drawString(emptyText, emptyX, emptyY);
+            } else {
+                for (int i = 0; i < entries.size(); i++) {
+                    String rowText = formatRow(i + 1, entries.get(i));
+                    int rowW = rowFm.stringWidth(rowText);
+                    int rowX = panelX + (panelWidth - rowW) / 2;
+                    int rowY = startY + rowFm.getAscent() + i * (rowHeight + rowGap);
+                    g2.drawString(rowText, rowX, rowY);
+                }
+            }
+
+            int buttonWidth = btnFm.stringWidth(backText.toUpperCase()) + btnPadX * 2;
             int buttonX = panelX + (panelWidth - buttonWidth) / 2;
-            int startY = titleY + padY + btnGap;
-
-            yesButton = new Rectangle(buttonX, startY, buttonWidth, buttonHeight);
-            paintButton(g2, yesButton, yesText.toUpperCase(), hoverYes);
-
-            backButton = new Rectangle(buttonX, startY + buttonHeight + btnGap, buttonWidth, buttonHeight);
+            int buttonY = panelY + panelHeight - padY - buttonHeight;
+            backButton = new Rectangle(buttonX, buttonY, buttonWidth, buttonHeight);
             paintButton(g2, backButton, backText.toUpperCase(), hoverBack);
+        }
+
+        private String formatRow(int rank, SurvivalLeaderboardManager.Entry entry) {
+            return rank + ". " + entry.playerName() + " - " + entry.score();
         }
 
         private void paintButton(Graphics2D g2, Rectangle bounds, String text, boolean hovered) {
@@ -215,21 +233,15 @@ public class MatchResultPopupDialog extends JDialog {
         }
 
         private void handleMouseClick(int x, int y) {
-            if (yesButton != null && yesButton.contains(x, y)) {
-                chooseYes();
-            } else if (backButton != null && backButton.contains(x, y)) {
-                chooseBackToMenu();
+            if (backButton != null && backButton.contains(x, y)) {
+                dispose();
             }
         }
 
         private void handleMouseMove(int x, int y) {
-            boolean wasYesHovered = hoverYes;
             boolean wasBackHovered = hoverBack;
-
-            hoverYes = yesButton != null && yesButton.contains(x, y);
             hoverBack = backButton != null && backButton.contains(x, y);
-
-            if (wasYesHovered != hoverYes || wasBackHovered != hoverBack) {
+            if (wasBackHovered != hoverBack) {
                 repaint();
             }
         }

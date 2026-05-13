@@ -8,32 +8,45 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class FontManager {
-    private static Font baseFont;
+    private static final Font BASE_FONT;
 
     static {
-        baseFont = loadFontFromClasspath("/fonts/Silver.ttf");
-
-        if (baseFont == null) {
-            baseFont = loadFontFromClasspath("/fonts/Sta.Toasty.ttf");
-        }
-
-        if (baseFont == null) {
-            baseFont = loadFontFromFileSystem(
-                    "C:/Users/User/Desktop/Primordia/Primordia_OOP2/Resources/fonts/Silver.ttf");
-        }
-
-        if (baseFont == null) {
-            baseFont = loadFontFromFileSystem(
-                    "C:/Users/User/Desktop/Primordia/Primordia_OOP2/Resources/fonts/Sta.Toasty.ttf");
-        }
-
-        if (baseFont == null) {
-            baseFont = new Font("SansSerif", Font.PLAIN, 12);
-        }
+        Font loadedFont = loadPreferredFont();
+        BASE_FONT = loadedFont != null ? loadedFont : new Font("SansSerif", Font.PLAIN, 12);
     }
 
     public static Font getFont(float size) {
-        return baseFont.deriveFont(size);
+        return BASE_FONT.deriveFont(size);
+    }
+
+    private static Font loadPreferredFont() {
+        String[] classpathCandidates = {
+                "/fonts/Silver.ttf",
+                "/fonts/Sta.Toasty.ttf"
+        };
+
+        String[] fileSystemCandidates = {
+                "Resources/fonts/Silver.ttf",
+                "Resources/fonts/Sta.Toasty.ttf",
+                "../Resources/fonts/Silver.ttf",
+                "../Resources/fonts/Sta.Toasty.ttf"
+        };
+
+        for (String resourcePath : classpathCandidates) {
+            Font font = loadFontFromClasspath(resourcePath);
+            if (font != null) {
+                return font;
+            }
+        }
+
+        for (String filePath : fileSystemCandidates) {
+            Font font = loadFontFromFileSystem(filePath);
+            if (font != null) {
+                return font;
+            }
+        }
+
+        return null;
     }
 
     private static Font loadFontFromClasspath(String resourcePath) {
