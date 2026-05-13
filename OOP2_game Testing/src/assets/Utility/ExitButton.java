@@ -1,5 +1,5 @@
 package assets.Utility;
-import engine.GameWindow;
+import engine.core.GameWindow;
 import javax.swing.*;
 import java.awt.*;
 

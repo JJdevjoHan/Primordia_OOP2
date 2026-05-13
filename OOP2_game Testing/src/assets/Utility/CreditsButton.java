@@ -1,9 +1,7 @@
 package assets.Utility;
 
-import assets.Utility.ButtonTextRenderer;
-import assets.Utility.FontManager;
-import engine.GameWindow;
-import engine.SoundManager;
+import engine.core.GameWindow;
+import engine.audio.SoundManager;
 
 import javax.swing.*;
 import java.awt.*;

@@ -1,9 +1,9 @@
 package assets.Utility;
 
-import engine.ArcadeGamePanel;
-import engine.GamePanel;
-import engine.GameWindow;
-import engine.SurivivalGamePanel;
+import engine.gameplay.ArcadeGamePanel;
+import engine.gameplay.GamePanel;
+import engine.core.GameWindow;
+import engine.gameplay.SurivivalGamePanel;
 
 import javax.swing.*;
 import java.awt.*;

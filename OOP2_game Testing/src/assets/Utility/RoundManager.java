@@ -1,6 +1,6 @@
 package assets.Utility;
 
-import engine.GameMode;
+import engine.enums.GameMode;
 
 public class RoundManager {
 
