@@ -586,8 +586,8 @@
     },
     {
       "id": "dark_wizard",
-      "name": "Dark Wizard",
-      "backstory": "Neris is a shadow-touched sorceress who shapes soul-threads into corrosive magic. Her unpredictable assaults erode resolve and exploit dark openings with ruthless efficiency.",
+      "name": "Yuri Moonshade",
+      "backstory": "Yuri is a shadow-touched kumiho sorceress who shapes soul-threads into corrosive magic. Her unpredictable assaults erode resolve and exploit dark openings with ruthless efficiency.",
       "elementType": "Dark",
       "weakness": ["Light"],
       "hp": 138,
