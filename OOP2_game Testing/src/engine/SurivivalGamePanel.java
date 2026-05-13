@@ -1,22 +1,21 @@
 package engine;
 
-import javax.swing.*;
+import assets.Utility.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import javax.imageio.ImageIO;
+import javax.swing.*;
 import javax.xml.parsers.DocumentBuilderFactory;
-
-import assets.Utility.*;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -964,27 +963,58 @@ public class SurivivalGamePanel extends JPanel {
             skillButtonPanel.setVisible(false);
             boolean isKO = (p1HP <= 0 || p2HP <= 0);
             if (messageOverlay != null) {
-                messageOverlay.setOnHide(this::showRetryPopup);
+                messageOverlay.setOnHide(this::showSurvivalLeaderboardNamePopup);
                 messageOverlay.showSurvivalKO(isKO);
             } else {
-                showRetryPopup();
+                showSurvivalLeaderboardNamePopup();
             }
         }
     }
 
+    private void showSurvivalLeaderboardNamePopup() {
+        if (window == null) {
+            SurvivalLeaderboardManager.recordEntry("Anonymous", survivalScore);
+            return;
+        }
+
+        SurvivalLeaderboardEntryDialog dialog = new SurvivalLeaderboardEntryDialog(
+                window,
+                survivalScore,
+                name -> SurvivalLeaderboardManager.recordEntry(name, survivalScore)
+        );
+        dialog.setLocationRelativeTo(window);
+        dialog.setVisible(true);
+        showRetryPopup();
+    }
+
     private void showRetryPopup() {
+        showSurvivalRetryPopup();
+    }
+
+    private void showSurvivalRetryPopup() {
         if (window == null) {
             return;
         }
 
-        MatchResultPopupDialog popup = new MatchResultPopupDialog(
+        SurvivalRetryPopupDialog popup = new SurvivalRetryPopupDialog(
                 window,
                 () -> {
                     window.stopGameMusic();
                     window.showCharacterSelection(GameMode.SURVIVAL);
                 },
-                window::showIntro
+                window::showIntro,
+                this::showSurvivalLeaderboardPopup
         );
+        popup.setLocationRelativeTo(window);
+        popup.setVisible(true);
+    }
+
+    private void showSurvivalLeaderboardPopup() {
+        if (window == null) {
+            return;
+        }
+
+        SurvivalLeaderboardPopupDialog popup = new SurvivalLeaderboardPopupDialog(window);
         popup.setLocationRelativeTo(window);
         popup.setVisible(true);
     }

@@ -1,23 +1,21 @@
 package engine;
 
-import javax.swing.*;
+import assets.Utility.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import javax.imageio.ImageIO;
+import javax.swing.*;
 import javax.xml.parsers.DocumentBuilderFactory;
-
-import assets.Utility.*;
-import engine.CharacterDataLoader;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -470,7 +468,7 @@ public class ArcadeGamePanel extends JPanel {
                     window.stopGameMusic();
                     window.showCharacterSelection(GameMode.ARCADE);
                 },
-                window::showIntro
+            window::showIntro
         );
         popup.setLocationRelativeTo(window);
         popup.setVisible(true);

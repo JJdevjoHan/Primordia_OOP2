@@ -6,17 +6,19 @@ import java.awt.image.ConvolveOp;
 import java.awt.image.Kernel;
 import javax.swing.*;
 
-public class MatchResultPopupDialog extends JDialog {
+public class SurvivalRetryPopupDialog extends JDialog {
     private static final int DEFAULT_SCREEN_WIDTH = 1536;
     private static final int DEFAULT_SCREEN_HEIGHT = 896;
 
     private final Runnable onYes;
     private final Runnable onBackToMenu;
+    private final Runnable onLeaderboard;
 
-    public MatchResultPopupDialog(Window owner, Runnable onYes, Runnable onBackToMenu) {
+    public SurvivalRetryPopupDialog(Window owner, Runnable onYes, Runnable onBackToMenu, Runnable onLeaderboard) {
         super(owner, ModalityType.APPLICATION_MODAL);
         this.onYes = onYes;
         this.onBackToMenu = onBackToMenu;
+        this.onLeaderboard = onLeaderboard;
         setUndecorated(true);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setContentPane(new PopupPanel(owner));
@@ -42,11 +44,19 @@ public class MatchResultPopupDialog extends JDialog {
         }
     }
 
+    private void chooseLeaderboard() {
+        if (onLeaderboard != null) {
+            onLeaderboard.run();
+        }
+    }
+
     private final class PopupPanel extends JPanel {
         private final Window owner;
         private Rectangle yesButton;
+        private Rectangle leaderboardButton;
         private Rectangle backButton;
         private boolean hoverYes;
+        private boolean hoverLeaderboard;
         private boolean hoverBack;
 
         private final Font titleFont = FontManager.getFont(38f).deriveFont(Font.BOLD);
@@ -75,10 +85,10 @@ public class MatchResultPopupDialog extends JDialog {
             addKeyListener(new java.awt.event.KeyAdapter() {
                 @Override
                 public void keyPressed(java.awt.event.KeyEvent e) {
-                    if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ENTER) {
-                        chooseYes();
-                    } else if (e.getKeyCode() == java.awt.event.KeyEvent.VK_ESCAPE) {
-                        chooseBackToMenu();
+                    switch (e.getKeyCode()) {
+                        case java.awt.event.KeyEvent.VK_ENTER -> chooseYes();
+                        case java.awt.event.KeyEvent.VK_L -> chooseLeaderboard();
+                        case java.awt.event.KeyEvent.VK_ESCAPE -> chooseBackToMenu();
                     }
                 }
             });
@@ -115,7 +125,9 @@ public class MatchResultPopupDialog extends JDialog {
                     int size = 5;
                     float weight = 1.0f / (size * size);
                     float[] data = new float[size * size];
-                    for (int i = 0; i < data.length; i++) data[i] = weight;
+                    for (int i = 0; i < data.length; i++) {
+                        data[i] = weight;
+                    }
                     ConvolveOp op = new ConvolveOp(new Kernel(size, size, data), ConvolveOp.EDGE_NO_OP, null);
                     BufferedImage dst = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
                     op.filter(buf, dst);
@@ -139,6 +151,7 @@ public class MatchResultPopupDialog extends JDialog {
         private void paintPopup(Graphics2D g2) {
             String title = "Play again?";
             String yesText = "Yes";
+            String leaderboardText = "Leaderboard";
             String backText = "Back to Menu";
 
             FontMetrics titleFm = g2.getFontMetrics(titleFont);
@@ -152,12 +165,13 @@ public class MatchResultPopupDialog extends JDialog {
 
             int titleW = titleFm.stringWidth(title);
             int b1 = btnFm.stringWidth(yesText.toUpperCase()) + btnPadX * 2;
-            int b2 = btnFm.stringWidth(backText.toUpperCase()) + btnPadX * 2;
-            int buttonWidth = Math.max(b1, b2);
+            int b2 = btnFm.stringWidth(leaderboardText.toUpperCase()) + btnPadX * 2;
+            int b3 = btnFm.stringWidth(backText.toUpperCase()) + btnPadX * 2;
+            int buttonWidth = Math.max(Math.max(b1, b2), b3);
             int buttonHeight = btnFm.getHeight() + btnPadY * 2;
 
             int panelWidth = Math.max(titleW, buttonWidth) + padX * 2;
-            int panelHeight = padY * 2 + titleFm.getHeight() + btnGap + buttonHeight * 2 + btnGap;
+            int panelHeight = padY * 2 + titleFm.getHeight() + btnGap + buttonHeight * 3 + btnGap * 2;
 
             int panelX = (getWidth() - panelWidth) / 2;
             int panelY = (getHeight() - panelHeight) / 2;
@@ -184,7 +198,10 @@ public class MatchResultPopupDialog extends JDialog {
             yesButton = new Rectangle(buttonX, startY, buttonWidth, buttonHeight);
             paintButton(g2, yesButton, yesText.toUpperCase(), hoverYes);
 
-            backButton = new Rectangle(buttonX, startY + buttonHeight + btnGap, buttonWidth, buttonHeight);
+            leaderboardButton = new Rectangle(buttonX, startY + buttonHeight + btnGap, buttonWidth, buttonHeight);
+            paintButton(g2, leaderboardButton, leaderboardText.toUpperCase(), hoverLeaderboard);
+
+            backButton = new Rectangle(buttonX, startY + (buttonHeight + btnGap) * 2, buttonWidth, buttonHeight);
             paintButton(g2, backButton, backText.toUpperCase(), hoverBack);
         }
 
@@ -217,6 +234,8 @@ public class MatchResultPopupDialog extends JDialog {
         private void handleMouseClick(int x, int y) {
             if (yesButton != null && yesButton.contains(x, y)) {
                 chooseYes();
+            } else if (leaderboardButton != null && leaderboardButton.contains(x, y)) {
+                chooseLeaderboard();
             } else if (backButton != null && backButton.contains(x, y)) {
                 chooseBackToMenu();
             }
@@ -224,12 +243,14 @@ public class MatchResultPopupDialog extends JDialog {
 
         private void handleMouseMove(int x, int y) {
             boolean wasYesHovered = hoverYes;
+            boolean wasLeaderboardHovered = hoverLeaderboard;
             boolean wasBackHovered = hoverBack;
 
             hoverYes = yesButton != null && yesButton.contains(x, y);
+            hoverLeaderboard = leaderboardButton != null && leaderboardButton.contains(x, y);
             hoverBack = backButton != null && backButton.contains(x, y);
 
-            if (wasYesHovered != hoverYes || wasBackHovered != hoverBack) {
+            if (wasYesHovered != hoverYes || wasLeaderboardHovered != hoverLeaderboard || wasBackHovered != hoverBack) {
                 repaint();
             }
         }
