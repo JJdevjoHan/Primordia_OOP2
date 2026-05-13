@@ -310,6 +310,7 @@ public class ArcadeGamePanel extends JPanel {
                     updateGameState();
                     repaint();
                     if (messageOverlay != null) {
+                        messageOverlay.setOnHide(() -> updateGameState());
                         messageOverlay.showRoundStart(round);
                     }
                 },
@@ -394,7 +395,10 @@ public class ArcadeGamePanel extends JPanel {
             skillButtonPanel.setVisible(false);
             boolean isKO = (p1HP <= 0 || p2HP <= 0);
             if (messageOverlay != null) {
+                messageOverlay.setOnHide(this::showRetryPopup);
                 messageOverlay.showMatchResult(p1WonMatch, isKO);
+            } else {
+                showRetryPopup();
             }
         } else {
             // Arcade mode progression logic
@@ -409,7 +413,10 @@ public class ArcadeGamePanel extends JPanel {
                         turnLabel.setText("ARCADE COMPLETE! WINS: " + arcadeWinsInRun);
                         skillButtonPanel.setVisible(false);
                         if (messageOverlay != null) {
+                            messageOverlay.setOnHide(this::showRetryPopup);
                             messageOverlay.showMatchResult(true, false);
+                        } else {
+                            showRetryPopup();
                         }
                     });
                 } else {
@@ -433,11 +440,31 @@ public class ArcadeGamePanel extends JPanel {
                     skillButtonPanel.setVisible(false);
                     boolean isKO = (p1HP <= 0 || p2HP <= 0);
                     if (messageOverlay != null) {
+                        messageOverlay.setOnHide(this::showRetryPopup);
                         messageOverlay.showSurvivalKO(isKO);
+                    } else {
+                        showRetryPopup();
                     }
                 });
             }
         }
+    }
+
+    private void showRetryPopup() {
+        if (window == null) {
+            return;
+        }
+
+        MatchResultPopupDialog popup = new MatchResultPopupDialog(
+                window,
+                () -> {
+                    window.stopGameMusic();
+                    window.showCharacterSelection(GameMode.ARCADE);
+                },
+                window::showIntro
+        );
+        popup.setLocationRelativeTo(window);
+        popup.setVisible(true);
     }
 
     private void scheduleArcadeTransition(Runnable action) {
@@ -455,6 +482,15 @@ public class ArcadeGamePanel extends JPanel {
         }
         loadingNextArcadeOpponent = true;
         try {
+            if (pendingRoundAdvanceTimer != null && pendingRoundAdvanceTimer.isRunning()) {
+                pendingRoundAdvanceTimer.stop();
+            }
+            pendingRoundAdvanceTimer = null;
+            if (pendingBotTurnRetryTimer != null && pendingBotTurnRetryTimer.isRunning()) {
+                pendingBotTurnRetryTimer.stop();
+            }
+            pendingBotTurnRetryTimer = null;
+
             int nextOpponentIndex = arcadeOpponentIndices.get(currentArcadeOpponentIndex);
             int nextPlayerIndex = sanitizeCharacterIndex(currentPlayerDef != null ? ALL_CHARACTERS.indexOf(currentPlayerDef) : 0, -1);
 
@@ -467,12 +503,14 @@ public class ArcadeGamePanel extends JPanel {
                 skillButtonPanel.setVisible(true);
             }
             setPlayerButtonsEnabled(true);
+            botIsThinking = false;
+
+            roundManager.startMatch();
 
             updateArcadeModeUI();
             updateGameState();
             revalidate();
             repaint();
-            roundManager.startMatch();
         } finally {
             loadingNextArcadeOpponent = false;
         }
@@ -2488,6 +2526,10 @@ public class ArcadeGamePanel extends JPanel {
         return isPlayerSkillAnimating || isEnemySkillAnimating || isProjectileAnimating;
     }
 
+    public boolean isOverlayAnimatingOrPopupShown() {
+        return messageOverlay != null && messageOverlay.isAnimating();
+    }
+
     private void tryStartPendingDeathAnimations() {
         if (isAnyCombatAnimationActive()) return;
         if (pendingPlayerDeathAnimation && p1HP <= 0 && playerDeadTimer == null) {
@@ -2552,7 +2594,7 @@ public class ArcadeGamePanel extends JPanel {
 
     private void startTimedHurt(boolean isPlayer, int durationMs) {
         if (isPlayer) {
-            if (p1HP <= 0 || playerHurtFrames.isEmpty()) return;
+            if (playerHurtFrames.isEmpty()) return;
             if (playerHurtTimer       != null) playerHurtTimer.stop();
             if (playerHurtWindowTimer != null) playerHurtWindowTimer.stop();
             if (playerHurtFlashTimer  != null) playerHurtFlashTimer.stop();
@@ -2577,7 +2619,7 @@ public class ArcadeGamePanel extends JPanel {
             playerHurtWindowTimer.addActionListener(e -> stopHurtTimeline(true));
             playerHurtWindowTimer.start();
         } else {
-            if (p2HP <= 0 || enemyHurtFrames.isEmpty()) return;
+            if (enemyHurtFrames.isEmpty()) return;
             if (enemyHurtTimer       != null) enemyHurtTimer.stop();
             if (enemyHurtWindowTimer != null) enemyHurtWindowTimer.stop();
             if (enemyHurtFlashTimer  != null) enemyHurtFlashTimer.stop();
