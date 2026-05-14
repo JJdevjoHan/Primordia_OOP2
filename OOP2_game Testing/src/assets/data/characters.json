@@ -4,13 +4,12 @@
   "elementWeaknessChart": {
     "Fire": ["Water", "Steel"],
     "Water": ["Thunder", "Nature"],
-    "Nature": ["Fire", "Ice"],
+    "Nature": ["Fire"],
     "Thunder": ["Steel"],
-    "Wind": ["Steel", "Ice"],
+    "Wind": ["Steel"],
     "Light": ["Dark"],
     "Dark": ["Light"],
-    "Steel": ["Nature", "Water"],
-    "Ice": ["Fire"]
+    "Steel": ["Nature", "Water"]
   },
   "characters": [
     {
@@ -40,10 +39,12 @@
           },
           "hurtTriggerBufferSeconds": 0.15,
           "description": "Unleashes a jagged lightning burst that shocks one enemy for moderate damage.",
-          "manaCost": 18,
-          "power": 34,
-          "cooldownTurns": 0,
-          "target": "single_enemy"
+           "manaCost": 18,
+           "power": 35,
+           "poisonDamage": 8,
+           "durationTurns": 3,
+           "cooldownTurns": 0,
+           "target": "single_enemy"
         },
         {
           "slot": 2,
@@ -70,7 +71,7 @@
         {
           "slot": 3,
           "name": "Plasma Bolt",
-          "type": "debuff",
+          "type": "damage",
           "projectile": {
             "sprite": "src/assets/spritesheet/Idk Magician/Charge_1.png",
             "frameWidth": 64,
@@ -293,7 +294,7 @@
         {
           "slot": 3,
           "name": "Spiky Snack",
-          "type": "debuff",
+          "type": "damage",
           "projectile": {
             "sprite": "src/assets/spritesheet/Steel Wizard/Charge-Sheet.png",
             "frameWidth": 128,
@@ -330,7 +331,7 @@
       "name": "Earl Froggington",
       "backstory": "Ayla is a forest tactician who commands roots and spores to control space and sap strength. She favors attrition — shields of growth and steady pressure that outlast reckless attackers.",
       "elementType": "Nature",
-      "weakness": ["Fire", "Ice"],
+      "weakness": ["Fire"],
       "hp": 140,
       "mana": 126,
       "drawWidth": 320,
@@ -483,7 +484,7 @@
         {
           "slot": 3,
           "name": "Frigid Current",
-          "type": "debuff",
+          "type": "damage",
           "projectile": {
             "sprite": "src/assets/spritesheet/Water Wizard/Charge3-Sheet.png",
             "frameWidth": 128,
@@ -518,7 +519,7 @@
       "name": "Ali Morningstart",
       "backstory": "Ali moves like a gust incarnate — quick, precise, and disruptive. His razor winds punish openings and keep opponents off-balance, favoring mobility over brute force.",
       "elementType": "Wind",
-      "weakness": ["Steel", "Ice"],
+      "weakness": ["Steel"],
       "hp": 128,
       "mana": 138,
       "drawWidth": 750,
