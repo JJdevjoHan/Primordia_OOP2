@@ -1,5 +1,5 @@
 {
-  "Nature Wizard": {
+  "Earl Froggington": {
     "Skill1.normal": "/assets/SoundManager/SkillSfx/Nature Wizard/Skill1.1.wav",
     "Skill1.normal.volumeGainDb": 0.0,
     "Skill1.defense": "/assets/SoundManager/SkillSfx/Nature Wizard/Skill1.2.wav",
@@ -9,7 +9,7 @@
     "Skill3": "/assets/SoundManager/SkillSfx/Nature Wizard/Skill3.wav",
     "Skill3.volumeGainDb": 0.0
   },
-  "Dark Wizard": {
+  "Yuri Moonshade": {
     "Skill1": "/assets/SoundManager/SkillSfx/Dark Wizard/Skill1.wav",
     "Skill1.volumeGainDb": 0.0,
     "Skill2": "/assets/SoundManager/SkillSfx/Dark Wizard/Skill2.wav",
@@ -17,7 +17,7 @@
     "Skill3": "/assets/SoundManager/SkillSfx/Dark Wizard/Skill3.wav",
     "Skill3.volumeGainDb": 20.0
   },
-  "Water Wizard": {
+  "Ondine": {
     "SkillHold": "/assets/SoundManager/SkillSfx/Water Wizard/SkillHold.wav",
     "SkillHold.volumeGainDb": 0.0,
     "Skill1": "/assets/SoundManager/SkillSfx/Water Wizard/Skill1.wav",
@@ -29,7 +29,7 @@
     "Skill3.2": "/assets/SoundManager/SkillSfx/Water Wizard/Skill3.2.wav",
     "Skill3.2.volumeGainDb": 0.0
   },
-  "Wind Wizard": {
+  "Ali Morningstart": {
     "Skill1": "/assets/SoundManager/SkillSfx/Wind Wizard/Skill1.wav",
     "Skill1.volumeGainDb": 0.0,
     "Skill2.1": "/assets/SoundManager/SkillSfx/Wind Wizard/Skill2.1.wav",
@@ -41,7 +41,7 @@
     "Skill3.2": "/assets/SoundManager/SkillSfx/Wind Wizard/Skill3.2.wav",
     "Skill3.2.volumeGainDb": 0.0
   },
-  "Idk Magician": {
+  "Caedric Thunderbound": {
     "Skill1": "/assets/SoundManager/SkillSfx/Idk Magician/Skill1.wav",
     "Skill1.volumeGainDb": 0.0,
     "Skill2": "/assets/SoundManager/SkillSfx/Idk Magician/Skill2.wav",
@@ -49,7 +49,7 @@
     "Skill3": "/assets/SoundManager/SkillSfx/Idk Magician/Skill3.wav",
     "Skill3.volumeGainDb": 0.0
   },
-  "Light Mage": {
+  "Gwyneth Verdantide": {
     "Skill1": "/assets/SoundManager/SkillSfx/Light Mage/Skill1.wav",
     "Skill1.volumeGainDb": 0.0,
     "Skill2": "/assets/SoundManager/SkillSfx/Light Mage/Skill2.wav",
@@ -57,7 +57,7 @@
     "Skill3": "/assets/SoundManager/SkillSfx/Light Mage/Skill3.wav",
     "Skill3.volumeGainDb": 0.0
   },
-  "Fire Wizard": {
+  "Myrrik Flameheart": {
     "Skill1": "/assets/SoundManager/SkillSfx/Fire Wizard/Skill1.wav",
     "Skill1.volumeGainDb": 0.0,
     "Skill2": "/assets/SoundManager/SkillSfx/Fire Wizard/Skill2.wav",
@@ -65,7 +65,7 @@
     "Skill3": "/assets/SoundManager/SkillSfx/Fire Wizard/Skill3.wav",
     "Skill3.volumeGainDb": 0.0
   },
-  "Steel Wizard": {
+  "Faecyrion Vhaloris": {
     "Skill1.1": "/assets/SoundManager/SkillSfx/Steel Wizard/Skill1.1.wav",
     "Skill1.1.volumeGainDb": 0.0,
     "Skill1.2": "/assets/SoundManager/SkillSfx/Steel Wizard/Skill1.2.wav",
