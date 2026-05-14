@@ -1337,13 +1337,16 @@ public class ArcadeGamePanel extends AbstractGamePanel {
             }
         } else if (hasProjectileAnimation) {
             int projectileSpawnFrame = getProjectileSpawnFrame(actor, skillID);
+                Runnable releaseCastAfterProjectile = activeProjectileDef.beam
+                    ? () -> stopSkillAnimation(actingP1)
+                    : null;
             if (startProjectileDuringCast) {
                 Runnable spawnProjectile = () -> startProjectileAnimation(
                         actingP1,
                         skillID,
                         activeProjectileDef,
                         createOnImpactStartCallback(isHurtSkill, actingP1),
-                        null);
+                        releaseCastAfterProjectile);
                 if (projectileSpawnFrame > 1) {
                     scheduleProjectileSpawnAtCastFrame(projectileSpawnFrame, spawnProjectile);
                 } else {
@@ -1356,16 +1359,12 @@ public class ArcadeGamePanel extends AbstractGamePanel {
                 }
             } else {
                 Runnable spawnProjectile = () -> {
-                    if (actor != null && "Ali Morningstart".equalsIgnoreCase(actor.name)
-                        && activeProjectileDef != null && activeProjectileDef.beam) {
-                        stopSkillAnimation(actingP1);
-                    }
                     startProjectileAnimation(
                         actingP1,
                         skillID,
                         activeProjectileDef,
                         createOnImpactStartCallback(isHurtSkill, actingP1),
-                        null);
+                        releaseCastAfterProjectile);
                 };
                 if (isDefenseFormAltSkill) {
                     playNatureFormSkill1CastAnimation(actingP1, defenseForm, spawnProjectile);
@@ -2377,12 +2376,12 @@ public class ArcadeGamePanel extends AbstractGamePanel {
         projectileSpeed       = Math.max(1, projectileDef.speed);
         projectileImpactFrames = impactFrames;
         if (projectileDef.anchorOnTargetCenter) {
-            projectileX = targetCenterX - (pW / 2) + projectileDef.spawnOffsetX;
+            projectileX = targetCenterX - (pW / 2) + (projectileDef.spawnOffsetX * projectileDirection);
             projectileY = targetCenterY - (pH / 2) + verticalOffset;
         } else if (projectileDef.anchorOnTarget) {
             int targetFeetX = tX + (tW / 2);
             int targetFeetY = (isPlayerOne ? p2SpriteY : p1SpriteY) + (isPlayerOne ? getEnemyDrawHeight() : getPlayerDrawHeight());
-            projectileX = targetFeetX - (pW / 2) + projectileDef.spawnOffsetX;
+            projectileX = targetFeetX - (pW / 2) + (projectileDef.spawnOffsetX * projectileDirection);
             projectileY = targetFeetY - pH + verticalOffset;
         } else {
             projectileX = aX + (aW / 2) - (pW / 2) + horizontalSpawnOffset;

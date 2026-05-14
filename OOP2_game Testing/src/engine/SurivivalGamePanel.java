@@ -1375,13 +1375,16 @@ public class SurivivalGamePanel extends AbstractGamePanel {
             }
         } else if (hasProjectileAnimation) {
             int projectileSpawnFrame = getProjectileSpawnFrame(actor, skillID);
+                Runnable releaseCastAfterProjectile = activeProjectileDef.beam
+                    ? () -> stopSkillAnimation(actingPlayerOne)
+                    : null;
             if (startProjectileDuringCast) {
                 Runnable spawnProjectile = () -> startProjectileAnimation(
                         actingPlayerOne,
                         skillID,
                         activeProjectileDef,
                         createOnImpactStartCallback(isHurtSkill, actingPlayerOne),
-                        null);
+                        releaseCastAfterProjectile);
                 if (projectileSpawnFrame > 1) {
                     scheduleProjectileSpawnAtCastFrame(projectileSpawnFrame, spawnProjectile);
                 } else {
@@ -1394,16 +1397,12 @@ public class SurivivalGamePanel extends AbstractGamePanel {
                 }
             } else {
                 Runnable spawnProjectile = () -> {
-                    if (actor != null && "Ali Morningstart".equalsIgnoreCase(actor.name)
-                        && activeProjectileDef != null && activeProjectileDef.beam) {
-                        stopSkillAnimation(actingPlayerOne);
-                    }
                     startProjectileAnimation(
                         actingPlayerOne,
                         skillID,
                         activeProjectileDef,
                         createOnImpactStartCallback(isHurtSkill, actingPlayerOne),
-                        null);
+                        releaseCastAfterProjectile);
                 };
                 if (isDefenseFormAltSkill) {
                     playNatureFormSkill1CastAnimation(actingPlayerOne, defenseForm, spawnProjectile);
@@ -2484,12 +2483,12 @@ public class SurivivalGamePanel extends AbstractGamePanel {
         projectileSpeed        = Math.max(1, projectileDef.speed);
         projectileImpactFrames = impactFrames;
         if (projectileDef.anchorOnTargetCenter) {
-            projectileX = targetCenterX - (projW / 2) + projectileDef.spawnOffsetX;
+            projectileX = targetCenterX - (projW / 2) + (projectileDef.spawnOffsetX * projectileDirection);
             projectileY = targetCenterY - (projH / 2) + verticalOffset;
         } else if (projectileDef.anchorOnTarget) {
             int targetFeetX = isPlayerOne ? getEnemyFeetAnchorX() : getPlayerFeetAnchorX();
             int targetFeetY = isPlayerOne ? getEnemyFeetAnchorY() : getPlayerFeetAnchorY();
-            projectileX = targetFeetX - (projW / 2) + projectileDef.spawnOffsetX;
+            projectileX = targetFeetX - (projW / 2) + (projectileDef.spawnOffsetX * projectileDirection);
             projectileY = targetFeetY - projH + verticalOffset;
         } else {
             projectileX = attackerX + (attackerWidth / 2) - (projW / 2) + horizontalSpawnOffset;
