@@ -35,7 +35,10 @@ public abstract class BaseGameButton extends JButton {
     protected abstract Color getNormalColor();
     protected abstract Color getHoverColor();
     protected float getFontSize() { return 24f; }
-    protected javax.swing.border.Border getButtonBorder() { return null; }
+
+    protected javax.swing.border.Border getButtonBorder() {
+        return BorderFactory.createLineBorder(new Color(200, 160, 40), 2);
+    }
     protected abstract void onClick();
 
 
@@ -44,7 +47,7 @@ public abstract class BaseGameButton extends JButton {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        ButtonTextRenderer.drawCenteredText(g2, this, getLabel(), 0);
+        ButtonTextRenderer.drawCenteredText(g2, this, getButtonLabel(), 0);
         g2.dispose();
     }
 }

@@ -63,8 +63,6 @@ public class GameWindow extends JFrame {
         layout.show(container, "INTRO");
     }
 
-    // ── Window close handling ─────────────────────────────────────────────
-
     private void handleWindowClose() {
         System.out.println("Window close requested. Current panel: " + currentPanelCard);
         if ("GAME".equals(currentPanelCard) || "SURVIVAL".equals(currentPanelCard) || "ARCADE".equals(currentPanelCard)
@@ -80,8 +78,6 @@ public class GameWindow extends JFrame {
     public void handleExitButtonClick() {
         handleWindowClose();
     }
-
-    // ── Pause ─────────────────────────────────────────────────────────────
 
     public void showPauseMenu() {
         System.out.println("showPauseMenu() called");
@@ -112,8 +108,6 @@ public class GameWindow extends JFrame {
         }
     }
 
-    // ── Settings ──────────────────────────────────────────────────────────
-
     public void showSettingsMenu() {
         System.out.println("showSettingsMenu() called");
         Component prev = cardMap.get(currentPanelCard);
@@ -143,7 +137,6 @@ public class GameWindow extends JFrame {
         }
     }
 
-    // ── Navigation ────────────────────────────────────────────────────────
 
     public void showIntro() {
         stopGameMusic();
@@ -207,8 +200,6 @@ public class GameWindow extends JFrame {
         container.repaint();
         SwingUtilities.invokeLater(currentCharacterSelectionPanel::requestFocusInWindow);
     }
-
-    // ── Game starters ─────────────────────────────────────────────────────
 
     public void startPvPMatch(int p1, int p2) {
         stopCharacterSelectionMusic();
@@ -279,8 +270,6 @@ public class GameWindow extends JFrame {
         SwingUtilities.invokeLater(arcade::requestFocusInWindow);
     }
 
-    // ── Audio ─────────────────────────────────────────────────────────────
-
     public void playMenuMusic(int i) {
         menuBGM.setFile(i);
         menuBGM.loop();
@@ -305,8 +294,6 @@ public class GameWindow extends JFrame {
             ((ArcadeGamePanel) currentGamePanel).stopMusic();
         }
     }
-
-    // ── Internal helpers ──────────────────────────────────────────────────
 
     private void detachCurrentGamePanel() {
         if (currentGamePanel == null) return;
