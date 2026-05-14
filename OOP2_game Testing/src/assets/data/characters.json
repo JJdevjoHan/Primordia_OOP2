@@ -41,7 +41,6 @@
           "description": "Unleashes a jagged lightning burst that shocks one enemy for moderate damage.",
            "manaCost": 18,
            "power": 35,
-           "poisonDamage": 8,
            "durationTurns": 3,
            "cooldownTurns": 0,
            "target": "single_enemy"
@@ -377,6 +376,7 @@
           "description": "Uses his knife to summon thorned vines that deal damage and apply poison to one enemy. If in defense stance, he instead fires a quick dart that applies poison without damage.",
           "manaCost": 18,
           "power": 35,
+          "poisonDamage": 5,
           "cooldownTurns": 0,
           "target": "single_enemy"
         },
@@ -399,10 +399,9 @@
           },
           "description": "Lace poison on his knife and marks the target with a poison.",
           "manaCost": 24,
-          "shieldValue": 22,
-          "healPerTurn": 7,
-          "durationTurns": 2,
-          "target": "self"
+          "poisonDamage": 10,
+          "durationTurns": 5,
+          "target": "single_enemy"
         },
         {
           "slot": 3,
