@@ -7,17 +7,7 @@ import engine.core.GameWindow;
 import engine.audio.SoundManager;
 import engine.interfaces.SkillExecutor;
 
-/**
- * OOP Principle: Inheritance + Single Responsibility
- *
- * BEFORE: BackButton was a factory class (createBackButton()) with its own
- *         copy of all button styling AND an instanceof chain to call stopMusic()
- *         on whichever panel type happened to be passed in.
- *
- * AFTER:  Styling is inherited from BaseGameButton.
- *         stopMusic() is called via the SkillExecutor interface — no instanceof,
- *         no imports of concrete panel classes.
- */
+//from basebutton japon and inherit sa music stop
 public class BackButton extends BaseGameButton {
 
     private static final Color NORMAL = new Color(40, 40, 60);
@@ -27,11 +17,6 @@ public class BackButton extends BaseGameButton {
     private final JPanel       panel;
     private final SkillExecutor executor;   // used only for stopMusic()
 
-    /**
-     * @param window   GameWindow to call showIntro() on
-     * @param panel    Parent panel (used as dialog owner)
-     * @param executor The active game panel (implements SkillExecutor + stopMusic)
-     */
     public BackButton(GameWindow window, JPanel panel, SkillExecutor executor) {
         super();
         this.window   = window;

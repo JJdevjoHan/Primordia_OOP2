@@ -49,22 +49,6 @@ public class SurivivalGamePanel extends AbstractGamePanel {
     private static final int BOT_TURN_DELAY_MS = 900;
 
     private static final int SURVIVAL_ROUND_HEAL_AMOUNT = 30;
-    /*
-    private static final int MAX_MP              = 100;
-    private static final int MP_REGEN_PER_TURN   = 10;   // MP regained at the start of each turn
-
-    private static final int[] SKILL_MP_COST = { 10, 20, 30 };
-
-    private static final int TURN_TIME_SECONDS    = 10;
-    private static final int TIMER_WARN_THRESHOLD = 3;
-    private static final int SKILL_PANEL_MIN_WIDTH = 928;
-    private static final int SKILL_PANEL_MAX_WIDTH = 1216;
-    private static final int SKILL_PANEL_HEIGHT = 192;
-    private static final int SKILL_PANEL_BOTTOM_MARGIN = 64;
-    private static final int SKILL_PANEL_SIDE_MARGIN = 32;
-    private static final String BATTLE_UI_BOX_PATH = "/assets/BattleUI/BattleUI_Box.png";
-
-     */
 
     protected int screenWidth  = SCREEN_WIDTH;
     protected int screenHeight = SCREEN_HEIGHT;

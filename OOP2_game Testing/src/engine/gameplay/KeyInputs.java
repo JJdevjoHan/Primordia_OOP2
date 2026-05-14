@@ -5,15 +5,6 @@ import engine.interfaces.SkillExecutor;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 
-/**
- * OOP Principle: Dependency Inversion
- *
- * BEFORE: Three separate fields (GamePanel gp, SurivivalGamePanel sp, ArcadeGamePanel ap)
- *         plus a cascading if/else chain to decide which to call.
- *         Every new game mode required editing this class.
- *
- * AFTER:  One SkillExecutor field. This class never changes when new modes are added.
- */
 public class KeyInputs implements KeyListener {
 
     private final SkillExecutor executor;

@@ -27,11 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * ArcadeGamePanel — best-of-3 (configurable via RoundManager) fight where
- * BOTH players have their HP and MP fully restored at the start of every round.
- * Supports PVP and PVB modes. No survival scoring, no enemy swapping.
- */
+
 public class ArcadeGamePanel extends AbstractGamePanel {
 
 
