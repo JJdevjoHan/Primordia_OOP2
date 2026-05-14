@@ -249,6 +249,13 @@ public class CharacterDef {
     public final int shadowOffsetX;
     public final double skill3Scale;
     public final double shadowScale;
+    // Duration and poison damage per skill (0 if not a poison skill)
+    public final int skill1DurationTurns;
+    public final int skill2DurationTurns;
+    public final int skill3DurationTurns;
+    public final int skill1PoisonDamage;
+    public final int skill2PoisonDamage;
+    public final int skill3PoisonDamage;
 
     public CharacterDef(String name,
                         String backstory,
@@ -268,11 +275,13 @@ public class CharacterDef {
             skill1SpritePath, skill1FollowUpSpritePath, skill2SpritePath, skill3SpritePath,
             skill1ForwardOffsetX, skill2ForwardOffsetX, skill3ForwardOffsetX,
             skill1HurtTriggerBufferSeconds, skill2HurtTriggerBufferSeconds, skill3HurtTriggerBufferSeconds,
-            idleAnimation, hurtAnimation, deadAnimation,
-            null, null, null,
-            null,
-            drawWidth, drawHeight,
-                0, 0, 0, 0, 1.0, 1.0);
+             idleAnimation, hurtAnimation, deadAnimation,
+             null, null, null,
+             null,
+             drawWidth, drawHeight,
+                 0, 0, 0, 0, 1.0, 1.0,
+                 0, 0, 0,
+                 0, 0, 0);
         }
 
     public CharacterDef(String name,
@@ -294,11 +303,13 @@ public class CharacterDef {
                 skill1SpritePath, skill1FollowUpSpritePath, skill2SpritePath, skill3SpritePath,
                 skill1ForwardOffsetX, skill2ForwardOffsetX, skill3ForwardOffsetX,
                 skill1HurtTriggerBufferSeconds, skill2HurtTriggerBufferSeconds, skill3HurtTriggerBufferSeconds,
-                idleAnimation, hurtAnimation, deadAnimation,
-                null, null, null,
-                null,
-                drawWidth, drawHeight,
-                        0, 0, 0, 0, 1.0, 1.0);
+                 idleAnimation, hurtAnimation, deadAnimation,
+                 null, null, null,
+                 null,
+                 drawWidth, drawHeight,
+                         0, 0, 0, 0, 1.0, 1.0,
+                         0, 0, 0,
+                         0, 0, 0);
     }
 
     public CharacterDef(String name,
@@ -319,11 +330,13 @@ public class CharacterDef {
                 skill1SpritePath, null, skill2SpritePath, skill3SpritePath,
                 skill1ForwardOffsetX, skill2ForwardOffsetX, skill3ForwardOffsetX,
                 skill1HurtTriggerBufferSeconds, skill2HurtTriggerBufferSeconds, skill3HurtTriggerBufferSeconds,
-                idleAnimation, hurtAnimation, deadAnimation,
-                null, null, null,
-                null,
-                drawWidth, drawHeight,
-                0, 0, 0, 0, 1.0, 1.0);
+                 idleAnimation, hurtAnimation, deadAnimation,
+                 null, null, null,
+                 null,
+                 drawWidth, drawHeight,
+                 0, 0, 0, 0, 1.0, 1.0,
+                 0, 0, 0,
+                 0, 0, 0);
     }
 
                 public CharacterDef(String name,
@@ -341,7 +354,9 @@ public class CharacterDef {
                         int drawWidth, int drawHeight,
                         int skill2Player2OffsetX, int skill3OffsetX, int skill3OffsetY,
                         int shadowOffsetX,
-                        double skill3Scale, double shadowScale) {
+                        double skill3Scale, double shadowScale,
+                        int skill1DurationTurns, int skill2DurationTurns, int skill3DurationTurns,
+                        int skill1PoisonDamage, int skill2PoisonDamage, int skill3PoisonDamage) {
         this.name = name;
         this.backstory = backstory == null ? "" : backstory;
         this.skill1Name = skill1Name;
@@ -381,6 +396,12 @@ public class CharacterDef {
         this.shadowOffsetX = shadowOffsetX;
         this.skill3Scale = skill3Scale;
         this.shadowScale = shadowScale;
+        this.skill1DurationTurns = skill1DurationTurns;
+        this.skill2DurationTurns = skill2DurationTurns;
+        this.skill3DurationTurns = skill3DurationTurns;
+        this.skill1PoisonDamage = skill1PoisonDamage;
+        this.skill2PoisonDamage = skill2PoisonDamage;
+        this.skill3PoisonDamage = skill3PoisonDamage;
     }
 
     public CharacterDef(String name,
@@ -403,11 +424,13 @@ public class CharacterDef {
                     skill1SpritePath, skill1FollowUpSpritePath, skill2SpritePath, skill3SpritePath,
                 skill1ForwardOffsetX, skill2ForwardOffsetX, skill3ForwardOffsetX,
                 skill1HurtTriggerBufferSeconds, skill2HurtTriggerBufferSeconds, skill3HurtTriggerBufferSeconds,
-                idleAnimation, hurtAnimation, deadAnimation,
-                skill1Projectile, skill2Projectile, skill3Projectile,
-                null,
-                drawWidth, drawHeight,
-                0, 0, 0, 0, 1.0, 1.0);
+                 idleAnimation, hurtAnimation, deadAnimation,
+                 skill1Projectile, skill2Projectile, skill3Projectile,
+                 null,
+                 drawWidth, drawHeight,
+                 0, 0, 0, 0, 1.0, 1.0,
+                 0, 0, 0,
+                 0, 0, 0);
     }
 
     public CharacterDef(String name,
@@ -430,11 +453,13 @@ public class CharacterDef {
                 skill1SpritePath, skill1FollowUpSpritePath, skill2SpritePath, skill3SpritePath,
                 skill1ForwardOffsetX, skill2ForwardOffsetX, skill3ForwardOffsetX,
                 skill1HurtTriggerBufferSeconds, skill2HurtTriggerBufferSeconds, skill3HurtTriggerBufferSeconds,
-                idleAnimation, hurtAnimation, deadAnimation,
-                skill1Projectile, skill2Projectile, skill3Projectile,
-                defenseForm,
-                drawWidth, drawHeight,
-                0, 0, 0, 0, 1.0, 1.0);
+                 idleAnimation, hurtAnimation, deadAnimation,
+                 skill1Projectile, skill2Projectile, skill3Projectile,
+                 defenseForm,
+                 drawWidth, drawHeight,
+                 0, 0, 0, 0, 1.0, 1.0,
+                 0, 0, 0,
+                 0, 0, 0);
     }
 
     // Constructor for characters with custom Wind Wizard scaling (used by Wind Wizard and other special characters)
@@ -460,10 +485,12 @@ public class CharacterDef {
                 skill1ForwardOffsetX, skill2ForwardOffsetX, skill3ForwardOffsetX,
                 skill1HurtTriggerBufferSeconds, skill2HurtTriggerBufferSeconds, skill3HurtTriggerBufferSeconds,
                 idleAnimation, hurtAnimation, deadAnimation,
-                null, null, null,  // No projectiles
-                null,  // No defense form
-                drawWidth, drawHeight,
-                skill2Player2OffsetX, skill3OffsetX, skill3OffsetY, shadowOffsetX, skill3Scale, shadowScale);
+                 null, null, null,  // No projectiles
+                 null,  // No defense form
+                 drawWidth, drawHeight,
+                 skill2Player2OffsetX, skill3OffsetX, skill3OffsetY, shadowOffsetX, skill3Scale, shadowScale,
+                 0, 0, 0,
+                 0, 0, 0);
     }
 
     public int getSkillPower(int skillID) {
@@ -542,6 +569,24 @@ public class CharacterDef {
             case 2 -> skill2Projectile;
             case 3 -> skill3Projectile;
             default -> null;
+        };
+    }
+
+    public int getSkillDurationTurns(int skillID) {
+        return switch (skillID) {
+            case 1 -> skill1DurationTurns;
+            case 2 -> skill2DurationTurns;
+            case 3 -> skill3DurationTurns;
+            default -> 0;
+        };
+    }
+
+    public int getSkillPoisonDamage(int skillID) {
+        return switch (skillID) {
+            case 1 -> skill1PoisonDamage;
+            case 2 -> skill2PoisonDamage;
+            case 3 -> skill3PoisonDamage;
+            default -> 0;
         };
     }
 }

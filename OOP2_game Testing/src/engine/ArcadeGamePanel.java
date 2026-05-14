@@ -143,6 +143,8 @@ public class ArcadeGamePanel extends AbstractGamePanel {
     private boolean isEnemyHurtAnimating  = false;
     private boolean playerHurtFlashing = false;
     private boolean enemyHurtFlashing = false;
+    private boolean playerHurtFromPoison = false;
+    private boolean enemyHurtFromPoison = false;
 
     private CharacterDef        currentPlayerDef, currentEnemyDef;
     private List<BufferedImage> playerDeadFrames = new ArrayList<>();
@@ -168,6 +170,12 @@ public class ArcadeGamePanel extends AbstractGamePanel {
     private int     p1HP     = 100, p2HP = 100;
     private int     p1MP     = MAX_MP, p2MP = MAX_MP;
     private boolean isP1Turn = true;
+
+    // Poison tracking
+    private int p1PoisonTurns = 0;
+    private int p1PoisonDamage = 0;
+    private int p2PoisonTurns = 0;
+    private int p2PoisonDamage = 0;
 
     private GameMode         gameMode      = GameMode.PVP;
     private BotAI.Difficulty difficulty    = BotAI.Difficulty.NORMAL;
@@ -303,9 +311,16 @@ public class ArcadeGamePanel extends AbstractGamePanel {
                     holdEnemyDeathFrameUntilNextRound = false;
                     p1HP = 100;     // full reset — key difference from Survival
                     p2HP = 100;
-                    p1MP = MAX_MP;
-                    p2MP = MAX_MP;
-                    isP1Turn = true;
+                     p1MP = MAX_MP;
+                     p2MP = MAX_MP;
+
+                     // Reset poison debuffs
+                     p1PoisonTurns = 0;
+                     p1PoisonDamage = 0;
+                     p2PoisonTurns = 0;
+                     p2PoisonDamage = 0;
+
+                     isP1Turn = true;
                     resetIdleTimersForRoundStart();
                     updateGameState();
                     repaint();
@@ -799,7 +814,11 @@ public class ArcadeGamePanel extends AbstractGamePanel {
             if (isPlayerHurtAnimating && !playerHurtFrames.isEmpty()) {
                 BufferedImage hurtFrame = playerHurtFrames.get(playerHurtFrameIndex);
                 if (playerHurtFlashing) {
-                    hurtFrame = applyRedTintToNonTransparent(hurtFrame);
+                    if (playerHurtFromPoison) {
+                        hurtFrame = applyGreenTintToNonTransparent(hurtFrame);
+                    } else {
+                        hurtFrame = applyRedTintToNonTransparent(hurtFrame);
+                    }
                 }
                 g2.drawImage(hurtFrame,
                         p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
@@ -810,7 +829,11 @@ public class ArcadeGamePanel extends AbstractGamePanel {
         } else if (isPlayerHurtAnimating && !playerHurtFrames.isEmpty()) {
             BufferedImage hurtFrame = playerHurtFrames.get(playerHurtFrameIndex);
             if (playerHurtFlashing) {
-                hurtFrame = applyRedTintToNonTransparent(hurtFrame);
+                if (playerHurtFromPoison) {
+                    hurtFrame = applyGreenTintToNonTransparent(hurtFrame);
+                } else {
+                    hurtFrame = applyRedTintToNonTransparent(hurtFrame);
+                }
             }
             g2.drawImage(hurtFrame,
                     p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
@@ -846,7 +869,11 @@ public class ArcadeGamePanel extends AbstractGamePanel {
             if (isEnemyHurtAnimating && !enemyHurtFrames.isEmpty()) {
                 BufferedImage hurtFrame = enemyHurtFrames.get(enemyHurtFrameIndex);
                 if (enemyHurtFlashing) {
-                    hurtFrame = applyRedTintToNonTransparent(hurtFrame);
+                    if (enemyHurtFromPoison) {
+                        hurtFrame = applyGreenTintToNonTransparent(hurtFrame);
+                    } else {
+                        hurtFrame = applyRedTintToNonTransparent(hurtFrame);
+                    }
                 }
                 g2.drawImage(hurtFrame,
                         p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
@@ -857,7 +884,11 @@ public class ArcadeGamePanel extends AbstractGamePanel {
         } else if (isEnemyHurtAnimating && !enemyHurtFrames.isEmpty()) {
             BufferedImage hurtFrame = enemyHurtFrames.get(enemyHurtFrameIndex);
             if (enemyHurtFlashing) {
-                hurtFrame = applyRedTintToNonTransparent(hurtFrame);
+                if (enemyHurtFromPoison) {
+                    hurtFrame = applyGreenTintToNonTransparent(hurtFrame);
+                } else {
+                    hurtFrame = applyRedTintToNonTransparent(hurtFrame);
+                }
             }
             g2.drawImage(hurtFrame,
                     p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
@@ -943,10 +974,15 @@ public class ArcadeGamePanel extends AbstractGamePanel {
         CharacterDef enemyDef  = ALL_CHARACTERS.get(enemyIdx);
         currentPlayerDef = playerDef;
         currentEnemyDef  = enemyDef;
-        isPlayerNatureDefenseForm = false;
-        isEnemyNatureDefenseForm = false;
+         isPlayerNatureDefenseForm = false;
+         isEnemyNatureDefenseForm = false;
+         // Reset poison debuffs
+         p1PoisonTurns = 0;
+         p1PoisonDamage = 0;
+         p2PoisonTurns = 0;
+         p2PoisonDamage = 0;
 
-        refreshSkillButtonLabels();
+         refreshSkillButtonLabels();
         updateP1DrawFromSpawn();
         updateP2DrawFromSpawn();
         repositionUI();
@@ -1319,9 +1355,22 @@ public class ArcadeGamePanel extends AbstractGamePanel {
             } else {
                 p2HP = Math.min(100, p2HP + 10);
             }
-        }
+         }
 
-        spendAndRegenMP(actingP1, skillID);
+         // Apply poison debuff if the skill inflicts poison
+         int poisonDmg = actor.getSkillPoisonDamage(skillID);
+         int poisonDuration = actor.getSkillDurationTurns(skillID);
+         if (poisonDmg > 0 && poisonDuration > 0) {
+             if (actingP1) {
+                 p2PoisonDamage = poisonDmg;
+                 p2PoisonTurns = poisonDuration;
+             } else {
+                 p1PoisonDamage = poisonDmg;
+                 p1PoisonTurns = poisonDuration;
+             }
+         }
+
+         spendAndRegenMP(actingP1, skillID);
 
         if (isHurtSkill && !hasProjectileAnimation) {
             scheduleHurtTimeline(actingP1, skillID);
@@ -1464,15 +1513,35 @@ public class ArcadeGamePanel extends AbstractGamePanel {
         ensureIdleTimersRunning();
     }
 
-    protected void updateGameState() {
-        p1HP = Math.max(0, Math.min(100,    p1HP));
-        p2HP = Math.max(0, Math.min(100,    p2HP));
-        p1MP = Math.max(0, Math.min(MAX_MP, p1MP));
-        p2MP = Math.max(0, Math.min(MAX_MP, p2MP));
+     protected void updateGameState() {
+         p1HP = Math.max(0, Math.min(100,    p1HP));
+         p2HP = Math.max(0, Math.min(100,    p2HP));
+         p1MP = Math.max(0, Math.min(MAX_MP, p1MP));
+         p2MP = Math.max(0, Math.min(MAX_MP, p2MP));
 
-        if (p1HPLabel == null || p2HPLabel == null) {
-            return;
-        }
+         // Apply poison damage at start of turn (after turn switch)
+         if (isP1Turn) {
+             if (p1PoisonTurns > 0) {
+                  p1HP -= p1PoisonDamage;
+                  p1PoisonTurns--;
+                  if (p1PoisonTurns <= 0) p1PoisonDamage = 0;
+                  startTimedHurt(true, POST_ATTACK_HURT_MS, true);
+             }
+         } else {
+             if (p2PoisonTurns > 0) {
+                  p2HP -= p2PoisonDamage;
+                  p2PoisonTurns--;
+                  if (p2PoisonTurns <= 0) p2PoisonDamage = 0;
+                  startTimedHurt(false, POST_ATTACK_HURT_MS, true);
+             }
+         }
+         // Clamp after poison
+         p1HP = Math.max(0, p1HP);
+         p2HP = Math.max(0, p2HP);
+
+         if (p1HPLabel == null || p2HPLabel == null) {
+             return;
+         }
 
         p1HPLabel.setText("HP: " + p1HP);
         p2HPLabel.setText("HP: " + p2HP);
@@ -2634,13 +2703,13 @@ public class ArcadeGamePanel extends AbstractGamePanel {
         stopHurtTimeline(targetIsPlayer);
         Timer delayTimer = new Timer(delayMs, null);
         delayTimer.setRepeats(false);
-        delayTimer.addActionListener(e -> startTimedHurt(targetIsPlayer, durationMs));
+        delayTimer.addActionListener(e -> startTimedHurt(targetIsPlayer, durationMs, false));
         delayTimer.start();
         if (targetIsPlayer) playerHurtDelayTimer = delayTimer;
         else                enemyHurtDelayTimer  = delayTimer;
     }
 
-    private void startTimedHurt(boolean isPlayer, int durationMs) {
+    private void startTimedHurt(boolean isPlayer, int durationMs, boolean fromPoison) {
         if (isPlayer) {
             if (playerHurtFrames.isEmpty()) return;
             if (playerHurtTimer       != null) playerHurtTimer.stop();
@@ -2648,6 +2717,7 @@ public class ArcadeGamePanel extends AbstractGamePanel {
             if (playerHurtFlashTimer  != null) playerHurtFlashTimer.stop();
             isPlayerHurtAnimating = true; playerHurtFrameIndex = 0;
             playerHurtFlashing = false;
+            playerHurtFromPoison = fromPoison;
             playerHurtTimer = new Timer(DEFAULT_HURT_DELAY_MS, null);
             playerHurtTimer.addActionListener(e -> {
                 if (!playerHurtFrames.isEmpty())
@@ -2673,6 +2743,7 @@ public class ArcadeGamePanel extends AbstractGamePanel {
             if (enemyHurtFlashTimer  != null) enemyHurtFlashTimer.stop();
             isEnemyHurtAnimating = true; enemyHurtFrameIndex = 0;
             enemyHurtFlashing = false;
+            enemyHurtFromPoison = fromPoison;
             enemyHurtTimer = new Timer(DEFAULT_HURT_DELAY_MS, null);
             enemyHurtTimer.addActionListener(e -> {
                 if (!enemyHurtFrames.isEmpty())
@@ -2702,6 +2773,7 @@ public class ArcadeGamePanel extends AbstractGamePanel {
             if (playerHurtFlashTimer  != null) { playerHurtFlashTimer.stop();  playerHurtFlashTimer  = null; }
             isPlayerHurtAnimating = false; playerHurtFrameIndex = 0;
             playerHurtFlashing = false;
+            playerHurtFromPoison = false;
         } else {
             if (enemyHurtDelayTimer  != null) { enemyHurtDelayTimer.stop();  enemyHurtDelayTimer  = null; }
             if (enemyHurtWindowTimer != null) { enemyHurtWindowTimer.stop(); enemyHurtWindowTimer = null; }
@@ -2709,6 +2781,7 @@ public class ArcadeGamePanel extends AbstractGamePanel {
             if (enemyHurtFlashTimer  != null) { enemyHurtFlashTimer.stop();  enemyHurtFlashTimer  = null; }
             isEnemyHurtAnimating = false; enemyHurtFrameIndex = 0;
             enemyHurtFlashing = false;
+            enemyHurtFromPoison = false;
         }
         // Ensure idle timers may resume after hurt animations
         ensureIdleTimersRunning();
@@ -2748,6 +2821,26 @@ public class ArcadeGamePanel extends AbstractGamePanel {
                     tinted.setRGB(x, y, (reducedAlpha << 24) | (r << 16) | (g << 8) | b);
                 } else {
                     // Transparent pixel - keep as is
+                    tinted.setRGB(x, y, argb);
+                }
+            }
+        }
+        return tinted;
+    }
+
+    private BufferedImage applyGreenTintToNonTransparent(BufferedImage original) {
+        BufferedImage tinted = new BufferedImage(original.getWidth(), original.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < original.getHeight(); y++) {
+            for (int x = 0; x < original.getWidth(); x++) {
+                int argb = original.getRGB(x, y);
+                int alpha = (argb >> 24) & 0xFF;
+                if (alpha > 0) {
+                    int r = 0;
+                    int g = 255;
+                    int b = 0;
+                    int reducedAlpha = (int)(alpha * 0.5); // 50% opacity
+                    tinted.setRGB(x, y, (reducedAlpha << 24) | (r << 16) | (g << 8) | b);
+                } else {
                     tinted.setRGB(x, y, argb);
                 }
             }
@@ -2830,9 +2923,11 @@ public class ArcadeGamePanel extends AbstractGamePanel {
                     new CharacterDef.AnimationDef(config.deathSpritePath, DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_DEAD_DELAY_MS),
                     config.skill1Projectile, config.skill2Projectile, config.skill3Projectile,
                     config.defenseForm,
-                    drawWidth, drawHeight,
-                    config.skill2Player2OffsetX, config.skill3OffsetX, config.skill3OffsetY,
-                    config.shadowOffsetX, config.skill3Scale, config.shadowScale));
+                     drawWidth, drawHeight,
+                     config.skill2Player2OffsetX, config.skill3OffsetX, config.skill3OffsetY,
+                     config.shadowOffsetX, config.skill3Scale, config.shadowScale,
+                     config.skill1DurationTurns, config.skill2DurationTurns, config.skill3DurationTurns,
+                     config.skill1PoisonDamage, config.skill2PoisonDamage, config.skill3PoisonDamage));
         }
         if (!defs.isEmpty()) return List.copyOf(defs);
 

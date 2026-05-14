@@ -48,6 +48,12 @@ public final class CharacterDataLoader {
         public final int shadowOffsetX;
         public final double skill3Scale;
         public final double shadowScale;
+        public final int skill1DurationTurns;
+        public final int skill2DurationTurns;
+        public final int skill3DurationTurns;
+        public final int skill1PoisonDamage;
+        public final int skill2PoisonDamage;
+        public final int skill3PoisonDamage;
         public final int drawWidth;
         public final int drawHeight;
         public final String idleSpritePath;
@@ -89,6 +95,12 @@ public final class CharacterDataLoader {
             int shadowOffsetX,
             double skill3Scale,
             double shadowScale,
+            int skill1DurationTurns,
+            int skill2DurationTurns,
+            int skill3DurationTurns,
+            int skill1PoisonDamage,
+            int skill2PoisonDamage,
+            int skill3PoisonDamage,
             int drawWidth,
             int drawHeight,
             String idleSpritePath,
@@ -129,6 +141,12 @@ public final class CharacterDataLoader {
             this.shadowOffsetX = shadowOffsetX;
             this.skill3Scale = skill3Scale;
             this.shadowScale = shadowScale;
+            this.skill1DurationTurns = skill1DurationTurns;
+            this.skill2DurationTurns = skill2DurationTurns;
+            this.skill3DurationTurns = skill3DurationTurns;
+            this.skill1PoisonDamage = skill1PoisonDamage;
+            this.skill2PoisonDamage = skill2PoisonDamage;
+            this.skill3PoisonDamage = skill3PoisonDamage;
             this.drawWidth = drawWidth;
             this.drawHeight = drawHeight;
             this.idleSpritePath = idleSpritePath;
@@ -208,9 +226,17 @@ public final class CharacterDataLoader {
                 int drawHeight = getOptionalInt(characterMap, "drawHeight");
                 String idleSpritePath = normalizeResourcePath(toStringValue(sprites.get("idle")));
                 String hurtSpritePath = normalizeResourcePath(toStringValue(sprites.get("hurt")));
-                String deathSpritePath = normalizeResourcePath(toStringValue(sprites.get("death")));
+                 String deathSpritePath = normalizeResourcePath(toStringValue(sprites.get("death")));
 
-                if (name == null || name.isBlank() || idleSpritePath == null || deathSpritePath == null) {
+                 // Extract durationTurns and poisonDamage from skills (new fields)
+                 int skill1DurationTurns = getSkillDurationTurns(skills, 0);
+                 int skill2DurationTurns = getSkillDurationTurns(skills, 1);
+                 int skill3DurationTurns = getSkillDurationTurns(skills, 2);
+                 int skill1PoisonDamage = getSkillPoisonDamage(skills, 0);
+                 int skill2PoisonDamage = getSkillPoisonDamage(skills, 1);
+                 int skill3PoisonDamage = getSkillPoisonDamage(skills, 2);
+
+                 if (name == null || name.isBlank() || idleSpritePath == null || deathSpritePath == null) {
                     continue;
                 }
 
@@ -242,10 +268,16 @@ public final class CharacterDataLoader {
                     skill2Player2OffsetX,
                     skill3OffsetX,
                     skill3OffsetY,
-                    shadowOffsetX,
-                    skill3Scale,
-                    shadowScale,
-                    drawWidth,
+                     shadowOffsetX,
+                     skill3Scale,
+                     shadowScale,
+                     skill1DurationTurns,
+                     skill2DurationTurns,
+                     skill3DurationTurns,
+                     skill1PoisonDamage,
+                     skill2PoisonDamage,
+                     skill3PoisonDamage,
+                     drawWidth,
                     drawHeight,
                     idleSpritePath,
                     hurtSpritePath,
@@ -512,6 +544,26 @@ public final class CharacterDataLoader {
             }
         }
         return fallback;
+    }
+
+    private static int getSkillDurationTurns(List<?> skills, int index) {
+        if (skills.size() <= index || !(skills.get(index) instanceof Map<?, ?> skillMap)) return 0;
+        Object raw = skillMap.get("durationTurns");
+        if (raw instanceof Number number) return Math.max(0, number.intValue());
+        if (raw != null) {
+            try { return Math.max(0, Integer.parseInt(String.valueOf(raw))); } catch (Exception e) { return 0; }
+        }
+        return 0;
+    }
+
+    private static int getSkillPoisonDamage(List<?> skills, int index) {
+        if (skills.size() <= index || !(skills.get(index) instanceof Map<?, ?> skillMap)) return 0;
+        Object raw = skillMap.get("poisonDamage");
+        if (raw instanceof Number number) return Math.max(0, number.intValue());
+        if (raw != null) {
+            try { return Math.max(0, Integer.parseInt(String.valueOf(raw))); } catch (Exception e) { return 0; }
+        }
+        return 0;
     }
 
     private static String normalizeResourcePath(String path) {
