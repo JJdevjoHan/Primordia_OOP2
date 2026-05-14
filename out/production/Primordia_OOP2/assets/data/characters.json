@@ -1,0 +1,680 @@
+{
+  "version": 1,
+  "description": "Pokemon-style character data for battle setup.",
+  "elementWeaknessChart": {
+    "Fire": ["Water", "Steel"],
+    "Water": ["Thunder", "Nature"],
+    "Nature": ["Fire", "Ice"],
+    "Thunder": ["Steel"],
+    "Wind": ["Steel", "Ice"],
+    "Light": ["Dark"],
+    "Dark": ["Light"],
+    "Steel": ["Nature", "Water"],
+    "Ice": ["Fire"]
+  },
+  "characters": [
+    {
+      "id": "idk_magician",
+      "name": "Caedric Thunderbound",
+      "backstory": "Caedric is a restless lightning prodigy raised among ruined ley shrines. He channels raw storm-energy through improvised sigils, preferring unpredictable, high-risk finishes that leave foes reeling.",
+      "elementType": "Thunder",
+      "weakness": ["Steel"],
+      "hp": 120,
+      "mana": 140,
+      "skills": [
+        {
+          "slot": 1,
+          "name": "Lighting Burst",
+          "type": "damage",
+          "projectile": {
+            "sprite": "src/assets/spritesheet/Idk Magician/Charge_2.png",
+            "frameWidth": 256,
+            "frameHeight": 256,
+            "drawWidth": 500,
+            "drawHeight": 500,
+            "speed": 44,
+            "verticalOffset": 70,
+            "beam": true,
+            "startDuringCast": true,
+            "anchorOnTargetCenter": true
+          },
+          "hurtTriggerBufferSeconds": 0.15,
+          "description": "Unleashes a jagged lightning burst that shocks one enemy for moderate damage.",
+          "manaCost": 18,
+          "power": 34,
+          "cooldownTurns": 0,
+          "target": "single_enemy"
+        },
+        {
+          "slot": 2,
+          "name": "Thunder Call",
+          "type": "damage",
+          "projectile": {
+            "sprite": "src/assets/spritesheet/Idk Magician/Charge_3.png",
+            "frameWidth": 256,
+            "frameHeight": 256,
+            "drawWidth": 500,
+            "drawHeight": 500,
+            "speed": 44,
+            "verticalOffset": 0,
+            "beam": true,
+            "startDuringCast": true,
+            "anchorOnTargetCenter": true
+          },
+          "description": "Calls down a bolt of lightning, dealing significant damage to one enemy.",
+          "manaCost": 22,
+          "power": 40,
+          "cooldownTurns": 0,
+          "target": "single_enemy"
+        },
+        {
+          "slot": 3,
+          "name": "Plasma Bolt",
+          "type": "debuff",
+          "projectile": {
+            "sprite": "src/assets/spritesheet/Idk Magician/Charge_1.png",
+            "frameWidth": 64,
+            "frameHeight": 128,
+            "drawWidth": 200,
+            "drawHeight": 200,
+            "speed": 39,
+            "verticalOffset": 50,
+            "spawnOffsetX": 80,
+            "loopStartFrame": 5,
+            "loopEndFrame": 6,
+            "impactStartFrame": 7,
+            "impactEndFrame": 9
+          },
+          "description": "Fires an unstable plasma bolt that deals massive damage to one enemy.",
+          "manaCost": 30,
+          "power": 26,
+          "durationTurns": 2,
+          "target": "single_enemy"
+        }
+      ],
+      "sprites": {
+        "skill1": "src/assets/spritesheet/Idk Magician/Attack_1.png",
+        "skill2": "src/assets/spritesheet/Idk Magician/Attack_2.png",
+        "skill3": "src/assets/spritesheet/Idk Magician/Magic_sphere.png",
+        "idle": "src/assets/spritesheet/Idk Magician/Idle.png",
+        "death": "src/assets/spritesheet/Idk Magician/Dead.png",
+        "hurt": "src/assets/spritesheet/Idk Magician/Hurt.png"
+      }
+    },
+    {
+      "id": "light_mage",
+      "name": "Gwyneth Verdantide",
+      "backstory": "Gwyneth trained as a temple guardian, blending martial bladework with restorative light. She balances offense and support, weaving shields and steady regeneration to keep allies standing.",
+      "elementType": "Light",
+      "weakness": ["Dark"],
+      "hp": 145,
+      "mana": 125,
+      "skills": [
+        {
+          "slot": 1,
+          "name": "Light Sword",
+          "type": "damage",
+          "projectile": {
+            "sprite": "src/assets/spritesheet/Light Mage/Charge-Sheet.png",
+            "frameWidth": 256,
+            "frameHeight": 256,
+            "drawWidth": 600,
+            "drawHeight": 600,
+            "speed": 44,
+            "verticalOffset": 200,
+            "spawnOffsetX": 0,
+            "beam": true,
+            "startDuringCast": true,
+            "anchorOnTarget": true
+          },
+          "hurtTriggerBufferSeconds": 0.1,
+          "description": "Unleashes a radiant slash and explodes on the enemy that deals high single-target light damage.",
+          "manaCost": 20,
+          "power": 38,
+          "cooldownTurns": 0,
+          "target": "single_enemy"
+        },
+        {
+          "slot": 2,
+          "name": "Halo of Aegis",
+          "type": "defense",
+          "description": "Creates a protective halo that grants a shield and minor regeneration to herself.",
+          "manaCost": 26,
+          "shieldValue": 20,
+          "healPerTurn": 8,
+          "durationTurns": 2,
+          "target": "self"
+        },
+        {
+          "slot": 3,
+          "name": "Dawn Piercer",
+          "type": "damage",
+          "hurtTriggerBufferSeconds": 0.35,
+          "description": "Unleashes a focused beam that burns one enemy with concentrated light damage.",
+          "manaCost": 24,
+          "power": 42,
+          "cooldownTurns": 0,
+          "target": "single_enemy"
+        }
+      ],
+      "sprites": {
+        "skill1": "src/assets/spritesheet/Light Mage/LightSword-Sheet.png",
+        "skill2": "src/assets/spritesheet/Light Mage/HaloOfAegis-Sheet.png",
+        "skill3": "src/assets/spritesheet/Light Mage/DawnPiercer-Sheet.png",
+        "idle": "src/assets/spritesheet/Light Mage/Idle-Sheet.png",
+        "death": "src/assets/spritesheet/Light Mage/Dead-Sheet.png",
+        "hurt": "src/assets/spritesheet/Light Mage/Hurt-Sheet.png"
+      },
+      "skillOffsets": {
+        "skill2": { "forwardX": 100 },
+        "skill3": { "forwardX": 100 }
+      }
+    },
+    {
+      "id": "fire_wizard",
+      "name": "Myrrik Flameheart",
+      "backstory": "Myrrik is a volcanic battlemage who tempers wildfire into disciplined strikes. His style favors pressure and explosive follow-ups, burning openings with relentless force.",
+      "elementType": "Fire",
+      "weakness": ["Water", "Steel"],
+      "hp": 136,
+      "mana": 132,
+      "skills": [
+        {
+          "slot": 1,
+          "name": "Blaze Saber",
+          "type": "damage",
+          "projectile": {
+            "sprite": "src/assets/spritesheet/Fire Wizard/Charge2-Sheet.png",
+            "frameWidth": 256,
+            "frameHeight": 256,
+            "drawWidth": 420,
+            "drawHeight": 420,
+            "speed": 44,
+            "verticalOffset": 50,
+            "spawnOffsetX": 0,
+            "beam": true,
+            "startDuringCast": true,
+            "anchorOnTarget": true
+          },
+          "hurtTriggerBufferSeconds": 0.12,
+          "description": "Cuts through one enemy with a burning sword arc, dealing strong fire damage.",
+          "manaCost": 20,
+          "power": 37,
+          "cooldownTurns": 0,
+          "target": "single_enemy"
+        },
+        {
+          "slot": 2,
+          "name": "Fireball",
+          "type": "damage",
+          "projectile": {
+            "sprite": "src/assets/spritesheet/Fire Wizard/Charge-Sheet.png",
+            "frameWidth": 64,
+            "frameHeight": 64,
+            "drawWidth": 160,
+            "drawHeight": 160,
+            "speed": 44,
+            "verticalOffset": 60,
+            "spawnOffsetX": 80
+          },
+          "description": "Launches a fiery projectile that deals fire damage to one enemy.",
+          "manaCost": 24,
+          "power": 45,
+          "cooldownTurns": 0,
+          "target": "single_enemy"
+        },
+        {
+          "slot": 3,
+          "name": "Flame Jet",
+          "type": "damage",
+          "hurtTriggerBufferSeconds": 0.22,
+          "description": "Unleashes a powerful jet of flame that scorches one enemy for massive fire damage.",
+          "manaCost": 28,
+          "power": 80,
+          "cooldownTurns": 0,
+          "target": "single_enemy"
+        }
+      ],
+      "sprites": {
+        "skill1": "src/assets/spritesheet/Fire Wizard/Fire_sword-Sheet.png",
+        "skill2": "src/assets/spritesheet/Fire Wizard/Fireball-Sheet.png",
+        "skill3": "src/assets/spritesheet/Fire Wizard/Flame_jet-Sheet.png",
+        "idle": "src/assets/spritesheet/Fire Wizard/Idle-Sheet.png",
+        "death": "src/assets/spritesheet/Fire Wizard/Dead-Sheet.png",
+        "hurt": "src/assets/spritesheet/Fire Wizard/Hurt-Sheet.png"
+      }
+    },
+    {
+      "id": "steel_wizard",
+      "name": "Faecyrion Vhaloris",
+      "backstory": "Faecyrion is an ironclad duelist who bends tempered metal into precise, punishing strikes. Her steelwork prioritizes control — chain, spike and blade — delivered with surgical timing.",
+      "elementType": "Steel",
+      "weakness": ["Nature", "Water"],
+      "hp": 150,
+      "mana": 118,
+      "skills": [
+        {
+          "slot": 1,
+          "name": "Iron Breaker",
+          "type": "damage",
+          "hurtTriggerBufferSeconds": 0.14,
+          "description": "Smashes an enemy with reinforced steel chain whip for high physical-impact damage.",
+          "manaCost": 19,
+          "power": 39,
+          "cooldownTurns": 0,
+          "target": "single_enemy"
+        },
+        {
+          "slot": 2,
+          "name": "Explosive Dart",
+          "type": "damage",
+          "projectile": {
+            "sprite": "src/assets/spritesheet/Steel Wizard/Spine-Sheet.png",
+            "frameWidth": 10,
+            "frameHeight": 10,
+            "drawWidth": 30,
+            "drawHeight": 30,
+            "speed": 44,
+            "verticalOffset": 50,
+            "spawnOffsetX": 100,
+            "impactSprite": "src/assets/spritesheet/Steel Wizard/Charge2-Sheet.png",
+            "impactFrameWidth": 72,
+            "impactFrameHeight": 72,
+            "impactDrawWidth": 500,
+            "impactDrawHeight": 500,
+            "anchorImpactOnTargetCenter": true
+          },
+          "description": "Launches a dart of compressed steel that explodes on impact, dealing damage to a single enemy.",
+          "manaCost": 23,
+          "power": 40,
+          "cooldownTurns": 0,
+          "target": "single_enemy"
+        },
+        {
+          "slot": 3,
+          "name": "Spiky Snack",
+          "type": "debuff",
+          "projectile": {
+            "sprite": "src/assets/spritesheet/Steel Wizard/Charge-Sheet.png",
+            "frameWidth": 128,
+            "frameHeight": 128,
+            "drawWidth": 250,
+            "drawHeight": 250,
+            "speed": 44,
+            "verticalOffset": 0,
+            "spawnOffsetX": 0,
+            "beam": true,
+            "startDuringCast": true,
+            "anchorOnTarget": true,
+            "animationFrameDelay": 200
+          },
+          "description": "Eats a snack and unleashes jagged steel spines to pierce one enemy.",
+          "manaCost": 29,
+          "power": 28,
+          "durationTurns": 2,
+          "target": "single_enemy"
+        }
+      ],
+      "sprites": {
+        "skill1": "src/assets/spritesheet/Steel Wizard/Attack_1-Sheet.png",
+        "skill1FollowUp": "src/assets/spritesheet/Steel Wizard/Attack_1.2-Sheet.png",
+        "skill2": "src/assets/spritesheet/Steel Wizard/Cast-Sheet.png",
+        "skill3": "src/assets/spritesheet/Steel Wizard/Eating-Sheet.png",
+        "idle": "src/assets/spritesheet/Steel Wizard/Idle-Sheet.png",
+        "death": "src/assets/spritesheet/Steel Wizard/Dead-Sheet.png",
+        "hurt": "src/assets/spritesheet/Steel Wizard/Hurt-Sheet.png"
+      }
+    },
+    {
+      "id": "nature_wizard",
+      "name": "Earl Froggington",
+      "backstory": "Ayla is a forest tactician who commands roots and spores to control space and sap strength. She favors attrition — shields of growth and steady pressure that outlast reckless attackers.",
+      "elementType": "Nature",
+      "weakness": ["Fire", "Ice"],
+      "hp": 140,
+      "mana": 126,
+      "drawWidth": 320,
+      "drawHeight": 320,
+      "defenseForm": {
+        "toggleSkillSlot": 3,
+        "altSkillSlot": 1,
+        "enterFreezeFrame": 5,
+        "exitStartFrame": 6,
+        "altSkillSprite": "src/assets/spritesheet/Nature Wizard/Shot-Sheet.png",
+        "altSkillFrameWidth": 128,
+        "altSkillFrameHeight": 128,
+        "altSkillProjectile": {
+          "sprite": "src/assets/spritesheet/Nature Wizard/Dart.png",
+          "frameWidth": 6,
+          "frameHeight": 6,
+          "drawWidth": 30,
+          "drawHeight": 30,
+          "speed": 44,
+          "verticalOffset": 60,
+          "spawnOffsetX": 70
+        }
+      },
+      "skills": [
+        {
+          "slot": 1,
+          "name": "Thorn Swipe",
+          "type": "debuff",
+          "hurtTriggerBufferSeconds": 0.12,
+          "projectile": {
+            "sprite": "src/assets/spritesheet/Nature Wizard/Charge-Sheet.png",
+            "frameWidth": 128,
+            "frameHeight": 128,
+            "drawWidth": 250,
+            "drawHeight": 250,
+            "speed": 44,
+            "verticalOffset": 0,
+            "spawnOffsetX": 0,
+            "beam": true,
+            "startDuringCast": true,
+            "anchorOnTarget": true
+          },
+          "description": "Uses his knife to summon thorned vines that deal damage and apply poison to one enemy.",
+          "manaCost": 18,
+          "power": 35,
+          "cooldownTurns": 0,
+          "target": "single_enemy"
+        },
+        {
+          "slot": 2,
+          "name": "Frog Kiss",
+          "type": "debuff",
+          "projectile": {
+            "sprite": "src/assets/spritesheet/Nature Wizard/Charge2-Sheet.png",
+            "frameWidth": 128,
+            "frameHeight": 128,
+            "drawWidth": 250,
+            "drawHeight": 250,
+            "speed": 44,
+            "verticalOffset": 20,
+            "spawnOffsetX": 0,
+            "beam": true,
+            "startDuringCast": true,
+            "anchorOnTargetCenter": true
+          },
+          "description": "Lace poison on his knife and marks the target with a poison.",
+          "manaCost": 24,
+          "shieldValue": 22,
+          "healPerTurn": 7,
+          "durationTurns": 2,
+          "target": "self"
+        },
+        {
+          "slot": 3,
+          "name": "Natures Embrace",
+          "type": "defense",
+          "description": "With his cloak of leaves, he embraces nature to heal himself and takes a defensive stance. Use it again to break the stance.",
+          "manaCost": 28,
+          "power": 27,
+          "durationTurns": 2,
+          "target": "single_enemy"
+        }
+      ],
+      "sprites": {
+        "skill1": "src/assets/spritesheet/Nature Wizard/Attack_1-Sheet.png",
+        "skill2": "src/assets/spritesheet/Nature Wizard/Attack_2-Sheet.png",
+        "skill3": "src/assets/spritesheet/Nature Wizard/Disguise-Sheet.png",
+        "idle": "src/assets/spritesheet/Nature Wizard/Idle-Sheet.png",
+        "death": "src/assets/spritesheet/Nature Wizard/Dead-Sheet.png",
+        "hurt": "src/assets/spritesheet/Nature Wizard/Hurt-Sheet.png"
+      }
+    },
+    {
+      "id": "water_wizard",
+      "name": "Ondine",
+      "backstory": "Orin channels tides and pressure into disciplined bladework. He controls tempo with flowing strikes and shifting barriers, shaping the battlefield like a current.",
+      "elementType": "Water",
+      "weakness": ["Thunder", "Nature"],
+      "hp": 140,
+      "mana": 134,
+      "drawWidth": 384,
+      "drawHeight": 384,
+      "skills": [
+        {
+          "slot": 1,
+          "name": "Tidal Shot",
+          "type": "damage",
+          "hurtTriggerBufferSeconds": 0.14,
+          "projectile": {
+            "sprite": "src/assets/spritesheet/Water Wizard/Charge-Sheet.png",
+            "frameWidth": 128,
+            "frameHeight": 128,
+            "drawWidth": 250,
+            "drawHeight": 250,
+            "speed": 44,
+            "verticalOffset": 0,
+            "spawnOffsetX": 80,
+            "loopStartFrame": 5,
+            "loopEndFrame": 6,
+            "impactStartFrame": 7,
+            "impactEndFrame": 8
+          },
+          "description": "Fires a pressurized water shot at one enemy, dealing steady damage.",
+          "manaCost": 19,
+          "power": 36,
+          "cooldownTurns": 0,
+          "target": "single_enemy"
+        },
+        {
+          "slot": 2,
+          "name": "Water Beam",
+          "type": "damage",
+          "projectile": {
+            "sprite": "src/assets/spritesheet/Water Wizard/Charge2-Sheet.png",
+            "frameWidth": 72,
+            "frameHeight": 72,
+            "drawWidth": 420,
+            "drawHeight": 250,
+            "speed": 44,
+            "verticalOffset": -15,
+            "spawnOffsetX": 310,
+            "beam": true
+          },
+          "description": "Fires a concentrated beam of water at one enemy, dealing significant damage.",
+          "manaCost": 24,
+          "power": 38,
+          "durationTurns": 2,
+          "target": "single_enemy"
+        },
+        {
+          "slot": 3,
+          "name": "Frigid Current",
+          "type": "debuff",
+          "projectile": {
+            "sprite": "src/assets/spritesheet/Water Wizard/Charge3-Sheet.png",
+            "frameWidth": 128,
+            "frameHeight": 128,
+            "drawWidth": 550,
+            "drawHeight": 550,
+            "speed": 44,
+            "verticalOffset": 0,
+            "spawnOffsetX": 0,
+            "beam": true,
+            "startDuringCast": true,
+            "anchorOnTarget": true
+          },
+          "description": "Whips up a dragging current into a ball then freezes it.",
+          "manaCost": 28,
+          "power": 25,
+          "durationTurns": 2,
+          "target": "single_enemy"
+        }
+      ],
+      "sprites": {
+        "skill1": "src/assets/spritesheet/Water Wizard/Attack-Sheet.png",
+        "skill2": "src/assets/spritesheet/Water Wizard/Attack2-Sheet.png",
+        "skill3": "src/assets/spritesheet/Water Wizard/Attack3-Sheet.png",
+        "idle": "src/assets/spritesheet/Water Wizard/Idle-Sheet.png",
+        "death": "src/assets/spritesheet/Water Wizard/Dead-Sheet.png",
+        "hurt": "src/assets/spritesheet/Water Wizard/Hurt-Sheet.png"
+      }
+    },
+    {
+      "id": "wind_wizard",
+      "name": "Ali Morningstart",
+      "backstory": "Ali moves like a gust incarnate — quick, precise, and disruptive. His razor winds punish openings and keep opponents off-balance, favoring mobility over brute force.",
+      "elementType": "Wind",
+      "weakness": ["Steel", "Ice"],
+      "hp": 128,
+      "mana": 138,
+      "drawWidth": 750,
+      "drawHeight": 750,
+      "skill2Player2OffsetX": 400,
+      "skill3OffsetX": 80,
+      "skill3OffsetY": 0,
+      "shadowOffsetX": 17,
+      "skill3Scale": 2.2,
+      "shadowScale": 0.6,
+      "skills": [
+        {
+          "slot": 1,
+          "name": "Gale Cut",
+          "type": "damage",
+          "hurtTriggerBufferSeconds": 0.12,
+          "description": "Cuts through one enemy with a razor gust that deals quick damage.",
+          "manaCost": 18,
+          "power": 35,
+          "cooldownTurns": 0,
+          "target": "single_enemy"
+        },
+        {
+          "slot": 2,
+          "name": "Judgement Cyclone",
+          "type": "damage",
+          "description": "Uses gale cut then wraps the caster in a spinning wind current throwing it towards enemies.",
+          "manaCost": 23,
+          "power": 30,
+          "durationTurns": 2,
+          "target": "self"
+        },
+        {
+          "slot": 3,
+          "name": "Tempest Slash",
+          "type": "damage",
+          "projectile": {
+            "sprite": "src/assets/spritesheet/Wind WIzard/Attack3-Sheet.png",
+            "frameWidth": 288,
+            "frameHeight": 128,
+            "drawWidth": 1656,
+            "drawHeight": 736,
+            "speed": 44,
+            "verticalOffset": 0,
+            "spawnOffsetX": 0,
+            "beam": true,
+            "startDuringCast": true,
+            "anchorOnTargetCenter": true
+          },
+          "description": "Unleashes a beam of wind slashes that strikes one enemy.",
+          "manaCost": 29,
+          "power": 27,
+          "durationTurns": 2,
+          "target": "single_enemy"
+        }
+      ],
+      "sprites": {
+        "skill1": "src/assets/spritesheet/Wind WIzard/Attack1-Sheet.png",
+        "skill2": "src/assets/spritesheet/Wind WIzard/Attack2-Sheet.png",
+        "skill3": "src/assets/spritesheet/Wind WIzard/Attack3-Sheet.png",
+        "idle": "src/assets/spritesheet/Wind WIzard/Idle-Sheet.png",
+        "death": "src/assets/spritesheet/Wind WIzard/Dead-Sheet.png",
+        "hurt": "src/assets/spritesheet/Wind WIzard/Hurt-Sheet.png"
+      }
+    },
+    {
+      "id": "dark_wizard",
+      "name": "Yuri Moonshade",
+      "backstory": "Yuri is a shadow-touched kumiho sorceress who shapes soul-threads into corrosive magic. Her unpredictable assaults erode resolve and exploit dark openings with ruthless efficiency.",
+      "elementType": "Dark",
+      "weakness": ["Light"],
+      "hp": 138,
+      "mana": 130,
+      "drawWidth": 440,
+      "drawHeight": 440,
+      "skills": [
+        {
+          "slot": 1,
+          "name": "Shadow Tail",
+          "type": "damage",
+          "projectile": {
+            "sprite": "src/assets/spritesheet/Dark Wizard/Fire_3-Sheet.png",
+            "frameWidth": 16,
+            "frameHeight": 16,
+            "drawWidth": 100,
+            "drawHeight": 100,
+            "speed": 44,
+            "verticalOffset": 50,
+            "beam": true,
+            "startDuringCast": true,
+            "anchorOnTargetCenter": true
+          },
+          "hurtTriggerBufferSeconds": 0.15,
+          "description": "Strikes one enemy with a shadowy tail whip, dealing dark damage and burning them.",
+          "manaCost": 19,
+          "power": 35,
+          "cooldownTurns": 0,
+          "target": "single_enemy"
+        },
+        {
+          "slot": 2,
+          "name": "Mystic Flame",
+          "type": "damage",
+          "projectile": {
+            "sprite": "src/assets/spritesheet/Dark Wizard/Fire_1-Sheet.png",
+            "frameWidth": 64,
+            "frameHeight": 64,
+            "drawWidth": 160,
+            "drawHeight": 160,
+            "speed": 44,
+            "verticalOffset": 50,
+            "spawnOffsetX": 80,
+            "loopStartFrame": 6,
+            "loopEndFrame": 7,
+            "impactStartFrame": 8,
+            "impactEndFrame": 14
+          },
+          "description": "Unleashes a burst of mystical flames that damage one enemy and heal the caster for a portion of the damage dealt.",
+          "manaCost": 24,
+          "power": 30,
+          "durationTurns": 2,
+          "target": "self"
+        },
+        {
+          "slot": 3,
+          "name": "Sacrificial Fire",
+          "type": "damage",
+          "projectile": {
+            "sprite": "src/assets/spritesheet/Dark Wizard/Fire_2-Sheet.png",
+            "frameWidth": 64,
+            "frameHeight": 64,
+            "drawWidth": 144,
+            "drawHeight": 144,
+            "speed": 44,
+            "verticalOffset": 50,
+            "spawnOffsetX": 80,
+            "loopStartFrame": 4,
+            "loopEndFrame": 5,
+            "impactStartFrame": 6,
+            "impactEndFrame": 11
+          },
+          "description": "Unleashes a flame overflowing with dark energy that damages one enemy.",
+          "manaCost": 28,
+          "power": 27,
+          "durationTurns": 2,
+          "target": "single_enemy"
+        }
+      ],
+      "sprites": {
+        "skill1": "src/assets/spritesheet/Dark Wizard/Attack_1-Sheet.png",
+        "skill2": "src/assets/spritesheet/Dark Wizard/Attack_2-Sheet.png",
+        "skill3": "src/assets/spritesheet/Dark Wizard/Attack_3-Sheet.png",
+        "idle": "src/assets/spritesheet/Dark Wizard/Idle-Sheet.png",
+        "death": "src/assets/spritesheet/Dark Wizard/Dead-Sheet.png",
+        "hurt": "src/assets/spritesheet/Dark Wizard/Hurt-Sheet.png"
+      }
+    }
+  ]
+}
