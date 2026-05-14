@@ -1046,7 +1046,7 @@ public class SurivivalGamePanel extends JPanel {
         if (isSteelWizardSkill2Active && steelWizardSkill2IsPlayerOne == actingPlayerOne) {
             // Steel Wizard Skill 2: Trigger Skill 2.2 (collision event)
             Runnable skill2Impact = () -> {
-                sfx.playMappedSkillSFX("Steel Wizard", "Skill2.2", 0.0, -1, 0.0f);  // Skill 2.2 on collision
+                sfx.playMappedSkillSFX("Faecyrion Vhaloris", "Skill2.2", 0.0, -1, 0.0f);  // Skill 2.2 on collision
                 isSteelWizardSkill2Active = false;  // Clear the flag
             };
             
@@ -1073,7 +1073,7 @@ public class SurivivalGamePanel extends JPanel {
         int stopAfterMillis = -1;  // No auto-stop by default
         float volumeGainDb = 0.0f; // per-sound volume adjustment (dB)
         
-        if ("Idk Magician".equalsIgnoreCase(charName)) {
+        if ("Caedric Thunderbound".equalsIgnoreCase(charName)) {
             soundIndex = switch (skillID) {
                 case 1 -> 11; // Lighting Burst
                 case 2 -> 12; // Thunder Call (start at 1 second mark, stop at animation end)
@@ -1084,7 +1084,7 @@ public class SurivivalGamePanel extends JPanel {
                 timeOffset = 1.0;  // Skill 2 starts at 1 second
                 stopAfterMillis = 1500;  // Stop after ~1.5 seconds (animation duration)
             }
-        } else if ("Light Mage".equalsIgnoreCase(charName)) {
+        } else if ("Gwyneth Verdantide".equalsIgnoreCase(charName)) {
             soundIndex = switch (skillID) {
                 case 1 -> 14; // Light Sword
                 case 2 -> 15; // Halo of Aegis
@@ -1095,7 +1095,7 @@ public class SurivivalGamePanel extends JPanel {
                 timeOffset = 1.0;  // Start at 1 second into the audio
                 stopAfterMillis = 2000;  // Play for 2 seconds total
             }
-        } else if ("Fire Wizard".equalsIgnoreCase(charName)) {
+        } else if ("Myrrik Flameheart".equalsIgnoreCase(charName)) {
             soundIndex = switch (skillID) {
                 case 1 -> 17; // Inferno Burst
                 case 2 -> 18; // Flame Strike
@@ -1108,13 +1108,13 @@ public class SurivivalGamePanel extends JPanel {
             } else if (skillID == 3) {
                 timeOffset = 2.0;  // Skill 3 starts at 2.0 seconds
             }
-        } else if ("Steel Wizard".equalsIgnoreCase(charName)) {
+        } else if ("Faecyrion Vhaloris".equalsIgnoreCase(charName)) {
             // Steel Wizard: Layered (Skill 1), Event-Based (Skill 2), Timed Offset (Skill 3)
             switch (skillID) {
                 case 1 -> {
                     // Skill 1: Parallel Synchronized at 1 second mark - play both with offset and stop at animation end
-                    sfx.playMappedSkillSFX("Steel Wizard", "Skill1.1", 1.0, 1200, 0.0f);  // Skill 1.1 at t=1.0, stop after 1.2s
-                    sfx.playMappedSkillSFX("Steel Wizard", "Skill1.2", 1.0, 1200, 0.0f);  // Skill 1.2 at t=1.0 (parallel), stop after 1.2s
+                    sfx.playMappedSkillSFX("Faecyrion Vhaloris", "Skill1.1", 1.0, 1200, 0.0f);  // Skill 1.1 at t=1.0, stop after 1.2s
+                    sfx.playMappedSkillSFX("Faecyrion Vhaloris", "Skill1.2", 1.0, 1200, 0.0f);  // Skill 1.2 at t=1.0 (parallel), stop after 1.2s
                     return;
                 }
                 case 2 -> {
@@ -1127,10 +1127,10 @@ public class SurivivalGamePanel extends JPanel {
                 }
                 case 3 -> {
                     // Skill 3: Timed Offset - Skill 3.1 louder, Skill 3.2 delayed
-                    sfx.playMappedSkillSFX("Steel Wizard", "Skill3.1", 0.0, -1, 0.0f);   // Skill 3.1 volume comes from JSON mapping
+                    sfx.playMappedSkillSFX("Faecyrion Vhaloris", "Skill3.1", 0.0, -1, 0.0f);   // Skill 3.1 volume comes from JSON mapping
                     // Schedule Skill 3.2 to play at 0.7 seconds
                     Timer delayedSkill3_2 = new Timer(700, e -> {
-                        sfx.playMappedSkillSFX("Steel Wizard", "Skill3.2", 0.0, -1, 0.0f);  // Skill 3.2 at t=0.7
+                        sfx.playMappedSkillSFX("Faecyrion Vhaloris", "Skill3.2", 0.0, -1, 0.0f);  // Skill 3.2 at t=0.7
                     });
                     delayedSkill3_2.setRepeats(false);
                     delayedSkill3_2.start();
@@ -1138,15 +1138,15 @@ public class SurivivalGamePanel extends JPanel {
                 }
                 default -> soundIndex = -1;
             }
-        } else if ("Wind Wizard".equalsIgnoreCase(charName)) {
+        } else if ("Ali Morningstart".equalsIgnoreCase(charName)) {
             switch (skillID) {
                 case 1 -> soundIndex = 38; // Wind Wizard - Skill 1
                 case 2 -> {
-                    sfx.playMappedSkillSFX("Wind Wizard", "Skill2.1", 0.0, -1, 0.0f); // Skill 2.1
+                    sfx.playMappedSkillSFX("Ali Morningstart", "Skill2.1", 0.0, -1, 0.0f); // Skill 2.1
                     Thread delayedWindSkill2_2 = new Thread(() -> {
                         try {
                             Thread.sleep(900);
-                            sfx.playMappedSkillSFX("Wind Wizard", "Skill2.2", 0.0, -1, 0.0f); // Skill 2.2 volume comes from JSON mapping
+                            sfx.playMappedSkillSFX("Ali Morningstart", "Skill2.2", 0.0, -1, 0.0f); // Skill 2.2 volume comes from JSON mapping
                         } catch (InterruptedException e) {
                             Thread.currentThread().interrupt();
                         }
@@ -1171,11 +1171,11 @@ public class SurivivalGamePanel extends JPanel {
                                 }
                             }
                             if (System.currentTimeMillis() >= windSkill3EndAt) break;
-                            sfx.playMappedSkillSFX("Wind Wizard", "Skill3.1", 0.0, -1, 0.0f); // Skill 3.1
+                            sfx.playMappedSkillSFX("Ali Morningstart", "Skill3.1", 0.0, -1, 0.0f); // Skill 3.1
                             Thread windSkill3AfterEffect = new Thread(() -> {
                                 try {
                                     Thread.sleep(Math.max(1, windSkill3LoopDelay / 2));
-                                    sfx.playMappedSkillSFX("Wind Wizard", "Skill3.2", 0.0, -1, 0.0f); // Skill 3.2 mid-clip
+                                    sfx.playMappedSkillSFX("Ali Morningstart", "Skill3.2", 0.0, -1, 0.0f); // Skill 3.2 mid-clip
                                 } catch (InterruptedException e) {
                                     Thread.currentThread().interrupt();
                                 }
@@ -1187,11 +1187,11 @@ public class SurivivalGamePanel extends JPanel {
                     });
                     windSkill3Loop.setDaemon(true);
                     windSkill3Loop.start();
-                    sfx.playMappedSkillSFX("Wind Wizard", "Skill3.1", 0.0, -1, 0.0f); // initial Skill 3.1
+                    sfx.playMappedSkillSFX("Ali Morningstart", "Skill3.1", 0.0, -1, 0.0f); // initial Skill 3.1
                     Thread initialWindSkill3AfterEffect = new Thread(() -> {
                         try {
                             Thread.sleep(Math.max(1, windSkill3LoopDelay / 2));
-                            sfx.playMappedSkillSFX("Wind Wizard", "Skill3.2", 0.0, -1, 0.0f); // Skill 3.2 mid-clip
+                            sfx.playMappedSkillSFX("Ali Morningstart", "Skill3.2", 0.0, -1, 0.0f); // Skill 3.2 mid-clip
                         } catch (InterruptedException e) {
                             Thread.currentThread().interrupt();
                         }
@@ -1202,7 +1202,7 @@ public class SurivivalGamePanel extends JPanel {
                 }
                 default -> soundIndex = -1;
             }
-        } else if ("Water Wizard".equalsIgnoreCase(charName)) {
+        } else if ("Ondine".equalsIgnoreCase(charName)) {
             int waterSkillIndex = switch (skillID) {
                 case 1 -> 34; // Water Wizard - Skill 1
                 case 2 -> 35; // Water Wizard - Skill 2
@@ -1211,12 +1211,12 @@ public class SurivivalGamePanel extends JPanel {
             };
             if (waterSkillIndex >= 0) {
                 if (skillID == 1 || skillID == 2) {
-                    sfx.playMappedSkillSFX("Water Wizard", "SkillHold", 0.0, -1, 0.0f);
+                    sfx.playMappedSkillSFX("Ondine", "SkillHold", 0.0, -1, 0.0f);
                     final String delayedWaterSkillKey = (skillID == 1) ? "Skill1" : "Skill2";
                     Thread delayedWaterSkill = new Thread(() -> {
                         try {
                             Thread.sleep(600);
-                            sfx.playMappedSkillSFX("Water Wizard", delayedWaterSkillKey, 0.0, -1, 0.0f);
+                            sfx.playMappedSkillSFX("Ondine", delayedWaterSkillKey, 0.0, -1, 0.0f);
                         } catch (InterruptedException e) {
                             Thread.currentThread().interrupt();
                         }
@@ -1226,12 +1226,12 @@ public class SurivivalGamePanel extends JPanel {
                     return;
                 }
                 if (skillID == 3) {
-                    sfx.playMappedSkillSFX("Water Wizard", "Skill3.1", 0.0, -1, 0.0f);
+                    sfx.playMappedSkillSFX("Ondine", "Skill3.1", 0.0, -1, 0.0f);
                     final int waterSkill3Delay = sfx.getSkillSoundDurationMillis(36, 0.0);
                     Thread delayedWaterSkill3_2 = new Thread(() -> {
                         try {
                             Thread.sleep(Math.max(0, waterSkill3Delay));
-                            sfx.playMappedSkillSFX("Water Wizard", "Skill3.2", 0.0, -1, 0.0f);
+                            sfx.playMappedSkillSFX("Ondine", "Skill3.2", 0.0, -1, 0.0f);
                         } catch (InterruptedException e) {
                             Thread.currentThread().interrupt();
                         }
@@ -1241,7 +1241,7 @@ public class SurivivalGamePanel extends JPanel {
                     return;
                 }
             }
-        } else if ("Dark Wizard".equalsIgnoreCase(charName)) {
+        } else if ("Yuri Moonshade".equalsIgnoreCase(charName)) {
             soundIndex = switch (skillID) {
                 case 1 -> 30; // Dark Wizard - Skill 1
                 case 2 -> 31; // Dark Wizard - Skill 2
@@ -1252,7 +1252,7 @@ public class SurivivalGamePanel extends JPanel {
                 // Ensure Dark Wizard SFX play fully and boost 2/3 (skill3 boosted more)
                 stopAfterMillis = -1;
             }
-        } else if ("Nature Wizard".equalsIgnoreCase(charName)) {
+        } else if ("Earl Froggington".equalsIgnoreCase(charName)) {
             soundIndex = switch (skillID) {
                 case 1 -> isNatureDefenseFormAltSkill ? 27 : 26;
                 case 2 -> 28;
@@ -1275,11 +1275,11 @@ public class SurivivalGamePanel extends JPanel {
         if (soundIndex >= 0) {
             // Try mapped playback first (data-driven). The mapping keys use "Character Name:SkillKey".
             String mappedSkillKey = "Skill" + skillID;
-            if ("Nature Wizard".equalsIgnoreCase(charName) && skillID == 1) {
+            if ("Earl Froggington".equalsIgnoreCase(charName) && skillID == 1) {
                 mappedSkillKey = isNatureDefenseFormAltSkill ? "Skill1.defense" : "Skill1.normal";
-            } else if ("Water Wizard".equalsIgnoreCase(charName) && skillID == 3) {
+            } else if ("Ondine".equalsIgnoreCase(charName) && skillID == 3) {
                 mappedSkillKey = "Skill3.1"; // water skill3 uses 3.1/3.2
-            } else if ("Steel Wizard".equalsIgnoreCase(charName) && skillID == 1) {
+            } else if ("Faecyrion Vhaloris".equalsIgnoreCase(charName) && skillID == 1) {
                 mappedSkillKey = "Skill1.1"; // handled earlier but keep fallback
             }
             sfx.playMappedSkillSFX(charName, mappedSkillKey, timeOffset, stopAfterMillis, volumeGainDb);
@@ -1401,7 +1401,7 @@ public class SurivivalGamePanel extends JPanel {
                 }
             } else {
                 Runnable spawnProjectile = () -> {
-                    if (actor != null && "Wind Wizard".equalsIgnoreCase(actor.name)
+                    if (actor != null && "Ali Morningstart".equalsIgnoreCase(actor.name)
                         && activeProjectileDef != null && activeProjectileDef.beam) {
                         stopSkillAnimation(actingPlayerOne);
                     }
@@ -1971,7 +1971,7 @@ public class SurivivalGamePanel extends JPanel {
     }
 
     private int getSkillFrameWidth(CharacterDef def, int skillID) {
-        if (def != null && "Wind Wizard".equals(def.name)) {
+        if (def != null && "Ali Morningstart".equals(def.name)) {
             if (skillID == 2) return 200;
             if (skillID == 3) return 288;
         }
@@ -1979,7 +1979,7 @@ public class SurivivalGamePanel extends JPanel {
     }
 
     private int getSkillFrameHeight(CharacterDef def, int skillID) {
-        if (def != null && "Wind Wizard".equals(def.name) && (skillID == 2 || skillID == 3)) {
+        if (def != null && "Ali Morningstart".equals(def.name) && (skillID == 2 || skillID == 3)) {
             return 128;
         }
         return DEFAULT_FRAME_SIZE;
@@ -2376,7 +2376,7 @@ public class SurivivalGamePanel extends JPanel {
         CharacterDef actor = isPlayerOne ? currentPlayerDef : currentEnemyDef;
         int activeSkillID = isPlayerOne ? activePlayerSkillID : activeEnemySkillID;
         List<BufferedImage> frames = isPlayerOne ? activePlayerSkillFrames : activeEnemySkillFrames;
-        return actor != null && "Wind Wizard".equalsIgnoreCase(actor.name) && activeSkillID == 3 && !frames.isEmpty();
+        return actor != null && "Ali Morningstart".equalsIgnoreCase(actor.name) && activeSkillID == 3 && !frames.isEmpty();
     }
 
     private boolean isTargetOverlayAttack3(boolean isPlayerOne) {
@@ -2390,7 +2390,7 @@ public class SurivivalGamePanel extends JPanel {
     private boolean isWindWizardSkill2(boolean isPlayerOne) {
         CharacterDef actor = isPlayerOne ? currentPlayerDef : currentEnemyDef;
         int activeSkillID = isPlayerOne ? activePlayerSkillID : activeEnemySkillID;
-        return actor != null && "Wind Wizard".equalsIgnoreCase(actor.name) && activeSkillID == 2;
+        return actor != null && "Ali Morningstart".equalsIgnoreCase(actor.name) && activeSkillID == 2;
     }
 
     private void drawAnchoredSkillFrame(Graphics2D g2,
@@ -2703,7 +2703,7 @@ public class SurivivalGamePanel extends JPanel {
 
     private int getProjectileSpawnFrame(CharacterDef actor, int skillID) {
         if (actor == null) return -1;
-        if ("Dark Wizard".equalsIgnoreCase(actor.name)) {
+        if ("Yuri Moonshade".equalsIgnoreCase(actor.name)) {
             if (skillID == 1) return 9;
             if (skillID == 2) return 7;
         }
@@ -2904,7 +2904,7 @@ public class SurivivalGamePanel extends JPanel {
         if (!defs.isEmpty()) return List.copyOf(defs);
 
         return List.of(
-                new CharacterDef("Light Mage",
+                new CharacterDef("Gwyneth Verdantide",
                         "A former temple guardian who forged sacred combat arts to protect frontier villages.",
                         "Light Sword", "Halo of Aegis", "Dawn Piercer",
                         "Unleashes a radiant slash that deals high single-target light damage.",
@@ -2919,7 +2919,7 @@ public class SurivivalGamePanel extends JPanel {
                         new CharacterDef.AnimationDef("/assets/spritesheet/Light Mage/Hurt-Sheet.png",  DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_HURT_DELAY_MS),
                         new CharacterDef.AnimationDef("/assets/spritesheet/Light Mage/Dead-Sheet.png",  DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_DEAD_DELAY_MS),
                         DEFAULT_DRAW_WIDTH, DEFAULT_DRAW_HEIGHT),
-                new CharacterDef("Idk Magician",
+                new CharacterDef("Caedric Thunderbound",
                         "A wandering arcane prodigy who channels unstable spellcraft in battle.",
                         "Magic Arrow", "Arcane Charge", "Magic Sphere",
                         "Fires a condensed arcane bolt that pierces one target and deals medium magic damage.",
@@ -2934,7 +2934,7 @@ public class SurivivalGamePanel extends JPanel {
                         new CharacterDef.AnimationDef("/assets/spritesheet/Idk Magician/Hurt.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_HURT_DELAY_MS),
                         new CharacterDef.AnimationDef("/assets/spritesheet/Idk Magician/Dead.png", DEFAULT_FRAME_SIZE, DEFAULT_FRAME_SIZE, DEFAULT_DEAD_DELAY_MS),
                         DEFAULT_DRAW_WIDTH, DEFAULT_DRAW_HEIGHT),
-                    new CharacterDef("Water Wizard",
+                    new CharacterDef("Ondine",
                         "A tidebound mage who shapes pressure, mist, and currents into disciplined battlefield control. He wears foes down with forceful strikes and relentless flow.",
                         "Tidal Blade", "Barrier Surge", "Undertow Hex",
                         "Slices one enemy with a pressurized water blade that deals steady damage.",
@@ -2953,7 +2953,7 @@ public class SurivivalGamePanel extends JPanel {
                         null,
                         null,
                         DEFAULT_DRAW_WIDTH, DEFAULT_DRAW_HEIGHT),
-                    new CharacterDef("Wind Wizard",
+                    new CharacterDef("Ali Morningstart",
                         "A sky runner who bends pressure and razor gusts into elegant battlefield control. She dances through combat, striking fast and breaking enemy rhythm.",
                         "Gale Cut", "Cyclone Guard", "Tempest Lash",
                         "Cuts through one enemy with a razor gust that deals quick damage.",
