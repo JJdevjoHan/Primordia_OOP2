@@ -1,10 +1,9 @@
 package engine.enums;
 
-
 public enum GameState {
     INTRO,
     MENU,
-    CHARACTER_SELECT,
+    CHARACTER_SELECTION,
     GAME,
     SURVIVAL,
     ARCADE,

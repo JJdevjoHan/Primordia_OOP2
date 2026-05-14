@@ -1,6 +1,19 @@
 package engine.gameplay;
 
 import assets.Utility.*;
+import engine.audio.SoundManager;
+import engine.character.CharacterDataLoader;
+import engine.character.CharacterDef;
+import engine.core.GameWindow;
+import engine.enums.GameMode;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
+import javax.imageio.ImageIO;
+import javax.swing.*;
+import javax.xml.parsers.DocumentBuilderFactory;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -13,30 +26,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.imageio.ImageIO;
-import javax.swing.*;
-import javax.xml.parsers.DocumentBuilderFactory;
-
-import engine.core.GameWindow;
-import engine.audio.SoundManager;
-import engine.character.CharacterDataLoader;
-import engine.character.CharacterDef;
-import engine.enums.GameMode;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 
 /**
  * ArcadeGamePanel — best-of-3 (configurable via RoundManager) fight where
  * BOTH players have their HP and MP fully restored at the start of every round.
  * Supports PVP and PVB modes. No survival scoring, no enemy swapping.
  */
-public class ArcadeGamePanel extends JPanel {
+public class ArcadeGamePanel extends AbstractGamePanel {
 
-    private final int tileSize     = 128;
-    private final int screenWidth  = tileSize * 12;
-    private final int screenHeight = tileSize * 7;
 
     private static final int DEFAULT_DRAW_WIDTH     = 480;
     private static final int DEFAULT_DRAW_HEIGHT    = 480;
@@ -51,38 +48,11 @@ public class ArcadeGamePanel extends JPanel {
     private static final int WIND_SKILL3_FEET_OFFSET_X = 80;
     private static final int WIND_SKILL3_FEET_OFFSET_Y = 0;
     private static final double WIND_SKILL3_SCALE = 2.2;
-    private static final int NATURE_FORM_FREEZE_FRAME_ONE_BASED = 5;
-    private static final int NATURE_FORM_RELEASE_START_FRAME_ONE_BASED = 6;
-    private static final String NATURE_SHOT_SHEET_PATH = "/src/assets/spritesheet/Nature Wizard/Shot-Sheet.png";
-    private static final String NATURE_DART_SHEET_PATH = "/src/assets/spritesheet/Nature Wizard/Dart.png";
-    private static final int NATURE_ALT_FRAME_SIZE = 128;
-    private static final int NATURE_DART_DRAW_SIZE = 144;
-    private static final int NATURE_DART_SPAWN_OFFSET_X = 80;
+
 
     private static final int DEFAULT_PROJECTILE_DRAW_SIZE       = 144;
-    private static final int DEFAULT_PROJECTILE_VERTICAL_OFFSET = 50;
     private static final int DEFAULT_PROJECTILE_SPEED           = 44;
 
-    private static final int MAX_MP            = 100;
-    private static final int MP_REGEN_PER_TURN = 10;
-    private static final int[] SKILL_MP_COST   = { 10, 20, 30 };
-
-    private static final int TURN_TIME_SECONDS    = 10;
-    private static final int TIMER_WARN_THRESHOLD = 3;
-    private static final int BOT_TURN_DELAY_MS    = 900;
-    private static final int SKILL_PANEL_MIN_WIDTH = 928;
-    private static final int SKILL_PANEL_MAX_WIDTH = 1216;
-    private static final int SKILL_PANEL_HEIGHT = 192;
-    private static final int SKILL_PANEL_BOTTOM_MARGIN = 64;
-    private static final int SKILL_PANEL_SIDE_MARGIN = 32;
-    private static final String BATTLE_UI_BOX_PATH = "/assets/BattleUI/BattleUI_Box.png";
-
-    private int mapPixelWidth  = screenWidth;
-    private int mapPixelHeight = screenHeight;
-
-    public static final List<CharacterDef> ALL_CHARACTERS = loadCharacterDefs();
-
-    
     private List<Image> backgroundLayers = new ArrayList<>();
     private double[] backgroundLayerOffsets = new double[0];
     private double[] backgroundLayerSpeeds  = new double[0];
@@ -98,6 +68,11 @@ public class ArcadeGamePanel extends JPanel {
     private List<BufferedImage> enemyFrames     = new ArrayList<>();
     private int                 enemyFrameIndex = 0;
     private Timer               enemyTimer;
+
+    protected int screenWidth  = SCREEN_WIDTH;
+    protected int screenHeight = SCREEN_HEIGHT;
+
+    private static final int BOT_TURN_DELAY_MS = 900;
 
     private List<List<BufferedImage>> playerSkillAnimations   = new ArrayList<>();
     private List<List<BufferedImage>> enemySkillAnimations    = new ArrayList<>();
@@ -139,6 +114,11 @@ public class ArcadeGamePanel extends JPanel {
     // Steel Wizard Skill 2 tracking (for event-based collision trigger)
     private boolean isSteelWizardSkill2Active = false;
     private boolean steelWizardSkill2IsPlayerOne = false;
+
+    public static List<CharacterDef> ALL_CHARACTERS = loadCharacterDefs();
+
+    protected int mapPixelWidth  = screenWidth;
+    protected int mapPixelHeight = screenHeight;
 
     private List<BufferedImage> playerHurtFrames = new ArrayList<>();
     private List<BufferedImage> enemyHurtFrames  = new ArrayList<>();
@@ -231,9 +211,7 @@ public class ArcadeGamePanel extends JPanel {
         this.difficulty = difficulty;
         this.window     = window;
 
-        setPreferredSize(new Dimension(screenWidth, screenHeight));
         setFocusable(true);
-        addKeyListener(new KeyInputs(this));
         addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override public void componentResized(java.awt.event.ComponentEvent e) {
                 updateP1DrawFromSpawn();
@@ -244,7 +222,7 @@ public class ArcadeGamePanel extends JPanel {
         });
 
         setLayout(null);
-        exitButton = new ExitButton().createExitButton(this);
+        exitButton = new ExitButton(window);
         add(exitButton);
 
         loadMapData("/assets/maps/map1.tmx");
@@ -474,7 +452,7 @@ public class ArcadeGamePanel extends JPanel {
                     window.stopGameMusic();
                     window.showCharacterSelection(GameMode.ARCADE);
                 },
-            window::showIntro
+                window::showIntro
         );
         popup.setLocationRelativeTo(window);
         popup.setVisible(true);
@@ -1462,7 +1440,7 @@ public class ArcadeGamePanel extends JPanel {
         ensureIdleTimersRunning();
     }
 
-    private void updateGameState() {
+    protected void updateGameState() {
         p1HP = Math.max(0, Math.min(100,    p1HP));
         p2HP = Math.max(0, Math.min(100,    p2HP));
         p1MP = Math.max(0, Math.min(MAX_MP, p1MP));

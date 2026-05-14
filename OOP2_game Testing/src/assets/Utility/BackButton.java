@@ -1,50 +1,61 @@
 package assets.Utility;
 
-import engine.gameplay.ArcadeGamePanel;
-import engine.gameplay.GamePanel;
-import engine.core.GameWindow;
-import engine.gameplay.SurivivalGamePanel;
-
 import javax.swing.*;
 import java.awt.*;
 
-public class BackButton {
+import engine.core.GameWindow;
+import engine.audio.SoundManager;
+import engine.interfaces.SkillExecutor;
 
-    public JButton createBackButton(GameWindow window, JPanel panel) {
+/**
+ * OOP Principle: Inheritance + Single Responsibility
+ *
+ * BEFORE: BackButton was a factory class (createBackButton()) with its own
+ *         copy of all button styling AND an instanceof chain to call stopMusic()
+ *         on whichever panel type happened to be passed in.
+ *
+ * AFTER:  Styling is inherited from BaseGameButton.
+ *         stopMusic() is called via the SkillExecutor interface — no instanceof,
+ *         no imports of concrete panel classes.
+ */
+public class BackButton extends BaseGameButton {
 
-        JButton backBtn = new JButton("Back");
-        backBtn.setOpaque(true);
-        backBtn.setContentAreaFilled(true);
-        backBtn.setFocusPainted(false);
-        backBtn.setFont(new Font("Arial", Font.BOLD, 14));
-        backBtn.setForeground(Color.WHITE);
-        backBtn.setBackground(new Color(40, 40, 60));
-        backBtn.setBorder(BorderFactory.createLineBorder(new Color(200, 160, 40), 2));
+    private static final Color NORMAL = new Color(40, 40, 60);
+    private static final Color HOVER  = new Color(70, 70, 100);
 
+    private final GameWindow   window;
+    private final JPanel       panel;
+    private final SkillExecutor executor;   // used only for stopMusic()
 
-        backBtn.addActionListener(e -> {
-            System.out.println("Back button pressed!"); // <- see if this prints
-            int confirm = JOptionPane.showConfirmDialog(
-                    panel,
-                "Return to intro?",
-                    "Confirm",
-                    JOptionPane.YES_NO_OPTION
-            );
+    /**
+     * @param window   GameWindow to call showIntro() on
+     * @param panel    Parent panel (used as dialog owner)
+     * @param executor The active game panel (implements SkillExecutor + stopMusic)
+     */
+    public BackButton(GameWindow window, JPanel panel, SkillExecutor executor) {
+        super();
+        this.window   = window;
+        this.panel    = panel;
+        this.executor = executor;
+    }
 
-            if (confirm == JOptionPane.YES_OPTION) {
-                System.out.println("Switching to menu...");
-                if (panel instanceof GamePanel gamePanel) {
-                    gamePanel.stopMusic();
-                } else if (panel instanceof SurivivalGamePanel survivalGamePanel) {
-                    survivalGamePanel.stopMusic();
-                } else if (panel instanceof ArcadeGamePanel arcadeGamePanel) {
-                    arcadeGamePanel.stopMusic();
-                }
-                SwingUtilities.invokeLater(window::showIntro);
-            }
-        });
+    @Override protected String getLabel()       { return "Back"; }
+    @Override protected Color  getNormalColor() { return NORMAL; }
+    @Override protected Color  getHoverColor()  { return HOVER;  }
+    @Override protected float  getFontSize()    { return 24f; }
 
+    @Override
+    protected javax.swing.border.Border getButtonBorder() {
+        return BorderFactory.createLineBorder(new Color(200, 160, 40), 2);
+    }
 
-        return backBtn;
+    @Override
+    protected void onClick() {
+        int choice = JOptionPane.showConfirmDialog(
+                panel, "Return to intro?", "Confirm", JOptionPane.YES_NO_OPTION);
+        if (choice == JOptionPane.YES_OPTION) {
+            executor.stopMusic();
+            SwingUtilities.invokeLater(window::showIntro);
+        }
     }
 }

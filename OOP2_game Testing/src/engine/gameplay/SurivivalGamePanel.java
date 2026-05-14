@@ -1,6 +1,19 @@
 package engine.gameplay;
 
 import assets.Utility.*;
+import engine.audio.SoundManager;
+import engine.character.CharacterDataLoader;
+import engine.character.CharacterDef;
+import engine.core.GameWindow;
+import engine.enums.GameMode;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
+import javax.imageio.ImageIO;
+import javax.swing.*;
+import javax.xml.parsers.DocumentBuilderFactory;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -13,25 +26,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.imageio.ImageIO;
-import javax.swing.*;
-import javax.xml.parsers.DocumentBuilderFactory;
 
-import engine.core.GameWindow;
-import engine.audio.SoundManager;
-import engine.character.CharacterDataLoader;
-import engine.character.CharacterDef;
-import engine.enums.GameMode;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
+public class SurivivalGamePanel extends AbstractGamePanel {
 
-public class SurivivalGamePanel extends JPanel {
-
-    private final int tileSize     = 128;
-    private final int screenWidth  = tileSize * 12;
-    private final int screenHeight = tileSize * 7;
     private static final int DEFAULT_DRAW_WIDTH       = 480;
     private static final int DEFAULT_DRAW_HEIGHT      = 480;
     private static final int DEFAULT_FRAME_SIZE       = 128;
@@ -45,13 +42,6 @@ public class SurivivalGamePanel extends JPanel {
     private static final int WIND_SKILL3_FEET_OFFSET_X = 80;
     private static final int WIND_SKILL3_FEET_OFFSET_Y = 0;
     private static final double WIND_SKILL3_SCALE = 2.2;
-    private static final int NATURE_FORM_FREEZE_FRAME_ONE_BASED = 5;
-    private static final int NATURE_FORM_RELEASE_START_FRAME_ONE_BASED = 6;
-    private static final String NATURE_SHOT_SHEET_PATH = "/src/assets/spritesheet/Nature Wizard/Shot-Sheet.png";
-    private static final String NATURE_DART_SHEET_PATH = "/src/assets/spritesheet/Nature Wizard/Dart.png";
-    private static final int NATURE_ALT_FRAME_SIZE = 128;
-    private static final int NATURE_DART_DRAW_SIZE = 144;
-    private static final int NATURE_DART_SPAWN_OFFSET_X = 80;
     private static final int DEFAULT_PROJECTILE_DRAW_SIZE       = 144;
     private static final int DEFAULT_PROJECTILE_VERTICAL_OFFSET = 50;
     private static final int DEFAULT_PROJECTILE_SPEED           = 44;
@@ -59,7 +49,7 @@ public class SurivivalGamePanel extends JPanel {
     private static final int BOT_TURN_DELAY_MS = 900;
 
     private static final int SURVIVAL_ROUND_HEAL_AMOUNT = 30;
-
+    /*
     private static final int MAX_MP              = 100;
     private static final int MP_REGEN_PER_TURN   = 10;   // MP regained at the start of each turn
 
@@ -74,10 +64,17 @@ public class SurivivalGamePanel extends JPanel {
     private static final int SKILL_PANEL_SIDE_MARGIN = 32;
     private static final String BATTLE_UI_BOX_PATH = "/assets/BattleUI/BattleUI_Box.png";
 
+     */
+
+    protected int screenWidth  = SCREEN_WIDTH;
+    protected int screenHeight = SCREEN_HEIGHT;
+
     private int mapPixelWidth  = screenWidth;
     private int mapPixelHeight = screenHeight;
 
+
     public static final List<CharacterDef> ALL_CHARACTERS = loadCharacterDefs();
+
 
     
     private List<Image> backgroundLayers = new ArrayList<>();
@@ -231,9 +228,8 @@ public class SurivivalGamePanel extends JPanel {
         this.difficulty = difficulty;
         this.window     = window;
 
-        this.setPreferredSize(new Dimension(screenWidth, screenHeight));
         this.setFocusable(true);
-        this.addKeyListener(new KeyInputs(this));
+
         this.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
             public void componentResized(java.awt.event.ComponentEvent e) {
@@ -246,7 +242,7 @@ public class SurivivalGamePanel extends JPanel {
 
         this.setLayout(null);
 
-        exitButton = new ExitButton().createExitButton(this);
+        exitButton = new ExitButton(window);
         add(exitButton);
 
 
@@ -1486,7 +1482,7 @@ public class SurivivalGamePanel extends JPanel {
         ensureIdleTimersRunning();
     }
 
-    private void updateGameState() {
+    protected void updateGameState() {
         p1HP = Math.max(0, Math.min(100,    p1HP));
         p2HP = Math.max(0, Math.min(100,    p2HP));
         p1MP = Math.max(0, Math.min(MAX_MP, p1MP));

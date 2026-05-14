@@ -5,11 +5,9 @@ import engine.gameplay.BotAI;
 import engine.gameplay.GamePanel;
 import engine.gameplay.SurivivalGamePanel;
 
-import javax.swing.*;
-
 public class GameFactory {
 
-    public static JPanel createPvPGame(
+    public static GamePanel createPvPGame(
             GameWindow window,
             int p1,
             int p2
@@ -17,7 +15,7 @@ public class GameFactory {
         return new GamePanel(window, p1, p2);
     }
 
-    public static JPanel createSurvivalGame(
+    public static SurivivalGamePanel createSurvivalGame(
             GameWindow window,
             int player,
             int bot

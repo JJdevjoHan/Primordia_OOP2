@@ -1,5 +1,7 @@
 package engine.core;
 
+import engine.enums.GameState;
+
 import javax.swing.*;
 import java.awt.*;
 import java.util.HashMap;

@@ -1,65 +1,41 @@
 package assets.Utility;
-import engine.core.GameWindow;
+
 import javax.swing.*;
 import java.awt.*;
 
-public class ExitButton {
+import engine.core.GameWindow;
+import engine.audio.SoundManager;
 
-    public JButton createExitButton(JPanel panel) {
-        final String label = "X";
-        JButton exitButton = new JButton("") {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                assets.Utility.ButtonTextRenderer.drawCenteredText(g2, this, label, 5);
-                g2.dispose();
-            }
-        };
+/**
+ * OOP Principle: Inheritance + Single Responsibility
+ *
+ * BEFORE: ExitButton was a factory class with its own copy of all button styling,
+ *         its own hover listener, and a private getGameWindow() helper that walked
+ *         the component tree to find the GameWindow.
+ *
+ * AFTER:  Styling and hover are inherited from BaseGameButton.
+ *         GameWindow is injected directly — no tree-walking needed.
+ */
+public class ExitButton extends BaseGameButton {
 
-        exitButton.setFont(assets.Utility.FontManager.getFont(30f));
-        //exitButton.setFont(new Font("Arial", Font.BOLD, 16));
-        exitButton.setForeground(Color.WHITE);
-        exitButton.setBackground(new Color(180, 40, 40));
-        exitButton.setOpaque(true);
-        exitButton.setContentAreaFilled(true);
-        exitButton.setFocusPainted(false);
-        exitButton.setBorder(BorderFactory.createEmptyBorder());
+    private static final Color NORMAL = new Color(180, 40,  40);
+    private static final Color HOVER  = new Color(220, 60,  60);
 
-        exitButton.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
-                exitButton.setBackground(new Color(220, 60, 60));
-            }
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                exitButton.setBackground(new Color(180, 40, 40));
-            }
-        });
+    private final GameWindow window;
 
-        // Try to get the GameWindow from the panel and call its close handler
-        exitButton.addActionListener(e -> {
-            GameWindow window = getGameWindow(panel);
-            if (window != null) {
-                window.handleExitButtonClick();
-            } else {
-                System.exit(0);
-            }
-        });
-
-        return exitButton;
+    public ExitButton(GameWindow window) {
+        super();
+        this.window = window;
     }
-    
-    private GameWindow getGameWindow(JPanel panel) {
-        Component comp = panel;
-        while (comp != null) {
-            if (comp instanceof JFrame) {
-                JFrame frame = (JFrame) comp;
-                if (frame instanceof GameWindow) {
-                    return (GameWindow) frame;
-                }
-            }
-            comp = comp.getParent();
-        }
-        return null;
+
+    @Override protected String getLabel()       { return "X"; }
+    @Override protected Color  getNormalColor() { return NORMAL; }
+    @Override protected Color  getHoverColor()  { return HOVER;  }
+    @Override protected float  getFontSize()    { return 30f; }
+
+    @Override
+    protected void onClick() {
+        if (window != null) window.handleExitButtonClick();
+        else System.exit(0);
     }
 }

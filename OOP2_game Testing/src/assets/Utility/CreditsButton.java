@@ -1,49 +1,47 @@
 package assets.Utility;
 
-import engine.core.GameWindow;
-import engine.audio.SoundManager;
-
 import javax.swing.*;
 import java.awt.*;
 
-public class CreditsButton {
+import engine.core.GameWindow;
+import engine.audio.SoundManager;
 
-    public JButton createCreditsButton(GameWindow window, SoundManager sound) {
-        final String label = "CREDITS";
-        JButton creditsButton = new JButton("") {
-            @Override
-            protected void paintComponent(Graphics g) {
-                super.paintComponent(g);
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                ButtonTextRenderer.drawCenteredText(g2, this, label, 3);
-                g2.dispose();
-            }
-        };
+/**
+ * OOP Principle: Inheritance + Single Responsibility
+ *
+ * BEFORE: CreditsButton was a factory class duplicating all button styling.
+ *
+ * AFTER:  Only the credits-specific behaviour lives here.
+ *         All shared styling is inherited from BaseGameButton.
+ */
+public class CreditsButton extends BaseGameButton {
 
-        creditsButton.setFont(FontManager.getFont(24f));
-        creditsButton.setForeground(Color.WHITE);
-        creditsButton.setBackground(new Color(30, 30, 50));
-        creditsButton.setFocusPainted(false);
-        creditsButton.setOpaque(true);
-        creditsButton.setContentAreaFilled(true);
-        creditsButton.setBorder(BorderFactory.createLineBorder(new Color(200, 160, 40), 2));
+    private static final Color NORMAL = new Color(30,  30,  50);
+    private static final Color HOVER  = new Color(70,  70, 100);
 
-        creditsButton.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
-                creditsButton.setBackground(new Color(70, 70, 100));
-            }
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                creditsButton.setBackground(new Color(30, 30, 50));
-            }
-        });
+    private final GameWindow   window;
+    private final SoundManager sound;
 
-        creditsButton.addActionListener(e -> {
-            sound.setFile(8);
-            sound.play();
-            window.showCredits();
-        });
+    public CreditsButton(GameWindow window, SoundManager sound) {
+        super();
+        this.window = window;
+        this.sound  = sound;
+    }
 
-        return creditsButton;
+    @Override protected String getLabel()       { return "CREDITS"; }
+    @Override protected Color  getNormalColor() { return NORMAL; }
+    @Override protected Color  getHoverColor()  { return HOVER;  }
+    @Override protected float  getFontSize()    { return 24f; }
+
+    @Override
+    protected javax.swing.border.Border getButtonBorder() {
+        return BorderFactory.createLineBorder(new Color(200, 160, 40), 2);
+    }
+
+    @Override
+    protected void onClick() {
+        sound.setFile(8);
+        sound.play();
+        window.showCredits();
     }
 }
