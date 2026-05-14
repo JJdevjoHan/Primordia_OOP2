@@ -21,7 +21,8 @@ public class CreditsPanel extends JPanel {
         this.setLayout(null);
 
         loadBackground("/assets/maps/credits.png");
-        backButton = new BackButton().createBackButton(window, this);
+        JButton backButton = new JButton("Back");
+        backButton.addActionListener(e -> window.showIntro());
         add(backButton);
     }
 

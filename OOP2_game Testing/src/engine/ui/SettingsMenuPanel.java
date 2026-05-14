@@ -449,8 +449,8 @@ public class SettingsMenuPanel extends JPanel {
     }
 
     private void closeSettings() {
-        window.closeSettings(GameState.INTRO);    // returning from intro
-        window.closeSettings(GameState.MENU);     // returning from menu
-        window.closeSettings(GameState.GAME);     // returning from in-game
+        window.closeSettings("INTRO");
+        window.closeSettings("MENU");
+        window.closeSettings("GAME");     // returning from in-game
     }
 }
