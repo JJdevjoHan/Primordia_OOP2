@@ -23,7 +23,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-public class GamePanel extends JPanel {
+public class GamePanel extends AbstractGamePanel {
     private final int tileSize = 128;
     private final int screenWidth = tileSize * 12;
     private final int screenHeight = tileSize * 7;
@@ -35,18 +35,11 @@ public class GamePanel extends JPanel {
     private static final int DEFAULT_SKILL_DELAY_MS = 90;
     private static final int DEFAULT_HURT_DELAY_MS = 90;
     private static final int POST_ATTACK_HURT_MS = 600;
-    private static final int BARS_TOP_Y = 84;
     private static final int WIND_SKILL2_P2_LEFT_NUDGE_X = 400;
     private static final int WIND_SKILL3_FEET_OFFSET_X = 80;
     private static final int WIND_SKILL3_FEET_OFFSET_Y = 0;
     private static final double WIND_SKILL3_SCALE = 2.2;
-    private static final int NATURE_FORM_FREEZE_FRAME_ONE_BASED = 5;
-    private static final int NATURE_FORM_RELEASE_START_FRAME_ONE_BASED = 6;
-    private static final String NATURE_SHOT_SHEET_PATH = "/src/assets/spritesheet/Nature Wizard/Shot-Sheet.png";
-    private static final String NATURE_DART_SHEET_PATH = "/src/assets/spritesheet/Nature Wizard/Dart.png";
-    private static final int NATURE_ALT_FRAME_SIZE = 128;
-    private static final int NATURE_DART_DRAW_SIZE = 144;
-    private static final int NATURE_DART_SPAWN_OFFSET_X = 80;
+
     private static final int DEFAULT_PROJECTILE_DRAW_SIZE = 144;
     private static final int DEFAULT_PROJECTILE_VERTICAL_OFFSET = 50;
     private static final int DEFAULT_PROJECTILE_SPEED = 44;
@@ -1215,7 +1208,7 @@ public class GamePanel extends JPanel {
         repaint();
     }
 
-    private void updateGameState() {
+    protected void updateGameState() {
         p1HP = Math.max(0, Math.min(100,    p1HP));
         p2HP = Math.max(0, Math.min(100,    p2HP));
         p1MP = Math.max(0, Math.min(MAX_MP, p1MP));
