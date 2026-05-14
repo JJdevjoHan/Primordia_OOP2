@@ -51,7 +51,7 @@ public abstract class BaseGameButton extends JButton {
     // ── Template-method hooks ──────────────────────────────────────────────
 
     /** Text rendered on the button face. */
-    protected abstract String getLabel();
+    protected abstract String getButtonLabel();
 
     /** Background colour when the mouse is not over the button. */
     protected abstract Color getNormalColor();

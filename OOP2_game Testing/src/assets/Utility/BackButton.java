@@ -39,7 +39,7 @@ public class BackButton extends BaseGameButton {
         this.executor = executor;
     }
 
-    @Override protected String getLabel()       { return "Back"; }
+    @Override protected String getButtonLabel()       { return "Back"; }
     @Override protected Color  getNormalColor() { return NORMAL; }
     @Override protected Color  getHoverColor()  { return HOVER;  }
     @Override protected float  getFontSize()    { return 24f; }

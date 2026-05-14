@@ -28,7 +28,7 @@ public class CreditsButton extends BaseGameButton {
         this.sound  = sound;
     }
 
-    @Override protected String getLabel()       { return "CREDITS"; }
+    @Override protected String getButtonLabel()       { return "CREDITS"; }
     @Override protected Color  getNormalColor() { return NORMAL; }
     @Override protected Color  getHoverColor()  { return HOVER;  }
     @Override protected float  getFontSize()    { return 24f; }

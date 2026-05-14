@@ -127,7 +127,7 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
         loadGalleryBackgrounds();
         randomizeGalleryBackgroundSelection();
 
-        exitButton = new ExitButton().createExitButton(this);
+        exitButton = new ExitButton(window);
         add(exitButton);
         // Preload player selection SFX so playback is immediate when Enter is pressed
         new Thread(() -> {

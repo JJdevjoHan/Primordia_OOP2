@@ -28,7 +28,7 @@ public class ExitButton extends BaseGameButton {
         this.window = window;
     }
 
-    @Override protected String getLabel()       { return "X"; }
+    @Override protected String getButtonLabel()       { return "X"; }
     @Override protected Color  getNormalColor() { return NORMAL; }
     @Override protected Color  getHoverColor()  { return HOVER;  }
     @Override protected float  getFontSize()    { return 30f; }

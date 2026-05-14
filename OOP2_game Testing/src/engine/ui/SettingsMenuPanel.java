@@ -3,6 +3,7 @@ package engine.ui;
 import assets.Utility.FontManager;
 import engine.core.GameWindow;
 import engine.audio.SoundManager;
+import engine.enums.GameState;
 
 import javax.swing.*;
 import java.awt.*;
@@ -448,6 +449,8 @@ public class SettingsMenuPanel extends JPanel {
     }
 
     private void closeSettings() {
-        window.closeSettings(previousPanelCard);
+        window.closeSettings(GameState.INTRO);    // returning from intro
+        window.closeSettings(GameState.MENU);     // returning from menu
+        window.closeSettings(GameState.GAME);     // returning from in-game
     }
 }

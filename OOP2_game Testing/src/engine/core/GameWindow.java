@@ -6,6 +6,8 @@ import engine.enums.GameState;
 
 import javax.swing.*;
 
+import java.awt.*;
+
 import static java.lang.System.exit;
 
 public class GameWindow extends JFrame {
@@ -75,7 +77,19 @@ public class GameWindow extends JFrame {
         showIntro();
     }
 
-    public void closeSettings(){
-        
+    public void closeSettings(GameState previousState) {
+        screenManager.showScreen(previousState);
+
+        // Remove the settings screen overlay if it was added dynamically
+        Component settingsComp = screenManager.getScreen(GameState.SETTINGS);
+        if (settingsComp != null) {
+            screenManager.removeScreen(GameState.SETTINGS);
+        }
+
+        // Restore focus to the previous panel if it's a JComponent
+        Component prev = screenManager.getScreen(previousState);
+        if (prev instanceof JComponent) {
+            ((JComponent) prev).requestFocusInWindow();
+        }
     }
 }
