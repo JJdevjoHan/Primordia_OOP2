@@ -33,10 +33,10 @@
             "drawWidth": 500,
             "drawHeight": 500,
             "speed": 44,
-            "verticalOffset": 70,
+            "verticalOffset": 80,
             "beam": true,
             "startDuringCast": true,
-            "anchorOnTargetCenter": true
+            "anchorOnTarget": true
           },
           "hurtTriggerBufferSeconds": 0.15,
           "description": "Unleashes a jagged lightning burst that shocks one enemy for moderate damage.",
@@ -56,10 +56,10 @@
             "drawWidth": 500,
             "drawHeight": 500,
             "speed": 44,
-            "verticalOffset": 0,
+            "verticalOffset": 40,
             "beam": true,
             "startDuringCast": true,
-            "anchorOnTargetCenter": true
+            "anchorOnTarget": true
           },
           "description": "Calls down a bolt of lightning, dealing significant damage to one enemy.",
           "manaCost": 22,
@@ -373,7 +373,7 @@
             "startDuringCast": true,
             "anchorOnTarget": true
           },
-          "description": "Uses his knife to summon thorned vines that deal damage and apply poison to one enemy.",
+          "description": "Uses his knife to summon thorned vines that deal damage and apply poison to one enemy. If in defense stance, he instead fires a quick dart that applies poison without damage.",
           "manaCost": 18,
           "power": 35,
           "cooldownTurns": 0,
@@ -390,11 +390,11 @@
             "drawWidth": 250,
             "drawHeight": 250,
             "speed": 44,
-            "verticalOffset": 20,
+            "verticalOffset": 0,
             "spawnOffsetX": 0,
             "beam": true,
             "startDuringCast": true,
-            "anchorOnTargetCenter": true
+            "anchorOnTarget": true
           },
           "description": "Lace poison on his knife and marks the target with a poison.",
           "manaCost": 24,
@@ -563,10 +563,10 @@
             "drawHeight": 736,
             "speed": 44,
             "verticalOffset": 0,
-            "spawnOffsetX": 0,
+            "spawnOffsetX": -150,
             "beam": true,
             "startDuringCast": true,
-            "anchorOnTargetCenter": true
+            "anchorOnTarget": true
           },
           "description": "Unleashes a beam of wind slashes that strikes one enemy.",
           "manaCost": 29,
@@ -606,10 +606,10 @@
             "drawWidth": 100,
             "drawHeight": 100,
             "speed": 44,
-            "verticalOffset": 50,
+            "verticalOffset": -80,
             "beam": true,
             "startDuringCast": true,
-            "anchorOnTargetCenter": true
+            "anchorOnTarget": true
           },
           "hurtTriggerBufferSeconds": 0.15,
           "description": "Strikes one enemy with a shadowy tail whip, dealing dark damage and burning them.",
