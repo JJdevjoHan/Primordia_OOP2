@@ -256,6 +256,17 @@ public class CharacterDef {
     public final int skill1PoisonDamage;
     public final int skill2PoisonDamage;
     public final int skill3PoisonDamage;
+    public String archetype = "";
+    public String[] weaknesses = new String[0];
+    public int skill1ShieldValue = 0;
+    public int skill2ShieldValue = 0;
+    public int skill3ShieldValue = 0;
+    public int skill1HealValue = 0;
+    public int skill2HealValue = 0;
+    public int skill3HealValue = 0;
+    public int skill1SelfHeal = 0;
+    public int skill2SelfHeal = 0;
+    public int skill3SelfHeal = 0;
 
     public CharacterDef(String name,
                         String backstory,
@@ -588,5 +599,71 @@ public class CharacterDef {
             case 3 -> skill3PoisonDamage;
             default -> 0;
         };
+    }
+
+    public int getSkillShieldValue(int skillID) {
+        return switch (skillID) {
+            case 1 -> skill1ShieldValue;
+            case 2 -> skill2ShieldValue;
+            case 3 -> skill3ShieldValue;
+            default -> 0;
+        };
+    }
+
+    public CharacterDef withArchetype(String archetype) {
+        this.archetype = archetype == null ? "" : archetype;
+        return this;
+    }
+
+    public CharacterDef withWeaknesses(String[] weaknesses) {
+        this.weaknesses = weaknesses == null ? new String[0] : weaknesses;
+        return this;
+    }
+
+    public CharacterDef withSkillShieldValues(int skill1ShieldValue, int skill2ShieldValue, int skill3ShieldValue) {
+        this.skill1ShieldValue = Math.max(0, skill1ShieldValue);
+        this.skill2ShieldValue = Math.max(0, skill2ShieldValue);
+        this.skill3ShieldValue = Math.max(0, skill3ShieldValue);
+        return this;
+    }
+
+    public CharacterDef withSkillHealValues(int skill1HealValue, int skill2HealValue, int skill3HealValue) {
+        this.skill1HealValue = Math.max(0, skill1HealValue);
+        this.skill2HealValue = Math.max(0, skill2HealValue);
+        this.skill3HealValue = Math.max(0, skill3HealValue);
+        return this;
+    }
+
+    public CharacterDef withSkillSelfHeals(int skill1SelfHeal, int skill2SelfHeal, int skill3SelfHeal) {
+        this.skill1SelfHeal = Math.max(0, skill1SelfHeal);
+        this.skill2SelfHeal = Math.max(0, skill2SelfHeal);
+        this.skill3SelfHeal = Math.max(0, skill3SelfHeal);
+        return this;
+    }
+
+    public int getSkillHealValue(int skillID) {
+        return switch (skillID) {
+            case 1 -> skill1HealValue;
+            case 2 -> skill2HealValue;
+            case 3 -> skill3HealValue;
+            default -> 0;
+        };
+    }
+
+    public int getSkillSelfHeal(int skillID) {
+        return switch (skillID) {
+            case 1 -> skill1SelfHeal;
+            case 2 -> skill2SelfHeal;
+            case 3 -> skill3SelfHeal;
+            default -> 0;
+        };
+    }
+
+    public boolean isWeakTo(String attackerArchetype) {
+        if (attackerArchetype == null || attackerArchetype.isBlank()) return false;
+        for (String weakness : weaknesses) {
+            if (attackerArchetype.equalsIgnoreCase(weakness)) return true;
+        }
+        return false;
     }
 }

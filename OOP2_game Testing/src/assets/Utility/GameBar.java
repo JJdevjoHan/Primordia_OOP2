@@ -12,6 +12,8 @@ public class GameBar extends JPanel {
     private Color   barColor;
     private BarType barType;
     private boolean fillFromRight = false;
+    private long shieldPulseUntil = 0L;
+    private Timer shieldPulseTimer;
 
    
     private static final Font HP_LABEL_FONT = FontManager.getFont(14f).deriveFont(Font.BOLD);
@@ -42,6 +44,20 @@ public class GameBar extends JPanel {
 
     public void setFillFromRight(boolean fillFromRight) {
         this.fillFromRight = fillFromRight;
+        repaint();
+    }
+
+    public void triggerShieldPulse() {
+        shieldPulseUntil = System.currentTimeMillis() + 900L;
+        if (shieldPulseTimer == null || !shieldPulseTimer.isRunning()) {
+            shieldPulseTimer = new Timer(40, e -> {
+                repaint();
+                if (System.currentTimeMillis() >= shieldPulseUntil) {
+                    ((Timer) e.getSource()).stop();
+                }
+            });
+            shieldPulseTimer.start();
+        }
         repaint();
     }
 
@@ -113,6 +129,19 @@ public class GameBar extends JPanel {
         g2.setColor(new Color(212, 175, 55));
         g2.setStroke(new BasicStroke(1.5f));
         g2.drawRoundRect(barX, 0, barW - 1, h - 1, arc, arc);
+
+        long pulseRemaining = shieldPulseUntil - System.currentTimeMillis();
+        if (barType == BarType.HP && pulseRemaining > 0) {
+            float pulse = Math.max(0f, Math.min(1f, pulseRemaining / 900f));
+            Composite oldComposite = g2.getComposite();
+            g2.setComposite(AlphaComposite.SrcOver.derive(0.2f + 0.35f * pulse));
+            g2.setPaint(new GradientPaint(barX, 0, new Color(75, 210, 255), barX + barW, h, new Color(20, 95, 230)));
+            g2.fillRoundRect(barX, 0, barW, h, arc, arc);
+            g2.setComposite(oldComposite);
+            g2.setColor(new Color(160, 235, 255));
+            g2.setStroke(new BasicStroke(2.2f));
+            g2.drawRoundRect(barX + 1, 1, barW - 3, h - 3, arc, arc);
+        }
 
         String valueText = currentVal + "/" + maxVal;
         int prefixW = fm.stringWidth(prefix);

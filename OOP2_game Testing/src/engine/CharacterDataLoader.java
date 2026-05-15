@@ -19,6 +19,8 @@ public final class CharacterDataLoader {
 
     public static class CharacterConfig {
         public final String name;
+        public final String archetype;
+        public final String[] weaknesses;
         public final String backstory;
         public final String skill1Name;
         public final String skill2Name;
@@ -54,6 +56,15 @@ public final class CharacterDataLoader {
         public final int skill1PoisonDamage;
         public final int skill2PoisonDamage;
         public final int skill3PoisonDamage;
+        public final int skill1ShieldValue;
+        public final int skill2ShieldValue;
+        public final int skill3ShieldValue;
+        public final int skill1HealValue;
+        public final int skill2HealValue;
+        public final int skill3HealValue;
+        public final int skill1SelfHeal;
+        public final int skill2SelfHeal;
+        public final int skill3SelfHeal;
         public final int drawWidth;
         public final int drawHeight;
         public final String idleSpritePath;
@@ -66,6 +77,8 @@ public final class CharacterDataLoader {
 
         public CharacterConfig(
             String name,
+            String archetype,
+            String[] weaknesses,
             String backstory,
             String skill1Name,
             String skill2Name,
@@ -101,6 +114,15 @@ public final class CharacterDataLoader {
             int skill1PoisonDamage,
             int skill2PoisonDamage,
             int skill3PoisonDamage,
+            int skill1ShieldValue,
+            int skill2ShieldValue,
+            int skill3ShieldValue,
+            int skill1HealValue,
+            int skill2HealValue,
+            int skill3HealValue,
+            int skill1SelfHeal,
+            int skill2SelfHeal,
+            int skill3SelfHeal,
             int drawWidth,
             int drawHeight,
             String idleSpritePath,
@@ -112,6 +134,8 @@ public final class CharacterDataLoader {
             CharacterDef.DefenseFormDef defenseForm
         ) {
             this.name = name;
+            this.archetype = archetype;
+            this.weaknesses = weaknesses == null ? new String[0] : weaknesses;
             this.backstory = backstory;
             this.skill1Name = skill1Name;
             this.skill2Name = skill2Name;
@@ -147,6 +171,15 @@ public final class CharacterDataLoader {
             this.skill1PoisonDamage = skill1PoisonDamage;
             this.skill2PoisonDamage = skill2PoisonDamage;
             this.skill3PoisonDamage = skill3PoisonDamage;
+            this.skill1ShieldValue = skill1ShieldValue;
+            this.skill2ShieldValue = skill2ShieldValue;
+            this.skill3ShieldValue = skill3ShieldValue;
+            this.skill1HealValue = skill1HealValue;
+            this.skill2HealValue = skill2HealValue;
+            this.skill3HealValue = skill3HealValue;
+            this.skill1SelfHeal = skill1SelfHeal;
+            this.skill2SelfHeal = skill2SelfHeal;
+            this.skill3SelfHeal = skill3SelfHeal;
             this.drawWidth = drawWidth;
             this.drawHeight = drawHeight;
             this.idleSpritePath = idleSpritePath;
@@ -184,6 +217,8 @@ public final class CharacterDataLoader {
                 if (!(entry instanceof Map<?, ?> characterMap)) continue;
 
                 String name = toStringValue(characterMap.get("name"));
+                String archetype = toStringValue(characterMap.get("elementType"));
+                String[] weaknesses = getStringArray(characterMap.get("weakness"));
                 String backstory = toStringValue(characterMap.get("backstory"));
                 List<?> skills = asList(characterMap.get("skills"));
                 Map<?, ?> sprites = asMap(characterMap.get("sprites"));
@@ -235,6 +270,15 @@ public final class CharacterDataLoader {
                  int skill1PoisonDamage = getSkillPoisonDamage(skills, 0);
                  int skill2PoisonDamage = getSkillPoisonDamage(skills, 1);
                  int skill3PoisonDamage = getSkillPoisonDamage(skills, 2);
+                 int skill1ShieldValue = getSkillShieldValue(skills, 0);
+                 int skill2ShieldValue = getSkillShieldValue(skills, 1);
+                 int skill3ShieldValue = getSkillShieldValue(skills, 2);
+                 int skill1HealValue = getSkillHealValue(skills, 0);
+                 int skill2HealValue = getSkillHealValue(skills, 1);
+                 int skill3HealValue = getSkillHealValue(skills, 2);
+                 int skill1SelfHeal = getSkillSelfHeal(skills, 0);
+                 int skill2SelfHeal = getSkillSelfHeal(skills, 1);
+                 int skill3SelfHeal = getSkillSelfHeal(skills, 2);
 
                  if (name == null || name.isBlank() || idleSpritePath == null || deathSpritePath == null) {
                     continue;
@@ -242,6 +286,8 @@ public final class CharacterDataLoader {
 
                 result.add(new CharacterConfig(
                     name,
+                    archetype,
+                    weaknesses,
                     backstory,
                     skill1Name,
                     skill2Name,
@@ -277,6 +323,15 @@ public final class CharacterDataLoader {
                      skill1PoisonDamage,
                      skill2PoisonDamage,
                      skill3PoisonDamage,
+                     skill1ShieldValue,
+                     skill2ShieldValue,
+                     skill3ShieldValue,
+                     skill1HealValue,
+                     skill2HealValue,
+                     skill3HealValue,
+                     skill1SelfHeal,
+                     skill2SelfHeal,
+                     skill3SelfHeal,
                      drawWidth,
                     drawHeight,
                     idleSpritePath,
@@ -432,6 +487,16 @@ public final class CharacterDataLoader {
         return value instanceof List<?> list ? list : List.of();
     }
 
+    private static String[] getStringArray(Object value) {
+        List<?> list = asList(value);
+        List<String> strings = new ArrayList<>();
+        for (Object item : list) {
+            String text = toStringValue(item);
+            if (text != null && !text.isBlank()) strings.add(text);
+        }
+        return strings.toArray(new String[0]);
+    }
+
     private static Map<?, ?> asMap(Object value) {
         return value instanceof Map<?, ?> map ? map : Map.of();
     }
@@ -543,12 +608,13 @@ public final class CharacterDataLoader {
                 return fallback;
             }
         }
-        return fallback;
+        return 0;
     }
 
     private static int getSkillDurationTurns(List<?> skills, int index) {
         if (skills.size() <= index || !(skills.get(index) instanceof Map<?, ?> skillMap)) return 0;
         Object raw = skillMap.get("durationTurns");
+        if (raw == null) raw = skillMap.get("poisonDuration");
         if (raw instanceof Number number) return Math.max(0, number.intValue());
         if (raw != null) {
             try { return Math.max(0, Integer.parseInt(String.valueOf(raw))); } catch (Exception e) { return 0; }
@@ -559,6 +625,36 @@ public final class CharacterDataLoader {
     private static int getSkillPoisonDamage(List<?> skills, int index) {
         if (skills.size() <= index || !(skills.get(index) instanceof Map<?, ?> skillMap)) return 0;
         Object raw = skillMap.get("poisonDamage");
+        if (raw instanceof Number number) return Math.max(0, number.intValue());
+        if (raw != null) {
+            try { return Math.max(0, Integer.parseInt(String.valueOf(raw))); } catch (Exception e) { return 0; }
+        }
+        return 0;
+    }
+
+    private static int getSkillShieldValue(List<?> skills, int index) {
+        if (skills.size() <= index || !(skills.get(index) instanceof Map<?, ?> skillMap)) return 0;
+        Object raw = skillMap.get("shieldValue");
+        if (raw instanceof Number number) return Math.max(0, number.intValue());
+        if (raw != null) {
+            try { return Math.max(0, Integer.parseInt(String.valueOf(raw))); } catch (Exception e) { return 0; }
+        }
+        return 0;
+    }
+
+    private static int getSkillHealValue(List<?> skills, int index) {
+        if (skills.size() <= index || !(skills.get(index) instanceof Map<?, ?> skillMap)) return 0;
+        Object raw = skillMap.get("healValue");
+        if (raw instanceof Number number) return Math.max(0, number.intValue());
+        if (raw != null) {
+            try { return Math.max(0, Integer.parseInt(String.valueOf(raw))); } catch (Exception e) { return 0; }
+        }
+        return 0;
+    }
+
+    private static int getSkillSelfHeal(List<?> skills, int index) {
+        if (skills.size() <= index || !(skills.get(index) instanceof Map<?, ?> skillMap)) return 0;
+        Object raw = skillMap.get("selfHeal");
         if (raw instanceof Number number) return Math.max(0, number.intValue());
         if (raw != null) {
             try { return Math.max(0, Integer.parseInt(String.valueOf(raw))); } catch (Exception e) { return 0; }

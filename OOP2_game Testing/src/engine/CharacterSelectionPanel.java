@@ -560,11 +560,13 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
         if (frame == null) {
             return;
         }
-        String selectedName = (focusedIndex >= 0 && focusedIndex < characters.size()) ? characters.get(focusedIndex).name : null;
+        CharacterDef selected = (focusedIndex >= 0 && focusedIndex < characters.size()) ? characters.get(focusedIndex) : null;
+        String selectedName = selected != null ? selected.name : null;
         PreviewTweak tweak = getPreviewTweak(selectedName);
         double fillRatio = PREVIEW_BASE_FILL_RATIO * tweak.scaleMultiplier;
         drawPreviewShadow(g2, frame, spriteAreaX, spriteAreaY, spriteAreaW, spriteAreaH, fillRatio, previewBounds, PREVIEW_INSET_PX, tweak.offsetRatioX, tweak.offsetRatioY);
         drawFittedSprite(g2, frame, spriteAreaX, spriteAreaY, spriteAreaW, spriteAreaH, fillRatio, previewBounds, PREVIEW_INSET_PX, true, tweak.offsetRatioX, tweak.offsetRatioY);
+        drawElementInfoBadge(g2, selected, new Rectangle(spriteAreaX, spriteAreaY, spriteAreaW, spriteAreaH));
 
         // Draw character name overlay inside the preview area (centered near bottom)
         if (selectedName != null && !selectedName.isBlank()) {
@@ -601,6 +603,67 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
             int textY = overlayY + (overlayH + fm.getAscent()) / 2 - 4;
             g2.drawString(nameUpper, textX, textY);
         }
+    }
+
+    private void drawElementInfoBadge(Graphics2D g2, CharacterDef selected, Rectangle bounds) {
+        if (selected == null) return;
+
+        String typeText = selected.archetype == null || selected.archetype.isBlank()
+                ? "Type: Unknown"
+                : "Type: " + selected.archetype;
+        String weakText = "Weak: " + formatWeaknesses(selected.weaknesses);
+
+        Font badgeFont = bodyFont.deriveFont(Font.BOLD, 18f);
+        g2.setFont(badgeFont);
+        FontMetrics fm = g2.getFontMetrics();
+
+        int padX = 12;
+        int padY = 8;
+        int lineGap = 4;
+        int textW = Math.max(fm.stringWidth(typeText), fm.stringWidth(weakText));
+        int badgeW = Math.min(bounds.width - 24, textW + padX * 2);
+        int badgeH = fm.getHeight() * 2 + lineGap + padY * 2;
+        int badgeX = bounds.x + 12;
+        int badgeY = bounds.y + 12;
+
+        Composite oldComposite = g2.getComposite();
+        Stroke oldStroke = g2.getStroke();
+        Shape oldClip = g2.getClip();
+        g2.setClip(bounds);
+
+        g2.setComposite(AlphaComposite.SrcOver.derive(0.82f));
+        g2.setColor(new Color(22, 27, 34));
+        g2.fillRoundRect(badgeX, badgeY, badgeW, badgeH, 10, 10);
+        g2.setComposite(oldComposite);
+
+        g2.setColor(new Color(215, 185, 95));
+        g2.setStroke(new BasicStroke(1.6f));
+        g2.drawRoundRect(badgeX, badgeY, badgeW, badgeH, 10, 10);
+
+        int textX = badgeX + padX;
+        int textY = badgeY + padY + fm.getAscent();
+        g2.setColor(new Color(238, 246, 255));
+        g2.drawString(typeText, textX, textY);
+        g2.setColor(new Color(255, 220, 160));
+        g2.drawString(weakText, textX, textY + fm.getHeight() + lineGap);
+
+        g2.setClip(oldClip);
+        g2.setStroke(oldStroke);
+        g2.setComposite(oldComposite);
+    }
+
+    private String formatWeaknesses(String[] weaknesses) {
+        if (weaknesses == null || weaknesses.length == 0) {
+            return "None";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (String weakness : weaknesses) {
+            if (weakness == null || weakness.isBlank()) continue;
+            if (!sb.isEmpty()) sb.append(", ");
+            sb.append(weakness);
+        }
+        return sb.isEmpty() ? "None" : sb.toString();
     }
 
     private PreviewTweak getPreviewTweak(String characterName) {
