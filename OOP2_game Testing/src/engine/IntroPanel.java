@@ -145,8 +145,8 @@ public class IntroPanel extends JPanel {
         if (leaderboardButton != null) {
             int leaderboardWidth = 180;
             int leaderboardHeight = 44;
-            int bottomLeftX = 24;
-            int bottomLeftY = getHeight() - leaderboardHeight - 24;
+            int bottomLeftX = 30;
+            int bottomLeftY = getHeight() - leaderboardHeight - 30;
             leaderboardButton.setBounds(bottomLeftX, bottomLeftY, leaderboardWidth, leaderboardHeight);
         }
     }

@@ -175,6 +175,23 @@ public class SurivivalGamePanel extends AbstractGamePanel {
     private int p1PoisonDamage = 0;
     private int p2PoisonTurns = 0;
     private int p2PoisonDamage = 0;
+    private final List<ShieldVisualEffect> shieldVisualEffects = new ArrayList<>();
+    private Timer shieldVisualTimer;
+    private static final long SHIELD_VISUAL_DURATION_MS = 900L;
+    private static final Color SHIELD_BLUE_CORE = new Color(80, 210, 255);
+    private static final Color SHIELD_BLUE_EDGE = new Color(20, 95, 230);
+
+    private static class ShieldVisualEffect {
+        final boolean playerOne;
+        final int amount;
+        final long startedAt;
+
+        ShieldVisualEffect(boolean playerOne, int amount) {
+            this.playerOne = playerOne;
+            this.amount = amount;
+            this.startedAt = System.currentTimeMillis();
+        }
+    }
 
     private GameMode         gameMode   = GameMode.PVP;
     private BotAI.Difficulty difficulty = BotAI.Difficulty.NORMAL;
@@ -807,6 +824,8 @@ public class SurivivalGamePanel extends AbstractGamePanel {
                             0, 0, frame.getWidth(), frame.getHeight(), this);
             }
         }
+
+        drawShieldVisualEffects(g2);
     }
 
     private void loadMapData(String tmxResourcePath) {
@@ -1320,6 +1339,128 @@ public class SurivivalGamePanel extends AbstractGamePanel {
         return frames.size() * DEFAULT_SKILL_DELAY_MS;
     }
 
+    private double getExecutionTimingRatio() {
+        return TURN_TIME_SECONDS <= 0 ? 0.0 : (double) turnSecondsLeft / TURN_TIME_SECONDS;
+    }
+
+    private void applyCasterHealing(CharacterDef actor, int skillID, boolean actingPlayerOne, double timingRatio) {
+        boolean shieldHeal = isValidShieldSkill(actor, skillID);
+        boolean urgent = actingPlayerOne ? p1HP <= 40 : p2HP <= 40;
+        int healAmount = shieldHeal
+                ? CombatBalance.calculateShieldHealing(actor, skillID, timingRatio, urgent)
+                : CombatBalance.calculateHealing(actor, skillID, timingRatio, urgent);
+        if (actingPlayerOne) {
+            p1HP = Math.min(100, p1HP + healAmount);
+        } else {
+            p2HP = Math.min(100, p2HP + healAmount);
+        }
+        if (shieldHeal) {
+            startShieldVisualEffect(actingPlayerOne, healAmount);
+        }
+    }
+
+    private void applySelfHeal(CharacterDef actor, int skillID, boolean actingPlayerOne, double timingRatio, int damageDealt) {
+        int healAmount = CombatBalance.calculateSelfHeal(actor, skillID, timingRatio, damageDealt);
+        if (healAmount <= 0) return;
+        if (actingPlayerOne) {
+            p1HP = Math.min(100, p1HP + healAmount);
+        } else {
+            p2HP = Math.min(100, p2HP + healAmount);
+        }
+    }
+
+    private boolean isValidShieldSkill(CharacterDef actor, int skillID) {
+        if (actor == null || actor.getSkillShieldValue(skillID) <= 0) return false;
+        String type = safeLower(actor.getSkillType(skillID));
+        if (!("defense".equals(type) || "heal".equals(type) || "support".equals(type))) return false;
+        if (!isShieldArchetype(actor)) return false;
+
+        String metadata = safeLower(actor.getSkillName(skillID) + " " + actor.getSkillDescription(skillID));
+        return containsAny(metadata, "shield", "aegis", "barrier", "ward", "guard", "protect", "armor", "halo", "defense");
+    }
+
+    private boolean isShieldArchetype(CharacterDef actor) {
+        String archetype = safeLower(actor.archetype);
+        return archetype.equals("light") || archetype.equals("nature") || archetype.equals("water") || archetype.equals("steel");
+    }
+
+    private boolean containsAny(String text, String... tokens) {
+        for (String token : tokens) {
+            if (text.contains(token)) return true;
+        }
+        return false;
+    }
+
+    private String safeLower(String value) {
+        return value == null ? "" : value.toLowerCase();
+    }
+
+    private void startShieldVisualEffect(boolean playerOne, int amount) {
+        if (playerOne && p1HealthBar != null) p1HealthBar.triggerShieldPulse();
+        if (!playerOne && p2HealthBar != null) p2HealthBar.triggerShieldPulse();
+        shieldVisualEffects.add(new ShieldVisualEffect(playerOne, amount));
+        if (shieldVisualTimer == null || !shieldVisualTimer.isRunning()) {
+            shieldVisualTimer = new Timer(40, e -> {
+                long now = System.currentTimeMillis();
+                shieldVisualEffects.removeIf(effect -> now - effect.startedAt >= SHIELD_VISUAL_DURATION_MS);
+                repaint();
+                if (shieldVisualEffects.isEmpty()) {
+                    ((Timer) e.getSource()).stop();
+                }
+            });
+            shieldVisualTimer.start();
+        }
+    }
+
+    private void drawShieldVisualEffects(Graphics2D g2) {
+        long now = System.currentTimeMillis();
+        Composite oldComposite = g2.getComposite();
+        Stroke oldStroke = g2.getStroke();
+        Font oldFont = g2.getFont();
+        for (int i = shieldVisualEffects.size() - 1; i >= 0; i--) {
+            ShieldVisualEffect effect = shieldVisualEffects.get(i);
+            float progress = (now - effect.startedAt) / (float) SHIELD_VISUAL_DURATION_MS;
+            if (progress >= 1f) {
+                shieldVisualEffects.remove(i);
+                continue;
+            }
+            float alpha = Math.max(0f, 1f - progress);
+            int centerX = effect.playerOne ? p1SpriteX + getPlayerDrawWidth() / 2 : p2SpriteX + getEnemyDrawWidth() / 2;
+            int centerY = effect.playerOne ? p1SpriteY + getPlayerDrawHeight() / 2 : p2SpriteY + getEnemyDrawHeight() / 2;
+            int radius = 45 + Math.round(progress * 90);
+
+            g2.setComposite(AlphaComposite.SrcOver.derive(0.35f * alpha));
+            g2.setColor(SHIELD_BLUE_CORE);
+            g2.fillOval(centerX - radius, centerY - radius, radius * 2, radius * 2);
+            g2.setComposite(AlphaComposite.SrcOver.derive(0.8f * alpha));
+            g2.setStroke(new BasicStroke(4f));
+            g2.setColor(SHIELD_BLUE_EDGE);
+            g2.drawOval(centerX - radius, centerY - radius, radius * 2, radius * 2);
+
+            for (int p = 0; p < 10; p++) {
+                double angle = (Math.PI * 2 * p / 10.0) + progress * Math.PI;
+                int px = centerX + (int) (Math.cos(angle) * (radius + 18));
+                int py = centerY + (int) (Math.sin(angle) * (radius + 10));
+                g2.setColor(p % 2 == 0 ? SHIELD_BLUE_CORE : new Color(170, 240, 255));
+                g2.fillOval(px - 4, py - 4, 8, 8);
+            }
+
+            String text = "+" + effect.amount + " SHIELD";
+            g2.setFont(FontManager.getFont(24f).deriveFont(Font.BOLD));
+            FontMetrics fm = g2.getFontMetrics();
+            int textX = centerX - fm.stringWidth(text) / 2;
+            int textY = centerY - 120 - Math.round(progress * 45);
+            g2.setComposite(AlphaComposite.SrcOver.derive(alpha));
+            g2.setColor(new Color(5, 25, 75, 190));
+            g2.drawString(text, textX + 2, textY + 2);
+            g2.setColor(new Color(125, 230, 255));
+            g2.drawString(text, textX, textY);
+        }
+        g2.setFont(oldFont);
+        g2.setStroke(oldStroke);
+        g2.setComposite(oldComposite);
+    }
+
     public void executeSkill(int skillID) {
         if (gameMode == GameMode.SURVIVAL) {
             if (!survivalActive) return;
@@ -1378,24 +1519,25 @@ public class SurivivalGamePanel extends AbstractGamePanel {
 
         playSkillSound(actor, skillID, getSkillCastDurationMs(actingPlayerOne, skillID), defenseForm, isDefenseFormAltSkill);
 
-        int skillPower = actor != null ? actor.getSkillPower(skillID) : 0;
+        CharacterDef defender = actingPlayerOne ? currentEnemyDef : currentPlayerDef;
+        double timingRatio = getExecutionTimingRatio();
+        int damageDealt = 0;
         if (isHurtSkill) {
+            boolean setupActive = actingPlayerOne ? (p2PoisonTurns > 0 || isPlayerNatureDefenseForm) : (p1PoisonTurns > 0 || isEnemyNatureDefenseForm);
+            damageDealt = CombatBalance.calculateDamage(actor, defender, skillID, timingRatio, setupActive);
             if (isP1Turn) {
-                p2HP = Math.max(0, p2HP - Math.max(0, skillPower));
+                p2HP = Math.max(0, p2HP - damageDealt);
             } else {
-                p1HP = Math.max(0, p1HP - Math.max(0, skillPower));
+                p1HP = Math.max(0, p1HP - damageDealt);
             }
+            applySelfHeal(actor, skillID, actingPlayerOne, timingRatio, damageDealt);
          } else {
-             if (isP1Turn) {
-                 p1HP = Math.min(100, p1HP + 10);
-             } else {
-                 p2HP = Math.min(100, p2HP + 10);
-             }
+             applyCasterHealing(actor, skillID, actingPlayerOne, timingRatio);
          }
 
          // Apply poison debuff if the skill inflicts poison
-         int poisonDmg = actor.getSkillPoisonDamage(skillID);
-         int poisonDuration = actor.getSkillDurationTurns(skillID);
+         int poisonDmg = CombatBalance.calculatePoisonDamage(actor, skillID);
+         int poisonDuration = CombatBalance.calculatePoisonDuration(actor, skillID);
          if (poisonDmg > 0 && poisonDuration > 0) {
              if (actingPlayerOne) {
                  p2PoisonDamage = poisonDmg;
@@ -2963,9 +3105,14 @@ public class SurivivalGamePanel extends AbstractGamePanel {
                     config.defenseForm,
                      drawWidth, drawHeight,
                      config.skill2Player2OffsetX, config.skill3OffsetX, config.skill3OffsetY,
-                     config.shadowOffsetX, config.skill3Scale, config.shadowScale,
-                     config.skill1DurationTurns, config.skill2DurationTurns, config.skill3DurationTurns,
-                     config.skill1PoisonDamage, config.skill2PoisonDamage, config.skill3PoisonDamage));
+                    config.shadowOffsetX, config.skill3Scale, config.shadowScale,
+                    config.skill1DurationTurns, config.skill2DurationTurns, config.skill3DurationTurns,
+                    config.skill1PoisonDamage, config.skill2PoisonDamage, config.skill3PoisonDamage)
+                    .withArchetype(config.archetype)
+                    .withWeaknesses(config.weaknesses)
+                    .withSkillShieldValues(config.skill1ShieldValue, config.skill2ShieldValue, config.skill3ShieldValue)
+                    .withSkillHealValues(config.skill1HealValue, config.skill2HealValue, config.skill3HealValue)
+                    .withSkillSelfHeals(config.skill1SelfHeal, config.skill2SelfHeal, config.skill3SelfHeal));
         }
         if (!defs.isEmpty()) return List.copyOf(defs);
 
