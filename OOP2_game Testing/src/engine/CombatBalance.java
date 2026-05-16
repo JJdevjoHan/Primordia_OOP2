@@ -4,7 +4,7 @@ public final class CombatBalance {
     private static final double ELEMENT_ADVANTAGE_MULTIPLIER = 1.24;
     private static final double SETUP_MULTIPLIER = 1.08;
     private static final int MIN_DAMAGE  = 20;
-    private static final int MAX_DAMAGE  = 70;
+    private static final int MAX_DAMAGE  = 100;
     private static final int MIN_UTILITY = 10;
     private static final int MAX_UTILITY = 55;
 
