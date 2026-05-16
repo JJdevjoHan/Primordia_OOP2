@@ -50,7 +50,7 @@ public class ArcadeGamePanel extends AbstractGamePanel {
     private static final int DEFAULT_PROJECTILE_SPEED           = 44;
 
     private static final int MAX_MP            = 100;
-    private static final int MP_REGEN_PER_TURN = 10;
+    private static final int MP_REGEN_PER_TURN = 25;
     private static final int[] SKILL_MP_COST   = { 10, 20, 30 };
 
     private static final int TURN_TIME_SECONDS    = 10;
@@ -168,6 +168,7 @@ public class ArcadeGamePanel extends AbstractGamePanel {
     private int p2SpawnFeetMapY = p2SpriteY + DEFAULT_DRAW_HEIGHT;
 
     private int     p1HP     = 100, p2HP = 100;
+    private boolean poisonTickedThisTurn = false;
     private int     p1MP     = MAX_MP, p2MP = MAX_MP;
     private boolean isP1Turn = true;
 
@@ -176,6 +177,9 @@ public class ArcadeGamePanel extends AbstractGamePanel {
     private int p1PoisonDamage = 0;
     private int p2PoisonTurns = 0;
     private int p2PoisonDamage = 0;
+    // RGB of the poison flash tint, set from attacker's element when poison is applied
+    private int[] p1PoisonHurtRGB = {0, 200, 0};  // default green
+    private int[] p2PoisonHurtRGB = {0, 200, 0};
     private final List<ShieldVisualEffect> shieldVisualEffects = new ArrayList<>();
     private Timer shieldVisualTimer;
     private static final long SHIELD_VISUAL_DURATION_MS = 900L;
@@ -208,6 +212,7 @@ public class ArcadeGamePanel extends AbstractGamePanel {
     private final List<JButton> skillButtons = new ArrayList<>();
     private JLabel              skillPanelTitle;
     private JLabel              turnLabel, p1HPLabel, p2HPLabel;
+    private JLabel p1TypeLabel, p2TypeLabel;  // elemental type indicators above HP bars
     private JLabel              arcadeTallyLabel;
 
     private GameBar p1HealthBar, p2HealthBar;
@@ -295,14 +300,28 @@ public class ArcadeGamePanel extends AbstractGamePanel {
         skillButtonPanel = createSkillUI();
         add(skillButtonPanel);
 
-        p1HealthBar = new GameBar(100, Color.GREEN, GameBar.BarType.HP);
-        p2HealthBar = new GameBar(100, Color.RED,   GameBar.BarType.HP);
+        p1HealthBar = new GameBar(currentPlayerDef != null ? currentPlayerDef.getMaxHp() : 100, Color.GREEN, GameBar.BarType.HP);
+        p2HealthBar = new GameBar(currentEnemyDef  != null ? currentEnemyDef.getMaxHp()  : 100, Color.RED,   GameBar.BarType.HP);
         add(p1HealthBar);
         add(p2HealthBar);
         p2HealthBar.setFillFromRight(true);
 
-        p1MpBar = new GameBar(MAX_MP, new Color(40, 100, 180), GameBar.BarType.MP);
-        p2MpBar = new GameBar(MAX_MP, new Color(40, 100, 180), GameBar.BarType.MP);
+        // -- Type indicator labels (above HP bars) ----------------------------
+        Font typeFont = FontManager.getFont(22).deriveFont(Font.BOLD);
+        p1TypeLabel = new JLabel("", SwingConstants.RIGHT);
+        p1TypeLabel.setFont(typeFont);
+        p1TypeLabel.setForeground(Color.WHITE);
+        p1TypeLabel.setOpaque(false);
+        this.add(p1TypeLabel);
+
+        p2TypeLabel = new JLabel("", SwingConstants.LEFT);
+        p2TypeLabel.setFont(typeFont);
+        p2TypeLabel.setForeground(Color.WHITE);
+        p2TypeLabel.setOpaque(false);
+        this.add(p2TypeLabel);
+
+        p1MpBar = new GameBar(currentPlayerDef != null ? currentPlayerDef.getMaxMp() : MAX_MP, new Color(40, 100, 180), GameBar.BarType.MP);
+        p2MpBar = new GameBar(currentEnemyDef  != null ? currentEnemyDef.getMaxMp()  : MAX_MP, new Color(40, 100, 180), GameBar.BarType.MP);
         add(p1MpBar);
         add(p2MpBar);
         p2MpBar.setFillFromRight(true);
@@ -326,10 +345,10 @@ public class ArcadeGamePanel extends AbstractGamePanel {
                     resetNatureDefenseForms();
                     holdPlayerDeathFrameUntilNextRound = false;
                     holdEnemyDeathFrameUntilNextRound = false;
-                    p1HP = 100;     // full reset — key difference from Survival
-                    p2HP = 100;
-                     p1MP = MAX_MP;
-                     p2MP = MAX_MP;
+                    p1HP = currentPlayerDef != null ? currentPlayerDef.getMaxHp() : 100;     // full reset — key difference from Survival
+                    p2HP = currentEnemyDef != null ? currentEnemyDef.getMaxHp() : 100;
+                     p1MP = currentPlayerDef != null ? currentPlayerDef.getMaxMp() : MAX_MP;
+                     p2MP = currentEnemyDef  != null ? currentEnemyDef.getMaxMp()  : MAX_MP;
 
                      // Reset poison debuffs
                      p1PoisonTurns = 0;
@@ -602,32 +621,39 @@ public class ArcadeGamePanel extends AbstractGamePanel {
     public void setDifficulty(BotAI.Difficulty diff) { this.difficulty = diff; }
     public GameMode getGameMode()                    { return gameMode; }
 
-    private static int mpCostFor(int skillID) {
-        if (skillID < 1 || skillID > SKILL_MP_COST.length) return 0;
-        return SKILL_MP_COST[skillID - 1];
+    private int mpCostFor(CharacterDef def, int skillID) {
+        if (def == null || skillID < 1 || skillID > 3) return 0;
+        return def.getSkillManaCost(skillID);
     }
 
     private boolean hasEnoughMP(boolean actingPlayerOne, int skillID) {
-        return (actingPlayerOne ? p1MP : p2MP) >= mpCostFor(skillID);
+        CharacterDef def = actingPlayerOne ? currentPlayerDef : currentEnemyDef;
+        return (actingPlayerOne ? p1MP : p2MP) >= mpCostFor(def, skillID);
     }
 
     private void spendAndRegenMP(boolean actingPlayerOne, int skillID) {
-        int cost = mpCostFor(skillID);
+        CharacterDef actingDef  = actingPlayerOne ? currentPlayerDef : currentEnemyDef;
+        CharacterDef waitingDef = actingPlayerOne ? currentEnemyDef  : currentPlayerDef;
+        int cost       = mpCostFor(actingDef, skillID);
+        int waitingMax = waitingDef != null ? waitingDef.getMaxMp() : MAX_MP;
         if (actingPlayerOne) {
-            p1MP = Math.max(0,      p1MP - cost);
-            p2MP = Math.min(MAX_MP, p2MP + MP_REGEN_PER_TURN);
+            p1MP = Math.max(0,         p1MP - cost);
+            p2MP = Math.min(waitingMax, p2MP + MP_REGEN_PER_TURN);
         } else {
-            p2MP = Math.max(0,      p2MP - cost);
-            p1MP = Math.min(MAX_MP, p1MP + MP_REGEN_PER_TURN);
+            p2MP = Math.max(0,         p2MP - cost);
+            p1MP = Math.min(waitingMax, p1MP + MP_REGEN_PER_TURN);
         }
     }
 
     private void refreshSkillButtonMPState() {
         int currentMP = isP1Turn ? p1MP : p2MP;
+        CharacterDef activeDef = isP1Turn ? currentPlayerDef : currentEnemyDef;
         for (int i = 0; i < skillButtons.size(); i++) {
-            boolean canAfford = currentMP >= mpCostFor(i + 1);
+            int cost = mpCostFor(activeDef, i + 1);
+            boolean canAfford = currentMP >= cost;
             skillButtons.get(i).setEnabled(canAfford);
             skillButtons.get(i).setForeground(canAfford ? Color.BLACK : new Color(140, 140, 140));
+            skillButtons.get(i).setToolTipText("MP Cost: " + cost);
         }
     }
 
@@ -665,8 +691,10 @@ public class ArcadeGamePanel extends AbstractGamePanel {
         if (!roundManager.isRoundInProgress()) return;
 
         String skippedPlayer = isP1Turn ? "PLAYER 1" : "PLAYER 2";
-        if (isP1Turn) p1MP = Math.min(MAX_MP, p1MP + MP_REGEN_PER_TURN);
-        else          p2MP = Math.min(MAX_MP, p2MP + MP_REGEN_PER_TURN);
+        int _skipMaxMp1 = currentPlayerDef != null ? currentPlayerDef.getMaxMp() : MAX_MP;
+        int _skipMaxMp2 = currentEnemyDef  != null ? currentEnemyDef.getMaxMp()  : MAX_MP;
+        if (isP1Turn) p1MP = Math.min(_skipMaxMp1, p1MP + MP_REGEN_PER_TURN);
+        else          p2MP = Math.min(_skipMaxMp2, p2MP + MP_REGEN_PER_TURN);
 
         isP1Turn = !isP1Turn;
         updateGameState();
@@ -755,7 +783,7 @@ public class ArcadeGamePanel extends AbstractGamePanel {
 
         for (int i = 0; i < 3; i++) {
             JButton btn = new BattleUISkillButton("Skill " + (i + 1));
-            btn.setToolTipText("MP Cost: " + SKILL_MP_COST[i]);
+            // tooltip set dynamically in refreshSkillButtonMPState()
             int skillID = i + 1;
             btn.addActionListener(e -> executePlayerSkill(skillID));
             grid.add(btn);
@@ -831,11 +859,8 @@ public class ArcadeGamePanel extends AbstractGamePanel {
             if (isPlayerHurtAnimating && !playerHurtFrames.isEmpty()) {
                 BufferedImage hurtFrame = playerHurtFrames.get(playerHurtFrameIndex);
                 if (playerHurtFlashing) {
-                    if (playerHurtFromPoison) {
-                        hurtFrame = applyGreenTintToNonTransparent(hurtFrame);
-                    } else {
-                        hurtFrame = applyRedTintToNonTransparent(hurtFrame);
-                    }
+                    int[] rgb = playerHurtFromPoison ? p1PoisonHurtRGB : new int[]{255, 0, 0};
+                    hurtFrame = applyColorTintToNonTransparent(hurtFrame, rgb[0], rgb[1], rgb[2]);
                 }
                 g2.drawImage(hurtFrame,
                         p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
@@ -846,11 +871,8 @@ public class ArcadeGamePanel extends AbstractGamePanel {
         } else if (isPlayerHurtAnimating && !playerHurtFrames.isEmpty()) {
             BufferedImage hurtFrame = playerHurtFrames.get(playerHurtFrameIndex);
             if (playerHurtFlashing) {
-                if (playerHurtFromPoison) {
-                    hurtFrame = applyGreenTintToNonTransparent(hurtFrame);
-                } else {
-                    hurtFrame = applyRedTintToNonTransparent(hurtFrame);
-                }
+                int[] rgb = playerHurtFromPoison ? p1PoisonHurtRGB : new int[]{255, 0, 0};
+                hurtFrame = applyColorTintToNonTransparent(hurtFrame, rgb[0], rgb[1], rgb[2]);
             }
             g2.drawImage(hurtFrame,
                     p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
@@ -886,11 +908,8 @@ public class ArcadeGamePanel extends AbstractGamePanel {
             if (isEnemyHurtAnimating && !enemyHurtFrames.isEmpty()) {
                 BufferedImage hurtFrame = enemyHurtFrames.get(enemyHurtFrameIndex);
                 if (enemyHurtFlashing) {
-                    if (enemyHurtFromPoison) {
-                        hurtFrame = applyGreenTintToNonTransparent(hurtFrame);
-                    } else {
-                        hurtFrame = applyRedTintToNonTransparent(hurtFrame);
-                    }
+                    int[] rgb = enemyHurtFromPoison ? p2PoisonHurtRGB : new int[]{255, 0, 0};
+                    hurtFrame = applyColorTintToNonTransparent(hurtFrame, rgb[0], rgb[1], rgb[2]);
                 }
                 g2.drawImage(hurtFrame,
                         p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
@@ -901,11 +920,8 @@ public class ArcadeGamePanel extends AbstractGamePanel {
         } else if (isEnemyHurtAnimating && !enemyHurtFrames.isEmpty()) {
             BufferedImage hurtFrame = enemyHurtFrames.get(enemyHurtFrameIndex);
             if (enemyHurtFlashing) {
-                if (enemyHurtFromPoison) {
-                    hurtFrame = applyGreenTintToNonTransparent(hurtFrame);
-                } else {
-                    hurtFrame = applyRedTintToNonTransparent(hurtFrame);
-                }
+                int[] rgb = enemyHurtFromPoison ? p2PoisonHurtRGB : new int[]{255, 0, 0};
+                hurtFrame = applyColorTintToNonTransparent(hurtFrame, rgb[0], rgb[1], rgb[2]);
             }
             g2.drawImage(hurtFrame,
                     p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
@@ -1310,14 +1326,17 @@ public class ArcadeGamePanel extends AbstractGamePanel {
 
     private void applyCasterHealing(CharacterDef actor, int skillID, boolean actingPlayerOne, double timingRatio) {
         boolean shieldHeal = isValidShieldSkill(actor, skillID);
-        boolean urgent = actingPlayerOne ? p1HP <= 40 : p2HP <= 40;
+        int actingMaxHp = (actingPlayerOne ? (currentPlayerDef != null ? currentPlayerDef.getMaxHp() : 100)
+                                           : (currentEnemyDef  != null ? currentEnemyDef.getMaxHp()  : 100));
+        boolean urgent = actingPlayerOne ? p1HP <= (int)(actingMaxHp * 0.40)
+                                        : p2HP <= (int)(actingMaxHp * 0.40);
         int healAmount = shieldHeal
                 ? CombatBalance.calculateShieldHealing(actor, skillID, timingRatio, urgent)
                 : CombatBalance.calculateHealing(actor, skillID, timingRatio, urgent);
         if (actingPlayerOne) {
-            p1HP = Math.min(100, p1HP + healAmount);
+            p1HP = Math.min(currentPlayerDef != null ? currentPlayerDef.getMaxHp() : 100, p1HP + healAmount);
         } else {
-            p2HP = Math.min(100, p2HP + healAmount);
+            p2HP = Math.min(currentEnemyDef  != null ? currentEnemyDef.getMaxHp()  : 100, p2HP + healAmount);
         }
         if (shieldHeal) {
             startShieldVisualEffect(actingPlayerOne, healAmount);
@@ -1328,9 +1347,9 @@ public class ArcadeGamePanel extends AbstractGamePanel {
         int healAmount = CombatBalance.calculateSelfHeal(actor, skillID, timingRatio, damageDealt);
         if (healAmount <= 0) return;
         if (actingPlayerOne) {
-            p1HP = Math.min(100, p1HP + healAmount);
+            p1HP = Math.min(currentPlayerDef != null ? currentPlayerDef.getMaxHp() : 100, p1HP + healAmount);
         } else {
-            p2HP = Math.min(100, p2HP + healAmount);
+            p2HP = Math.min(currentEnemyDef  != null ? currentEnemyDef.getMaxHp()  : 100, p2HP + healAmount);
         }
     }
 
@@ -1447,7 +1466,7 @@ public class ArcadeGamePanel extends AbstractGamePanel {
 
         if (!hasEnoughMP(isP1Turn, skillID)) {
             String original = turnLabel.getText();
-            turnLabel.setText("Not enough MP! (Need " + mpCostFor(skillID) + " MP)");
+            turnLabel.setText("Not enough MP! (Need " + mpCostFor(isP1Turn ? currentPlayerDef : currentEnemyDef, skillID) + " MP)");
             Timer restore = new Timer(1200, e -> turnLabel.setText(original));
             restore.setRepeats(false);
             restore.start();
@@ -1504,11 +1523,13 @@ public class ArcadeGamePanel extends AbstractGamePanel {
          int poisonDuration = CombatBalance.calculatePoisonDuration(actor, skillID);
          if (poisonDmg > 0 && poisonDuration > 0) {
              if (actingP1) {
-                 p2PoisonDamage = poisonDmg;
-                 p2PoisonTurns = poisonDuration;
+                 p2PoisonDamage = Math.min(p2PoisonDamage + poisonDmg, 28);
+                 p2PoisonTurns  = Math.max(p2PoisonTurns, poisonDuration);
+                 p2PoisonHurtRGB = poisonRGBForElement(actor != null ? actor.archetype : null);
              } else {
-                 p1PoisonDamage = poisonDmg;
-                 p1PoisonTurns = poisonDuration;
+                 p1PoisonDamage = Math.min(p1PoisonDamage + poisonDmg, 28);
+                 p1PoisonTurns  = Math.max(p1PoisonTurns, poisonDuration);
+                 p1PoisonHurtRGB = poisonRGBForElement(actor != null ? actor.archetype : null);
              }
          }
 
@@ -1573,6 +1594,7 @@ public class ArcadeGamePanel extends AbstractGamePanel {
             playSkillAnimation(actingP1, skillID, false, null);
         }
 
+        poisonTickedThisTurn = false;
         isP1Turn = !isP1Turn;
         updateGameState();
         repaint();
@@ -1618,7 +1640,7 @@ public class ArcadeGamePanel extends AbstractGamePanel {
     private void performBotAction() {
         if (p1HP <= 0 || p2HP <= 0) { setPlayerButtonsEnabled(true); return; }
 
-        int preferred = BotAI.chooseSkill(p2HP, p1HP, currentEnemyDef, difficulty, 100);
+        int preferred = BotAI.chooseSkill(p2HP, p1HP, currentEnemyDef, difficulty, currentEnemyDef != null ? currentEnemyDef.getMaxHp() : 100);
         int chosen    = preferred;
 
         if (!hasEnoughMP(false, preferred)) {
@@ -1627,7 +1649,7 @@ public class ArcadeGamePanel extends AbstractGamePanel {
                 if (hasEnoughMP(false, s)) { chosen = s; break; }
             }
             if (chosen == 0) {
-                p2MP     = Math.min(MAX_MP, p2MP + MP_REGEN_PER_TURN);
+                p2MP     = Math.min(currentEnemyDef != null ? currentEnemyDef.getMaxMp() : MAX_MP, p2MP + MP_REGEN_PER_TURN);
                 isP1Turn = true;
                 updateGameState();
                 setPlayerButtonsEnabled(true);
@@ -1656,25 +1678,32 @@ public class ArcadeGamePanel extends AbstractGamePanel {
     }
 
      protected void updateGameState() {
-         p1HP = Math.max(0, Math.min(100,    p1HP));
-         p2HP = Math.max(0, Math.min(100,    p2HP));
-         p1MP = Math.max(0, Math.min(MAX_MP, p1MP));
-         p2MP = Math.max(0, Math.min(MAX_MP, p2MP));
+         int _p1MaxHp = currentPlayerDef != null ? currentPlayerDef.getMaxHp() : 100;
+         int _p2MaxHp = currentEnemyDef  != null ? currentEnemyDef.getMaxHp()  : 100;
+         int _p1MaxMp = currentPlayerDef != null ? currentPlayerDef.getMaxMp() : MAX_MP;
+         int _p2MaxMp = currentEnemyDef  != null ? currentEnemyDef.getMaxMp()  : MAX_MP;
+         p1HP = Math.max(0, Math.min(_p1MaxHp, p1HP));
+         p2HP = Math.max(0, Math.min(_p2MaxHp, p2HP));
+         p1MP = Math.max(0, Math.min(_p1MaxMp, p1MP));
+         p2MP = Math.max(0, Math.min(_p2MaxMp, p2MP));
 
-         // Apply poison damage at start of turn (after turn switch)
-         if (isP1Turn) {
-             if (p1PoisonTurns > 0) {
-                  p1HP -= p1PoisonDamage;
-                  p1PoisonTurns--;
-                  if (p1PoisonTurns <= 0) p1PoisonDamage = 0;
-                  startTimedHurt(true, POST_ATTACK_HURT_MS, true);
-             }
-         } else {
-             if (p2PoisonTurns > 0) {
-                  p2HP -= p2PoisonDamage;
-                  p2PoisonTurns--;
-                  if (p2PoisonTurns <= 0) p2PoisonDamage = 0;
-                  startTimedHurt(false, POST_ATTACK_HURT_MS, true);
+         // Apply poison damage at start of turn (after turn switch) — only once per turn.
+         if (!poisonTickedThisTurn) {
+             poisonTickedThisTurn = true;
+             if (isP1Turn) {
+                 if (p1PoisonTurns > 0) {
+                      p1HP -= p1PoisonDamage;
+                      p1PoisonTurns--;
+                      if (p1PoisonTurns <= 0) p1PoisonDamage = 0;
+                      schedulePoisonHurtWhenIdle(true);
+                 }
+             } else {
+                 if (p2PoisonTurns > 0) {
+                      p2HP -= p2PoisonDamage;
+                      p2PoisonTurns--;
+                      if (p2PoisonTurns <= 0) p2PoisonDamage = 0;
+                      schedulePoisonHurtWhenIdle(false);
+                 }
              }
          }
          // Clamp after poison
@@ -1689,6 +1718,8 @@ public class ArcadeGamePanel extends AbstractGamePanel {
         p2HPLabel.setText("HP: " + p2HP);
 
         if (p1HealthBar != null) p1HealthBar.updateValue(p1HP);
+        // -- Type indicator labels -----------------------------------------------
+        refreshTypeLabels();
         if (p2HealthBar != null) p2HealthBar.updateValue(p2HP);
         if (p1MpBar     != null) p1MpBar.updateValue(p1MP);
         if (p2MpBar     != null) p2MpBar.updateValue(p2MP);
@@ -1739,6 +1770,25 @@ public class ArcadeGamePanel extends AbstractGamePanel {
         }
     }
 
+
+    /** Updates the elemental type labels above each HP bar with matchup-aware colours. */
+    private void refreshTypeLabels() {
+        if (p1TypeLabel == null || p2TypeLabel == null) return;
+        String p1Type = currentPlayerDef != null ? currentPlayerDef.archetype : null;
+        String p2Type = currentEnemyDef  != null ? currentEnemyDef.archetype  : null;
+
+        p1TypeLabel.setText(p1Type != null && !p1Type.isBlank() ? p1Type : "???");
+        p2TypeLabel.setText(p2Type != null && !p2Type.isBlank() ? p2Type : "???");
+
+        boolean p1Adv = CombatBalance.hasElementAdvantage(currentPlayerDef, currentEnemyDef);
+        boolean p1Dis = CombatBalance.hasElementAdvantage(currentEnemyDef,  currentPlayerDef);
+        p1TypeLabel.setForeground(p1Adv ? new Color(80, 220, 100) : p1Dis ? new Color(230, 70, 70) : Color.WHITE);
+
+        boolean p2Adv = CombatBalance.hasElementAdvantage(currentEnemyDef,  currentPlayerDef);
+        boolean p2Dis = CombatBalance.hasElementAdvantage(currentPlayerDef, currentEnemyDef);
+        p2TypeLabel.setForeground(p2Adv ? new Color(80, 220, 100) : p2Dis ? new Color(230, 70, 70) : Color.WHITE);
+    }
+
     private void repositionUI() {
         // Hidden HP labels — zero-sized so they take no space
         if (p1HPLabel != null) p1HPLabel.setBounds(0, 0, 0, 0);
@@ -1770,6 +1820,11 @@ public class ArcadeGamePanel extends AbstractGamePanel {
         if (p2HealthBar != null) p2HealthBar.setBounds(rightX, barTop, hpWidth, hpHeight);
         if (p2MpBar != null) p2MpBar.setBounds(rightX + indicatorWidth + indicatorGap, barTop + hpHeight + barSpacing, manaWidth, manaHeight);
         if (p2RoundsWon != null) p2RoundsWon.setBounds(rightX, barTop + hpHeight + barSpacing - 2, indicatorWidth, 28);
+
+        // Type labels sit just above the HP bars
+        int typeLabelH = 26;
+        if (p1TypeLabel != null) p1TypeLabel.setBounds(leftX, barTop - typeLabelH - 2, hpWidth, typeLabelH);
+        if (p2TypeLabel != null) p2TypeLabel.setBounds(rightX, barTop - typeLabelH - 2, hpWidth, typeLabelH);
 
         if (countdownLabel != null) countdownLabel.setBounds(centerX, barTop - 4, centerDiameter, centerDiameter);
 
@@ -2851,6 +2906,21 @@ public class ArcadeGamePanel extends AbstractGamePanel {
         else                enemyHurtDelayTimer  = delayTimer;
     }
 
+    private void schedulePoisonHurtWhenIdle(boolean isPlayer) {
+        Timer[] holder = new Timer[1];
+        Timer poll = new Timer(80, null);
+        poll.addActionListener(e -> {
+            boolean animsRunning = isAnyCombatAnimationActive()
+                || (isPlayer ? isPlayerHurtAnimating : isEnemyHurtAnimating);
+            if (!animsRunning) {
+                holder[0].stop();
+                startTimedHurt(isPlayer, 350, true);
+            }
+        });
+        holder[0] = poll;
+        poll.start();
+    }
+
     private void startTimedHurt(boolean isPlayer, int durationMs, boolean fromPoison) {
         if (isPlayer) {
             if (playerHurtFrames.isEmpty()) return;
@@ -2858,7 +2928,7 @@ public class ArcadeGamePanel extends AbstractGamePanel {
             if (playerHurtWindowTimer != null) playerHurtWindowTimer.stop();
             if (playerHurtFlashTimer  != null) playerHurtFlashTimer.stop();
             isPlayerHurtAnimating = true; playerHurtFrameIndex = 0;
-            playerHurtFlashing = false;
+            playerHurtFlashing = fromPoison;
             playerHurtFromPoison = fromPoison;
             playerHurtTimer = new Timer(DEFAULT_HURT_DELAY_MS, null);
             playerHurtTimer.addActionListener(e -> {
@@ -2867,13 +2937,14 @@ public class ArcadeGamePanel extends AbstractGamePanel {
                 repaint();
             });
             playerHurtTimer.start();
-            // Flash timer: toggle red flash every 150ms
-            playerHurtFlashTimer = new Timer(150, null);
-            playerHurtFlashTimer.addActionListener(e -> {
-                playerHurtFlashing = !playerHurtFlashing;
-                repaint();
-            });
-            playerHurtFlashTimer.start();
+            if (!fromPoison) {
+                playerHurtFlashTimer = new Timer(150, null);
+                playerHurtFlashTimer.addActionListener(e -> {
+                    playerHurtFlashing = !playerHurtFlashing;
+                    repaint();
+                });
+                playerHurtFlashTimer.start();
+            }
             playerHurtWindowTimer = new Timer(durationMs, null);
             playerHurtWindowTimer.setRepeats(false);
             playerHurtWindowTimer.addActionListener(e -> stopHurtTimeline(true));
@@ -2884,7 +2955,7 @@ public class ArcadeGamePanel extends AbstractGamePanel {
             if (enemyHurtWindowTimer != null) enemyHurtWindowTimer.stop();
             if (enemyHurtFlashTimer  != null) enemyHurtFlashTimer.stop();
             isEnemyHurtAnimating = true; enemyHurtFrameIndex = 0;
-            enemyHurtFlashing = false;
+            enemyHurtFlashing = fromPoison;
             enemyHurtFromPoison = fromPoison;
             enemyHurtTimer = new Timer(DEFAULT_HURT_DELAY_MS, null);
             enemyHurtTimer.addActionListener(e -> {
@@ -2893,13 +2964,14 @@ public class ArcadeGamePanel extends AbstractGamePanel {
                 repaint();
             });
             enemyHurtTimer.start();
-            // Flash timer: toggle red flash every 150ms
-            enemyHurtFlashTimer = new Timer(150, null);
-            enemyHurtFlashTimer.addActionListener(e -> {
-                enemyHurtFlashing = !enemyHurtFlashing;
-                repaint();
-            });
-            enemyHurtFlashTimer.start();
+            if (!fromPoison) {
+                enemyHurtFlashTimer = new Timer(150, null);
+                enemyHurtFlashTimer.addActionListener(e -> {
+                    enemyHurtFlashing = !enemyHurtFlashing;
+                    repaint();
+                });
+                enemyHurtFlashTimer.start();
+            }
             enemyHurtWindowTimer = new Timer(durationMs, null);
             enemyHurtWindowTimer.setRepeats(false);
             enemyHurtWindowTimer.addActionListener(e -> stopHurtTimeline(false));
@@ -2948,21 +3020,26 @@ public class ArcadeGamePanel extends AbstractGamePanel {
         }
     }
 
-    private BufferedImage applyRedTintToNonTransparent(BufferedImage original) {
+    /** Returns the RGB tint for poison flash based on the attacker's element. */
+    private static int[] poisonRGBForElement(String element) {
+        if (element == null) return new int[]{0, 200, 0};
+        return switch (element.toLowerCase()) {
+            case "fire"    -> new int[]{255, 60,  0};   // burn — orange-red
+            case "thunder" -> new int[]{80,  140, 255}; // electrocuted — electric blue
+            default        -> new int[]{0,   200, 0};   // poison — green
+        };
+    }
+
+    private BufferedImage applyColorTintToNonTransparent(BufferedImage original, int r, int g, int b) {
         BufferedImage tinted = new BufferedImage(original.getWidth(), original.getHeight(), BufferedImage.TYPE_INT_ARGB);
         for (int y = 0; y < original.getHeight(); y++) {
             for (int x = 0; x < original.getWidth(); x++) {
-                int argb = original.getRGB(x, y);
+                int argb  = original.getRGB(x, y);
                 int alpha = (argb >> 24) & 0xFF;
                 if (alpha > 0) {
-                    // Non-transparent pixel - apply red tint with reduced opacity
-                    int r = 255;
-                    int g = 0;
-                    int b = 0;
-                    int reducedAlpha = (int)(alpha * 0.5); // 50% opacity
+                    int reducedAlpha = (int)(alpha * 0.5);
                     tinted.setRGB(x, y, (reducedAlpha << 24) | (r << 16) | (g << 8) | b);
                 } else {
-                    // Transparent pixel - keep as is
                     tinted.setRGB(x, y, argb);
                 }
             }
@@ -2970,25 +3047,14 @@ public class ArcadeGamePanel extends AbstractGamePanel {
         return tinted;
     }
 
-    private BufferedImage applyGreenTintToNonTransparent(BufferedImage original) {
-        BufferedImage tinted = new BufferedImage(original.getWidth(), original.getHeight(), BufferedImage.TYPE_INT_ARGB);
-        for (int y = 0; y < original.getHeight(); y++) {
-            for (int x = 0; x < original.getWidth(); x++) {
-                int argb = original.getRGB(x, y);
-                int alpha = (argb >> 24) & 0xFF;
-                if (alpha > 0) {
-                    int r = 0;
-                    int g = 255;
-                    int b = 0;
-                    int reducedAlpha = (int)(alpha * 0.5); // 50% opacity
-                    tinted.setRGB(x, y, (reducedAlpha << 24) | (r << 16) | (g << 8) | b);
-                } else {
-                    tinted.setRGB(x, y, argb);
-                }
-            }
-        }
-        return tinted;
+    private BufferedImage applyRedTintToNonTransparent(BufferedImage original) {
+        return applyColorTintToNonTransparent(original, 255, 0, 0);
     }
+
+    private BufferedImage applyGreenTintToNonTransparent(BufferedImage original) {
+        return applyColorTintToNonTransparent(original, 0, 200, 0);
+    }
+
 
     private void startDeadAnimation(boolean isPlayer) {
         if (isPlayer) {
@@ -3074,7 +3140,9 @@ public class ArcadeGamePanel extends AbstractGamePanel {
                     .withWeaknesses(config.weaknesses)
                     .withSkillShieldValues(config.skill1ShieldValue, config.skill2ShieldValue, config.skill3ShieldValue)
                     .withSkillHealValues(config.skill1HealValue, config.skill2HealValue, config.skill3HealValue)
-                    .withSkillSelfHeals(config.skill1SelfHeal, config.skill2SelfHeal, config.skill3SelfHeal));
+                    .withSkillSelfHeals(config.skill1SelfHeal, config.skill2SelfHeal, config.skill3SelfHeal)
+                    .withStats(config.getMaxHp(), config.getMaxMp())
+                    .withSkillManaCosts(config.getSkill1ManaCost(), config.getSkill2ManaCost(), config.getSkill3ManaCost()));
         }
         if (!defs.isEmpty()) return List.copyOf(defs);
 

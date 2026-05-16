@@ -491,7 +491,7 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
         int margin = 24;
         int sectionGap = 14;
 
-        int topHeight = (int) (height * 0.48);
+        int topHeight = (int) (height * 0.40);
         int leftWidth = (int) ((width - margin * 2 - sectionGap) * 0.30);
 
         Rectangle leftPanel = new Rectangle(margin, margin, leftWidth, topHeight);
@@ -567,6 +567,7 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
         drawPreviewShadow(g2, frame, spriteAreaX, spriteAreaY, spriteAreaW, spriteAreaH, fillRatio, previewBounds, PREVIEW_INSET_PX, tweak.offsetRatioX, tweak.offsetRatioY);
         drawFittedSprite(g2, frame, spriteAreaX, spriteAreaY, spriteAreaW, spriteAreaH, fillRatio, previewBounds, PREVIEW_INSET_PX, true, tweak.offsetRatioX, tweak.offsetRatioY);
         drawElementInfoBadge(g2, selected, new Rectangle(spriteAreaX, spriteAreaY, spriteAreaW, spriteAreaH));
+        drawHpMpBadge(g2, selected, new Rectangle(spriteAreaX, spriteAreaY, spriteAreaW, spriteAreaH));
 
         // Draw character name overlay inside the preview area (centered near bottom)
         if (selectedName != null && !selectedName.isBlank()) {
@@ -646,6 +647,62 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
         g2.drawString(typeText, textX, textY);
         g2.setColor(new Color(255, 220, 160));
         g2.drawString(weakText, textX, textY + fm.getHeight() + lineGap);
+
+        g2.setClip(oldClip);
+        g2.setStroke(oldStroke);
+        g2.setComposite(oldComposite);
+    }
+
+    private void drawHpMpBadge(Graphics2D g2, CharacterDef selected, Rectangle bounds) {
+        // Read HP and MP directly from the selected character definition
+        int displayHp = selected != null ? selected.getMaxHp() : 100;
+        int displayMp = selected != null ? selected.getMaxMp() : 100;
+
+        Font badgeFont = bodyFont.deriveFont(Font.BOLD, 18f);
+        g2.setFont(badgeFont);
+        FontMetrics fm = g2.getFontMetrics();
+
+        String hpText = "HP: " + displayHp;
+        String mpText = "MP: " + displayMp;
+
+        int padX = 12;
+        int padY = 8;
+        int lineGap = 4;
+        int textW = Math.max(fm.stringWidth(hpText), fm.stringWidth(mpText));
+        int badgeW = Math.min(bounds.width - 24, textW + padX * 2);
+        int badgeH = fm.getHeight() * 2 + lineGap + padY * 2;
+
+        // Position at top-right (mirroring the element badge at top-left)
+        int badgeX = bounds.x + bounds.width - badgeW - 12;
+        int badgeY = bounds.y + 12;
+
+        Composite oldComposite = g2.getComposite();
+        Stroke oldStroke = g2.getStroke();
+        Shape oldClip = g2.getClip();
+        g2.setClip(bounds);
+
+        // Dark translucent background
+        g2.setComposite(AlphaComposite.SrcOver.derive(0.82f));
+        g2.setColor(new Color(22, 27, 34));
+        g2.fillRoundRect(badgeX, badgeY, badgeW, badgeH, 10, 10);
+        g2.setComposite(oldComposite);
+
+        // Golden border (same as element badge)
+        g2.setColor(new Color(215, 185, 95));
+        g2.setStroke(new BasicStroke(1.6f));
+        g2.drawRoundRect(badgeX, badgeY, badgeW, badgeH, 10, 10);
+
+        g2.setFont(badgeFont);
+        int textX = badgeX + padX;
+        int textY = badgeY + padY + fm.getAscent();
+
+        // HP line — soft green
+        g2.setColor(new Color(120, 220, 130));
+        g2.drawString(hpText, textX, textY);
+
+        // MP line — blue
+        g2.setColor(new Color(100, 180, 255));
+        g2.drawString(mpText, textX, textY + fm.getHeight() + lineGap);
 
         g2.setClip(oldClip);
         g2.setStroke(oldStroke);
@@ -873,134 +930,302 @@ public class CharacterSelectionPanel extends JPanel implements Runnable{
             g2.setClip(oldClip);
         }
 
-        // Draw a subtle content card to separate text from background
+        // Content card with gradient
         int cardX = panel.x + 12;
         int cardY = y + 12;
         int cardW = panel.width - 24;
         int cardH = panel.height - (cardY - panel.y) - 18;
-        g2.setColor(new Color(245, 242, 238, 200));
+        GradientPaint cardGrad = new GradientPaint(
+            cardX, cardY,           new Color(250, 247, 243, 215),
+            cardX, cardY + cardH,   new Color(232, 226, 217, 215));
+        g2.setPaint(cardGrad);
         g2.fillRoundRect(cardX, cardY, cardW, cardH, 14, 14);
-        g2.setColor(new Color(60, 50, 40, 160));
-        g2.setStroke(new BasicStroke(2f));
+        g2.setPaint(null);
+        g2.setColor(new Color(130, 100, 60, 180));
+        g2.setStroke(new BasicStroke(1.8f));
         g2.drawRoundRect(cardX, cardY, cardW, cardH, 14, 14);
 
         int innerX = cardX + 18;
-        int innerY = cardY + 18;
+        int innerY = cardY + 16;
         int innerW = cardW - 36;
 
-        g2.setFont(labelFont);
-        int headerH = 30;
-        // Place Backstory header near top of the content card to reduce empty space
-        int backHeaderY = innerY;
-        g2.setFont(labelFont);
-        g2.setColor(new Color(75, 57, 30));
-        g2.fillRoundRect(innerX, backHeaderY, innerW, headerH, 10, 10);
-        g2.setColor(new Color(245, 242, 238));
-        g2.setFont(labelFont.deriveFont(Font.BOLD, 26f));
-        g2.drawString("Backstory", innerX + 8, backHeaderY + headerH - 6);
+        int headerH = 32;
 
-        // Backstory text area (height sized to wrapped content)
-        int backstoryY = backHeaderY + headerH + 8;
-        g2.setFont(bodyFont.deriveFont(Font.PLAIN, 24f));
+        // --- Backstory header (gradient) ---
+        int backHeaderY = innerY;
+        GradientPaint bsHeaderGrad = new GradientPaint(
+            innerX, backHeaderY,           new Color(95, 72, 40),
+            innerX, backHeaderY + headerH, new Color(62, 46, 22));
+        g2.setPaint(bsHeaderGrad);
+        g2.fillRoundRect(innerX, backHeaderY, innerW, headerH, 10, 10);
+        g2.setPaint(null);
+        g2.setColor(new Color(215, 185, 95, 180));
+        g2.setStroke(new BasicStroke(1f));
+        g2.drawRoundRect(innerX, backHeaderY, innerW, headerH, 10, 10);
+        g2.setColor(new Color(255, 248, 230));
+        g2.setFont(labelFont.deriveFont(Font.BOLD, 23f));
+        FontMetrics bhFm = g2.getFontMetrics();
+        g2.drawString("Backstory", innerX + 12, backHeaderY + (headerH + bhFm.getAscent()) / 2 - 3);
+
+        // --- Backstory text area ---
+        int backstoryY = backHeaderY + headerH + 6;
+        g2.setFont(bodyFont.deriveFont(Font.PLAIN, 22f));
         g2.setColor(new Color(44, 36, 28));
         int descTextWidth = innerW - 24;
         FontMetrics backFm = g2.getFontMetrics();
         int backLineH = Math.max(1, (int) Math.round(backFm.getHeight() * 0.9));
         int descLines = countWrappedLines(g2, selected.backstory == null ? "" : selected.backstory, descTextWidth);
-        // Add a bit more top padding and size box to content; ensure text starts at top
         int backBoxH = Math.max(backLineH, descLines * backLineH + 12);
-        g2.setColor(new Color(255, 255, 255, 200));
-        g2.fillRoundRect(innerX, backstoryY - 6, innerW, backBoxH + 8, 10, 10);
+        g2.setColor(new Color(250, 247, 243, 185));
+        g2.fillRoundRect(innerX, backstoryY - 4, innerW, backBoxH + 8, 8, 8);
+        g2.setColor(new Color(160, 130, 80, 80));
+        g2.setStroke(new BasicStroke(0.8f));
+        g2.drawRoundRect(innerX, backstoryY - 4, innerW, backBoxH + 8, 8, 8);
         g2.setColor(new Color(50, 41, 32));
         int descX = innerX + 12;
-        int descY = backstoryY + 12; // start from top padding
+        int descY = backstoryY + 10;
         drawWrappedText(g2, selected.backstory == null ? "" : selected.backstory, descX, descY, descTextWidth, backLineH);
 
-        // Skills header strip (colored) and table (preserve layout)
+        // --- Skills header (gradient) ---
         int skillsHeaderY = backstoryY + backBoxH + 12;
-        g2.setFont(labelFont.deriveFont(Font.BOLD, 24f));
-        g2.setColor(new Color(75, 57, 30));
+        GradientPaint skHeaderGrad = new GradientPaint(
+            innerX, skillsHeaderY,           new Color(95, 72, 40),
+            innerX, skillsHeaderY + headerH, new Color(62, 46, 22));
+        g2.setPaint(skHeaderGrad);
         g2.fillRoundRect(innerX, skillsHeaderY, innerW, headerH, 10, 10);
-        g2.setColor(new Color(245, 242, 238));
-        g2.drawString("Skills", innerX + 8, skillsHeaderY + headerH - 6);
+        g2.setPaint(null);
+        g2.setColor(new Color(215, 185, 95, 180));
+        g2.setStroke(new BasicStroke(1f));
+        g2.drawRoundRect(innerX, skillsHeaderY, innerW, headerH, 10, 10);
+        g2.setColor(new Color(255, 248, 230));
+        g2.setFont(labelFont.deriveFont(Font.BOLD, 23f));
+        FontMetrics shFm = g2.getFontMetrics();
+        g2.drawString("Skills", innerX + 12, skillsHeaderY + (headerH + shFm.getAscent()) / 2 - 3);
 
         int skillsStartY = skillsHeaderY + headerH + 12;
-        int bottomY = drawSkillsTable(g2, selected, innerX, skillsStartY, innerW);
-
-        // Done drawing details
-        return;
+        drawSkillsTable(g2, selected, innerX, skillsStartY, innerW);
     }
 
     private int drawSkillsTable(Graphics2D g2, CharacterDef selected, int x, int y, int width) {
-        // Render three skills horizontally to avoid vertical cutoff.
-        int boxes = 3;
-        int boxGap = 12;
-        int minBoxHeight = 120;
-        int nameBoxInnerH = 56;
-        int tableX = x + 0;
-        int totalGap = boxGap * (boxes - 1);
-        int boxW = (width - 16 - totalGap) / boxes;
-        int maxBoxH = minBoxHeight;
-        int[] boxHeights = new int[boxes];
+        int boxes        = 3;
+        int boxGap       = 14;
+        int nameBoxH     = 56;
+        int tableX       = x;
+        int totalGap     = boxGap * (boxes - 1);
+        int boxW         = (width - 16 - totalGap) / boxes;
+        int maxBoxH      = 0;
+        int chipRowH     = 32;
+        int chipGap      = 6;
+        int accentW      = 5;
 
-        // Description font used for measuring and rendering (larger for readability)
-        Font descFont = bodyFont.deriveFont(Font.PLAIN, 26f);
+        Font descFont = bodyFont.deriveFont(Font.PLAIN, 23f);
         g2.setFont(descFont);
         FontMetrics descFm = g2.getFontMetrics();
-        int descLineH = Math.max(1, (int) Math.round(descFm.getHeight() * 0.9));
+        int descLineH = Math.max(1, (int) Math.round(descFm.getHeight() * 0.92));
 
-        // Compute required height for each box based on wrapped description lines
         for (int i = 0; i < boxes; i++) {
             String desc = selected.getSkillDescription(i + 1);
-            int descTextWidth = Math.max(80, boxW - 24);
-            int descLines = countWrappedLines(g2, desc == null ? "" : desc, descTextWidth);
-            int h = Math.max(minBoxHeight, nameBoxInnerH + (descLines * descLineH) + 32);
-            boxHeights[i] = h;
+            g2.setFont(descFont);
+            int descLines = countWrappedLines(g2, desc == null ? "" : desc, Math.max(80, boxW - 28));
+            boolean hasEffects = hasSkillEffectChips(selected, i + 1);
+            int h = nameBoxH + 14
+                  + Math.max(descLineH, descLines * descLineH) + 12
+                  + chipRowH + chipGap
+                  + (hasEffects ? chipRowH + chipGap : 0)
+                  + 14;
             maxBoxH = Math.max(maxBoxH, h);
         }
 
-        // Draw each skill box
         for (int i = 0; i < boxes; i++) {
             int bx = tableX + i * (boxW + boxGap);
             int by = y;
+            String skillType = selected.getSkillType(i + 1);
+            Color[] accent   = accentForSkillType(skillType);
+            Color accentDark = accent[0];
+            Color accentLight = accent[1];
 
-            g2.setColor(new Color(248, 245, 239));
-            g2.fillRoundRect(bx, by, boxW, maxBoxH, 12, 12);
-            g2.setColor(new Color(53, 44, 34));
-            g2.drawRoundRect(bx, by, boxW, maxBoxH, 12, 12);
+            // --- Card background: subtle gradient ---
+            GradientPaint cardGrad = new GradientPaint(
+                bx, by,           new Color(252, 250, 247),
+                bx, by + maxBoxH, new Color(235, 230, 221));
+            g2.setPaint(cardGrad);
+            g2.fillRoundRect(bx, by, boxW, maxBoxH, 14, 14);
 
-            // Name header area
-            int nameBoxX = bx + 10;
-            int nameBoxY = by + 10;
-            int nameBoxW = boxW - 20;
-            int nameBoxH = nameBoxInnerH;
-            g2.setColor(new Color(86, 63, 35));
+            // --- Colored left accent strip (clipped to card bounds) ---
+            Shape prevClip = g2.getClip();
+            g2.setClip(new Rectangle(bx, by, boxW, maxBoxH));
+            GradientPaint accentGrad = new GradientPaint(
+                bx, by,           accentDark,
+                bx, by + maxBoxH, accentDark.darker());
+            g2.setPaint(accentGrad);
+            g2.fillRect(bx, by, accentW, maxBoxH);
+            g2.setClip(prevClip);
+
+            // --- Card border (type-tinted) ---
+            g2.setPaint(null);
+            g2.setColor(accentDark);
+            g2.setStroke(new BasicStroke(1.8f));
+            g2.drawRoundRect(bx, by, boxW, maxBoxH, 14, 14);
+
+            // --- Name header with gradient ---
+            int nameBoxX = bx + accentW + 5;
+            int nameBoxY = by + 8;
+            int nameBoxW = boxW - accentW - 13;
+            GradientPaint nameGrad = new GradientPaint(
+                nameBoxX, nameBoxY,           new Color(98, 72, 42),
+                nameBoxX, nameBoxY + nameBoxH, new Color(65, 46, 22));
+            g2.setPaint(nameGrad);
             g2.fillRoundRect(nameBoxX, nameBoxY, nameBoxW, nameBoxH, 10, 10);
-            g2.setColor(new Color(247, 241, 228));
+            g2.setPaint(null);
+            g2.setColor(new Color(accentLight.getRed(), accentLight.getGreen(), accentLight.getBlue(), 120));
+            g2.setStroke(new BasicStroke(1f));
             g2.drawRoundRect(nameBoxX, nameBoxY, nameBoxW, nameBoxH, 10, 10);
 
-            // Skill name
+            // --- Skill name ---
             String skillName = selected.getSkillName(i + 1);
-            g2.setColor(new Color(252, 248, 242));
-            g2.setFont(bodyFont.deriveFont(Font.BOLD, 30f));
-            FontMetrics nameMetrics = g2.getFontMetrics();
-            int nameTextX = nameBoxX + 12;
-            int nameTextY = nameBoxY + (nameBoxH + nameMetrics.getAscent()) / 2 - 2;
-            g2.drawString(skillName == null ? "" : skillName, nameTextX, nameTextY);
+            g2.setColor(new Color(255, 250, 240));
+            g2.setFont(bodyFont.deriveFont(Font.BOLD, 25f));
+            FontMetrics nameFm = g2.getFontMetrics();
+            int nameTextY = nameBoxY + (nameBoxH / 2) + (nameFm.getAscent() / 2) - 3;
+            g2.drawString(skillName == null ? "" : skillName, nameBoxX + 10, nameTextY);
 
-            // Skill description
+            // --- MP badge (top-right inside name header) ---
+            int mp = selected.getSkillManaCost(i + 1);
+            String mpStr = "MP " + mp;
+            g2.setFont(bodyFont.deriveFont(Font.BOLD, 16f));
+            FontMetrics mpFm = g2.getFontMetrics();
+            int mpBadgeW = mpFm.stringWidth(mpStr) + 16;
+            int mpBadgeH = 21;
+            int mpBadgeX = nameBoxX + nameBoxW - mpBadgeW - 6;
+            int mpBadgeY = nameBoxY + (nameBoxH - mpBadgeH) / 2;
+            g2.setColor(new Color(18, 50, 120, 235));
+            g2.fillRoundRect(mpBadgeX, mpBadgeY, mpBadgeW, mpBadgeH, 8, 8);
+            g2.setColor(new Color(180, 215, 255));
+            g2.setStroke(new BasicStroke(0.8f));
+            g2.drawRoundRect(mpBadgeX, mpBadgeY, mpBadgeW, mpBadgeH, 8, 8);
+            g2.setColor(new Color(210, 235, 255));
+            g2.drawString(mpStr, mpBadgeX + 8, mpBadgeY + mpBadgeH - mpFm.getDescent() + 1);
+
+            // --- Type pill (left of MP badge) ---
+            String typeLabel = skillType != null ? skillType.toUpperCase() : "SKILL";
+            g2.setFont(bodyFont.deriveFont(Font.BOLD, 14f));
+            FontMetrics typeFm = g2.getFontMetrics();
+            int typePillW = typeFm.stringWidth(typeLabel) + 12;
+            int typePillH = 17;
+            int typePillX = mpBadgeX - typePillW - 5;
+            int typePillY = mpBadgeY + (mpBadgeH - typePillH) / 2;
+            g2.setColor(new Color(accentDark.getRed(), accentDark.getGreen(), accentDark.getBlue(), 210));
+            g2.fillRoundRect(typePillX, typePillY, typePillW, typePillH, 6, 6);
+            g2.setColor(accentLight);
+            g2.drawString(typeLabel, typePillX + 6, typePillY + typePillH - typeFm.getDescent() + 2);
+
+            // --- Description ---
             String skillDesc = selected.getSkillDescription(i + 1);
-            g2.setColor(new Color(50, 41, 32));
+            g2.setColor(new Color(45, 36, 26));
             g2.setFont(descFont);
-            int descX = bx + 12;
-            int descY = nameBoxY + nameBoxH + 18;
-            int descTextWidth = Math.max(80, boxW - 24);
-            drawWrappedText(g2, skillDesc == null ? "" : skillDesc, descX, descY, descTextWidth, descLineH);
-        }
+            int descX = bx + accentW + 10;
+            int descY = nameBoxY + nameBoxH + 19;
+            int afterDescY = drawWrappedText(g2, skillDesc == null ? "" : skillDesc,
+                                             descX, descY, Math.max(80, boxW - accentW - 20), descLineH);
 
+            // --- Chips pinned to card bottom (consistent across all 3 cards) ---
+            boolean hasEffects = hasSkillEffectChips(selected, i + 1);
+            int effectChipY  = by + maxBoxH - 14 - chipRowH;
+            int damageChipY  = hasEffects ? (effectChipY - chipGap - chipRowH) : effectChipY;
+            int sepY         = damageChipY - 8;
+
+            // Separator line
+            g2.setColor(new Color(accentDark.getRed(), accentDark.getGreen(), accentDark.getBlue(), 60));
+            g2.setStroke(new BasicStroke(1f));
+            g2.drawLine(bx + accentW + 6, sepY, bx + boxW - 8, sepY);
+
+            // Damage chips
+            drawSkillDamageChips(g2, selected, i + 1, bx + accentW + 8, damageChipY, boxW - accentW - 16, chipRowH);
+
+            // Effect chips
+            if (hasEffects) {
+                drawSkillEffectChips(g2, selected, i + 1, bx + accentW + 8,
+                                     effectChipY, boxW - accentW - 16, chipRowH);
+            }
+        }
         return y + maxBoxH + 12;
     }
 
+    private Color[] accentForSkillType(String type) {
+        if (type == null) return new Color[]{new Color(80, 70, 60), new Color(215, 210, 200)};
+        return switch (type.toLowerCase()) {
+            case "damage"  -> new Color[]{new Color(155, 48, 28),  new Color(255, 185, 165)};
+            case "debuff"  -> new Color[]{new Color(80, 38, 140),  new Color(215, 170, 255)};
+            case "defense" -> new Color[]{new Color(24, 82, 128),  new Color(155, 215, 255)};
+            case "heal"    -> new Color[]{new Color(38, 100, 45),  new Color(165, 245, 175)};
+            default        -> new Color[]{new Color(75, 65, 50),   new Color(215, 205, 190)};
+        };
+    }
+
+    private boolean hasSkillEffectChips(CharacterDef def, int skillID) {
+        if (def == null) return false;
+        return CombatBalance.calculatePoisonDamage(def, skillID) > 0
+            || def.getSkillHealValue(skillID) > 0
+            || def.getSkillShieldValue(skillID) > 0
+            || def.getSkillSelfHeal(skillID) > 0;
+    }
+
+    private int drawChip(Graphics2D g2, String text, int x, int y, int h, Color bg, Color border, Color fg) {
+        g2.setFont(bodyFont.deriveFont(Font.BOLD, 16f));
+        FontMetrics fm = g2.getFontMetrics();
+        int padX = 16;
+        int w = fm.stringWidth(text) + padX * 2;
+        // Fill
+        g2.setColor(bg);
+        g2.fillRoundRect(x, y, w, h, 8, 8);
+        // Border
+        g2.setColor(border);
+        g2.setStroke(new BasicStroke(0.9f));
+        g2.drawRoundRect(x, y, w, h, 8, 8);
+        // Text
+        g2.setColor(fg);
+        g2.drawString(text, x + padX, y + (h + fm.getAscent() - fm.getDescent()) / 2 + 2);
+        return w + 6;
+    }
+
+    private void drawSkillDamageChips(Graphics2D g2, CharacterDef def, int skillID,
+                                      int x, int y, int maxW, int chipH) {
+        int neutral = CombatBalance.previewNeutralDamage(def, skillID);
+        if (neutral <= 0) return;
+        int cx = x;
+        cx += drawChip(g2, "DMG " + neutral, cx, y, chipH,
+                       new Color(55, 45, 35, 215), new Color(120, 100, 75, 180), new Color(240, 228, 210));
+        int adv = CombatBalance.previewAdvantageDamage(def, skillID);
+        if (adv != neutral) {
+            drawChip(g2, "ADV " + adv, cx, y, chipH,
+                     new Color(22, 85, 28, 215), new Color(80, 165, 80, 180), new Color(150, 240, 155));
+        }
+    }
+
+    private void drawSkillEffectChips(Graphics2D g2, CharacterDef def, int skillID,
+                                      int x, int y, int maxW, int chipH) {
+        int cx = x;
+        int poisonDmg = CombatBalance.calculatePoisonDamage(def, skillID);
+        int poisonDur = CombatBalance.calculatePoisonDuration(def, skillID);
+        if (poisonDmg > 0 && poisonDur > 0) {
+            cx += drawChip(g2, "PSN " + poisonDmg + "x" + poisonDur, cx, y, chipH,
+                           new Color(22, 82, 28, 215), new Color(75, 160, 75, 180), new Color(155, 248, 160));
+        }
+        if (def.getSkillHealValue(skillID) > 0) {
+            int heal = CombatBalance.calculateHealing(def, skillID, 1.0, false);
+            cx += drawChip(g2, "HEAL +" + heal, cx, y, chipH,
+                           new Color(35, 105, 42, 215), new Color(90, 175, 90, 180), new Color(175, 248, 178));
+        }
+        if (def.getSkillShieldValue(skillID) > 0) {
+            int shield = CombatBalance.calculateShieldHealing(def, skillID, 1.0, false);
+            cx += drawChip(g2, "SHLD +" + shield, cx, y, chipH,
+                           new Color(22, 62, 138, 215), new Color(80, 145, 220, 180), new Color(145, 205, 255));
+        }
+        if (def.getSkillSelfHeal(skillID) > 0) {
+            drawChip(g2, "REGEN +" + def.getSkillSelfHeal(skillID), cx, y, chipH,
+                     new Color(118, 86, 16, 215), new Color(195, 155, 60, 180), new Color(248, 205, 105));
+        }
+    }
     private int countWrappedLines(Graphics2D g2, String text, int maxWidth) {
         if (text == null || text.isBlank()) {
             return 1;

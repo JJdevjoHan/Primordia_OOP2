@@ -268,6 +268,13 @@ public class CharacterDef {
     public int skill2SelfHeal = 0;
     public int skill3SelfHeal = 0;
 
+    // Encapsulated per-character combat stats (set via builder methods after construction)
+    private int maxHp        = 100;
+    private int maxMp        = 100;
+    private int skill1ManaCost = 10;
+    private int skill2ManaCost = 20;
+    private int skill3ManaCost = 30;
+
     public CharacterDef(String name,
                         String backstory,
                         String skill1Name, String skill2Name, String skill3Name,
@@ -657,6 +664,33 @@ public class CharacterDef {
             case 3 -> skill3SelfHeal;
             default -> 0;
         };
+    }
+
+    // ── Getters ───────────────────────────────────────────────────────────────
+    public int getMaxHp() { return maxHp; }
+    public int getMaxMp() { return maxMp; }
+
+    public int getSkillManaCost(int skillID) {
+        return switch (skillID) {
+            case 1 -> skill1ManaCost;
+            case 2 -> skill2ManaCost;
+            case 3 -> skill3ManaCost;
+            default -> 0;
+        };
+    }
+
+    // ── Builder methods (match withArchetype / withWeaknesses pattern) ─────────
+    public CharacterDef withStats(int maxHp, int maxMp) {
+        this.maxHp = Math.max(1, maxHp);
+        this.maxMp = Math.max(0, maxMp);
+        return this;
+    }
+
+    public CharacterDef withSkillManaCosts(int cost1, int cost2, int cost3) {
+        this.skill1ManaCost = Math.max(0, cost1);
+        this.skill2ManaCost = Math.max(0, cost2);
+        this.skill3ManaCost = Math.max(0, cost3);
+        return this;
     }
 
     public boolean isWeakTo(String attackerArchetype) {
