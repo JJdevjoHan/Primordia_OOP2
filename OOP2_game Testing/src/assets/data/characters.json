@@ -2,14 +2,38 @@
   "version": 1,
   "description": "Pokemon-style character data for battle setup.",
   "elementWeaknessChart": {
-    "Fire": ["Nature", "Steel"],
-    "Water": ["Fire", "Steel"],
-    "Nature": ["Water", "Light"],
-    "Steel": ["Nature", "Wind"],
-    "Thunder": ["Wind", "Dark"],
-    "Wind": ["Fire", "Thunder"],
-    "Light": ["Water", "Dark"],
-    "Dark": ["Thunder", "Light"]
+    "Fire": [
+      "Nature",
+      "Steel"
+    ],
+    "Water": [
+      "Fire",
+      "Steel"
+    ],
+    "Nature": [
+      "Water",
+      "Light"
+    ],
+    "Steel": [
+      "Nature",
+      "Wind"
+    ],
+    "Thunder": [
+      "Wind",
+      "Dark"
+    ],
+    "Wind": [
+      "Fire",
+      "Thunder"
+    ],
+    "Light": [
+      "Water",
+      "Dark"
+    ],
+    "Dark": [
+      "Thunder",
+      "Light"
+    ]
   },
   "characters": [
     {
@@ -17,7 +41,10 @@
       "name": "Caedric Thunderbound",
       "backstory": "Caedric is a restless lightning prodigy raised among ruined ley shrines. He channels raw storm-energy through improvised sigils, preferring unpredictable, high-risk finishes that leave foes reeling.",
       "elementType": "Thunder",
-      "weakness": ["Wind", "Dark"],
+      "weakness": [
+        "Wind",
+        "Dark"
+      ],
       "hp": 230,
       "mana": 240,
       "skills": [
@@ -39,12 +66,12 @@
           },
           "hurtTriggerBufferSeconds": 0.15,
           "description": "Unleashes a jagged lightning burst that shocks one enemy for moderate damage.",
-           "manaCost": 48,
-           "power": 45,
-           "poisonDamage": 4,
-           "poisonDuration": 2,
-           "cooldownTurns": 0,
-           "target": "single_enemy"
+          "manaCost": 48,
+          "power": 45,
+          "poisonDamage": 4,
+          "poisonDuration": 2,
+          "cooldownTurns": 0,
+          "target": "single_enemy"
         },
         {
           "slot": 2,
@@ -107,7 +134,10 @@
       "name": "Gwyneth Verdantide",
       "backstory": "Gwyneth trained as a temple guardian, blending martial bladework with restorative light. She balances offense and support, weaving shields and steady regeneration to keep allies standing.",
       "elementType": "Light",
-      "weakness": ["Dark", "Nature"],
+      "weakness": [
+        "Dark",
+        "Nature"
+      ],
       "hp": 310,
       "mana": 200,
       "skills": [
@@ -168,8 +198,12 @@
         "hurt": "src/assets/spritesheet/Light Mage/Hurt-Sheet.png"
       },
       "skillOffsets": {
-        "skill2": { "forwardX": 100 },
-        "skill3": { "forwardX": 100 }
+        "skill2": {
+          "forwardX": 100
+        },
+        "skill3": {
+          "forwardX": 100
+        }
       }
     },
     {
@@ -177,7 +211,10 @@
       "name": "Myrrik Flameheart",
       "backstory": "Myrrik is a volcanic battlemage who tempers wildfire into disciplined strikes. His style favors pressure and explosive follow-ups, burning openings with relentless force.",
       "elementType": "Fire",
-      "weakness": ["Water", "Wind"],
+      "weakness": [
+        "Water",
+        "Wind"
+      ],
       "hp": 260,
       "mana": 215,
       "skills": [
@@ -254,7 +291,10 @@
       "name": "Faecyrion Vhaloris",
       "backstory": "Faecyrion is an ironclad duelist who bends tempered metal into precise, punishing strikes. Her steelwork prioritizes control — chain, spike and blade — delivered with surgical timing.",
       "elementType": "Steel",
-      "weakness": ["Water", "Fire"],
+      "weakness": [
+        "Water",
+        "Fire"
+      ],
       "hp": 295,
       "mana": 205,
       "skills": [
@@ -336,7 +376,10 @@
       "name": "Earl Froggington",
       "backstory": "Earl is a forest tactician who commands roots and spores to control space and sap strength. He favors attrition — shields of growth and steady pressure that outlast reckless attackers.",
       "elementType": "Nature",
-      "weakness": ["Fire", "Steel"],
+      "weakness": [
+        "Fire",
+        "Steel"
+      ],
       "hp": 265,
       "mana": 230,
       "drawWidth": 320,
@@ -436,7 +479,10 @@
       "name": "Ondine",
       "backstory": "Ondine channels tides and pressure into disciplined bladework. She controls tempo with flowing strikes and shifting barriers, shaping the battlefield like a current.",
       "elementType": "Water",
-      "weakness": ["Nature", "Light"],
+      "weakness": [
+        "Nature",
+        "Light"
+      ],
       "hp": 270,
       "mana": 215,
       "drawWidth": 384,
@@ -527,7 +573,10 @@
       "name": "Ali Morningstart",
       "backstory": "Ali moves like a gust incarnate — quick, precise, and disruptive. Her razor winds punish openings and keep opponents off-balance, favoring mobility over brute force.",
       "elementType": "Wind",
-      "weakness": ["Thunder", "Steel"],
+      "weakness": [
+        "Thunder",
+        "Steel"
+      ],
       "hp": 250,
       "mana": 235,
       "drawWidth": 750,
@@ -598,7 +647,10 @@
       "name": "Yuri Moonshade",
       "backstory": "Yuri is a shadow-touched kumiho sorceress who shapes soul-threads into corrosive magic. Her unpredictable assaults erode resolve and exploit dark openings with ruthless efficiency.",
       "elementType": "Dark",
-      "weakness": ["Light", "Thunder"],
+      "weakness": [
+        "Light",
+        "Thunder"
+      ],
       "hp": 255,
       "mana": 220,
       "drawWidth": 440,

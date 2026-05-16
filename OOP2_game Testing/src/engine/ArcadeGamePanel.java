@@ -231,6 +231,7 @@ public class ArcadeGamePanel extends AbstractGamePanel {
     private int currentArcadeOpponentIndex = 0;  // Current position in opponent list
     private int arcadeWinsInRun = 0;  // Number of matches won so far in this run
     private boolean loadingNextArcadeOpponent = false;
+    private long arcadeRunStartTime = 0L;  // System.currentTimeMillis() when the run began
 
     private final SoundManager arcadeBGM = new SoundManager();
     private final SoundManager sfx = new SoundManager();
@@ -426,7 +427,8 @@ public class ArcadeGamePanel extends AbstractGamePanel {
         this.arcadeOpponentIndices = new ArrayList<>(arcadeOpponentIndices);
         this.currentArcadeOpponentIndex = 0;
         this.arcadeWinsInRun = 0;
-        
+        this.arcadeRunStartTime = System.currentTimeMillis();
+
         updateArcadeModeUI();
     }
 
@@ -459,15 +461,16 @@ public class ArcadeGamePanel extends AbstractGamePanel {
                 currentArcadeOpponentIndex++;
                 
                 if (currentArcadeOpponentIndex >= arcadeOpponentIndices.size()) {
-                    // Player beat all opponents — show victory screen
+                    // Player beat all opponents — record speedrun time, then show victory
+                    final long elapsedMs = System.currentTimeMillis() - arcadeRunStartTime;
                     scheduleArcadeTransition(() -> {
                         turnLabel.setText("ARCADE COMPLETE! WINS: " + arcadeWinsInRun);
                         skillButtonPanel.setVisible(false);
                         if (messageOverlay != null) {
-                            messageOverlay.setOnHide(this::showRetryPopup);
+                            messageOverlay.setOnHide(() -> showSpeedrunEntryThenRetry(elapsedMs));
                             messageOverlay.showMatchResult(true, false);
                         } else {
-                            showRetryPopup();
+                            showSpeedrunEntryThenRetry(elapsedMs);
                         }
                     });
                 } else {
@@ -485,22 +488,67 @@ public class ArcadeGamePanel extends AbstractGamePanel {
                     });
                 }
             } else {
-                // Player lost — end arcade run
+                // Player lost — end arcade run (no speedrun entry)
                 scheduleArcadeTransition(() -> {
                     turnLabel.setText("ARCADE RUN ENDED. WINS: " + arcadeWinsInRun);
                     skillButtonPanel.setVisible(false);
                     boolean isKO = (p1HP <= 0 || p2HP <= 0);
                     if (messageOverlay != null) {
-                        messageOverlay.setOnHide(this::showRetryPopup);
+                        messageOverlay.setOnHide(this::showArcadeRetryPopup);
                         messageOverlay.showSurvivalKO(isKO);
                     } else {
-                        showRetryPopup();
+                        showArcadeRetryPopup();
                     }
                 });
             }
         }
     }
 
+    /** Called after the player enters their speedrun name; shows the arcade retry popup. */
+    private void showSpeedrunEntryThenRetry(long elapsedMs) {
+        if (window != null) {
+            assets.Utility.ArcadeSpeedrunEntryDialog entryDialog =
+                new assets.Utility.ArcadeSpeedrunEntryDialog(
+                    window,
+                    elapsedMs,
+                    name -> assets.Utility.ArcadeSpeedrunManager.recordEntry(name, elapsedMs)
+                );
+            entryDialog.setLocationRelativeTo(window);
+            entryDialog.setVisible(true);
+        } else {
+            assets.Utility.ArcadeSpeedrunManager.recordEntry("Anonymous", elapsedMs);
+        }
+        showArcadeRetryPopup();
+    }
+
+    /** Retry popup used for ALL arcade run endings (win or loss). */
+    private void showArcadeRetryPopup() {
+        if (window == null) {
+            return;
+        }
+
+        assets.Utility.ArcadeRetryPopupDialog popup = new assets.Utility.ArcadeRetryPopupDialog(
+                window,
+                () -> {
+                    window.stopGameMusic();
+                    window.showCharacterSelection(GameMode.ARCADE);
+                },
+                window::showIntro,
+                this::showLeaderboardPopup
+        );
+        popup.setLocationRelativeTo(window);
+        popup.setVisible(true);
+    }
+
+    private void showLeaderboardPopup() {
+        if (window == null) return;
+        assets.Utility.SurvivalLeaderboardPopupDialog popup =
+            new assets.Utility.SurvivalLeaderboardPopupDialog(window);
+        popup.setLocationRelativeTo(window);
+        popup.setVisible(true);
+    }
+
+    /** Fallback retry for non-arcade PVP/PVB matches (unchanged behaviour). */
     private void showRetryPopup() {
         if (window == null) {
             return;
