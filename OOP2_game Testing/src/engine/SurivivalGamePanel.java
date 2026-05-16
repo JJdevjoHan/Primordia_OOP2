@@ -2994,6 +2994,11 @@ public class SurivivalGamePanel extends AbstractGamePanel {
         Timer[] holder = new Timer[1];
         Timer poll = new Timer(80, null);
         poll.addActionListener(e -> {
+            // Abort if character is dead
+            if ((isPlayer && p1HP <= 0) || (!isPlayer && p2HP <= 0)) {
+                holder[0].stop();
+                return;
+            }
             boolean animsRunning = isAnyCombatAnimationActive()
                 || (isPlayer ? isPlayerHurtAnimating : isEnemyHurtAnimating);
             if (!animsRunning) {
@@ -3119,6 +3124,7 @@ public class SurivivalGamePanel extends AbstractGamePanel {
         if (isPlayer) {
             if (playerTimer != null) playerTimer.stop();
             stopSkillAnimation(true); stopHurtTimeline(true);
+            isPlayerHurtAnimating = false; // explicitly clear hurt flag to avoid race conditions
             if (playerDeadFrames.isEmpty()) return;
             playerDeadFrameIndex = 0;
             int delay = currentPlayerDef != null ? currentPlayerDef.deadAnimation.frameDelayMs : 150;
@@ -3137,6 +3143,7 @@ public class SurivivalGamePanel extends AbstractGamePanel {
         } else {
             if (enemyTimer != null) enemyTimer.stop();
             stopSkillAnimation(false); stopHurtTimeline(false);
+            isEnemyHurtAnimating = false; // explicitly clear hurt flag
             if (enemyDeadFrames.isEmpty()) return;
             enemyDeadFrameIndex = 0;
             int delay = currentEnemyDef != null ? currentEnemyDef.deadAnimation.frameDelayMs : 150;

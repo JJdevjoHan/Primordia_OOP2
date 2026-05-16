@@ -1,0 +1,16 @@
+# Kilo AI agent tooling
+.kilo/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Build output
+*.class
+out/
+build/
