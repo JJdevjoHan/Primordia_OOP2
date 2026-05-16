@@ -75,6 +75,19 @@ public final class CharacterDataLoader {
         public final CharacterDef.ProjectileDef skill3Projectile;
         public final CharacterDef.DefenseFormDef defenseForm;
 
+        // ── Encapsulated per-character stats ─────────────────────────────────
+        private final int maxHp;
+        private final int maxMp;
+        private final int skill1ManaCost;
+        private final int skill2ManaCost;
+        private final int skill3ManaCost;
+
+        public int getMaxHp()          { return maxHp; }
+        public int getMaxMp()          { return maxMp; }
+        public int getSkill1ManaCost() { return skill1ManaCost; }
+        public int getSkill2ManaCost() { return skill2ManaCost; }
+        public int getSkill3ManaCost() { return skill3ManaCost; }
+
         public CharacterConfig(
             String name,
             String archetype,
@@ -131,7 +144,12 @@ public final class CharacterDataLoader {
             CharacterDef.ProjectileDef skill1Projectile,
             CharacterDef.ProjectileDef skill2Projectile,
             CharacterDef.ProjectileDef skill3Projectile,
-            CharacterDef.DefenseFormDef defenseForm
+            CharacterDef.DefenseFormDef defenseForm,
+            int maxHp,
+            int maxMp,
+            int skill1ManaCost,
+            int skill2ManaCost,
+            int skill3ManaCost
         ) {
             this.name = name;
             this.archetype = archetype;
@@ -189,6 +207,11 @@ public final class CharacterDataLoader {
             this.skill2Projectile = skill2Projectile;
             this.skill3Projectile = skill3Projectile;
             this.defenseForm = defenseForm;
+            this.maxHp         = Math.max(1, maxHp);
+            this.maxMp         = Math.max(0, maxMp);
+            this.skill1ManaCost = Math.max(0, skill1ManaCost);
+            this.skill2ManaCost = Math.max(0, skill2ManaCost);
+            this.skill3ManaCost = Math.max(0, skill3ManaCost);
         }
     }
 
@@ -280,6 +303,15 @@ public final class CharacterDataLoader {
                  int skill2SelfHeal = getSkillSelfHeal(skills, 1);
                  int skill3SelfHeal = getSkillSelfHeal(skills, 2);
 
+                 // Per-character HP / MP and per-skill mana costs from JSON
+                 int charMaxHp = getOptionalInt(characterMap, "hp");
+                 if (charMaxHp <= 0) charMaxHp = 100;
+                 int charMaxMp = getOptionalInt(characterMap, "mana");
+                 if (charMaxMp <= 0) charMaxMp = 100;
+                 int charSkill1ManaCost = getSkillManaCost(skills, 0, 10);
+                 int charSkill2ManaCost = getSkillManaCost(skills, 1, 20);
+                 int charSkill3ManaCost = getSkillManaCost(skills, 2, 30);
+
                  if (name == null || name.isBlank() || idleSpritePath == null || deathSpritePath == null) {
                     continue;
                 }
@@ -340,8 +372,13 @@ public final class CharacterDataLoader {
                     skill1Projectile,
                     skill2Projectile,
                     skill3Projectile,
-                    defenseForm
-                ));
+                     defenseForm,
+                     charMaxHp,
+                     charMaxMp,
+                     charSkill1ManaCost,
+                     charSkill2ManaCost,
+                     charSkill3ManaCost
+                 ));
             }
 
             return result;
@@ -660,6 +697,16 @@ public final class CharacterDataLoader {
             try { return Math.max(0, Integer.parseInt(String.valueOf(raw))); } catch (Exception e) { return 0; }
         }
         return 0;
+    }
+
+    private static int getSkillManaCost(List<?> skills, int index, int fallback) {
+        if (skills.size() <= index || !(skills.get(index) instanceof Map<?, ?> skillMap)) return fallback;
+        Object raw = skillMap.get("manaCost");
+        if (raw instanceof Number number) return Math.max(0, number.intValue());
+        if (raw != null) {
+            try { return Math.max(0, Integer.parseInt(String.valueOf(raw))); } catch (Exception e) { return fallback; }
+        }
+        return fallback;
     }
 
     private static String normalizeResourcePath(String path) {

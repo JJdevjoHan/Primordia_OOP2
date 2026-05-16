@@ -1,0 +1,453 @@
+@startuml Primordia_Class_Diagram
+title Primordia OOP2 - Class Diagram
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype ortho
+skinparam nodesep 55
+skinparam ranksep 70
+hide empty members
+
+top to bottom direction
+
+package "main" {
+  class Main {
+    +main(args: String[]): void
+  }
+}
+
+package "engine" {
+  enum GameMode {
+    PVP
+    SURVIVAL
+    ARCADE
+    PVB
+  }
+
+  interface SkillExecutor {
+    +executeSkill(skillID: int): void
+    +isInputBlocked(): boolean
+    +stopMusic(): void
+  }
+
+  abstract class AbstractGamePanel {
+    #TILE_SIZE: int
+    #SCREEN_WIDTH: int
+    #SCREEN_HEIGHT: int
+    #AbstractGamePanel()
+    +executeSkill(skillID: int): void
+    +stopMusic(): void
+    #updateGameState(): void
+  }
+
+  class GameWindow {
+    -layout: CardLayout
+    -container: JPanel
+    -menuBGM: SoundManager
+    -currentCharacterSelectionPanel: CharacterSelectionPanel
+    -currentGamePanel: JPanel
+    -currentPanelCard: String
+    +showMenu(): void
+    +showIntro(): void
+    +showPauseMenu(): void
+    +showSettingsMenu(): void
+    +showCharacterSelection(mode: GameMode): void
+    +startPvPMatch(p1: int, p2: int): void
+    +startSurvivalMatch(playerIndex: int): void
+    +startArcadeMatch(playerIndex: int): void
+  }
+
+  class IntroPanel
+  class GameModeSelector
+  class CharacterSelectionPanel {
+    -window: GameWindow
+    -mode: GameMode
+    +run(): void
+    +stopMusic(): void
+  }
+  class CreditsPanel
+  class PauseMenuPanel
+  class SettingsMenuPanel
+
+  class GamePanel {
+    +ALL_CHARACTERS: List<CharacterDef>
+    -window: GameWindow
+    -currentPlayerDef: CharacterDef
+    -currentEnemyDef: CharacterDef
+    -roundManager: RoundManager
+    -bgmMainGamePlay: SoundManager
+    -sfx: SoundManager
+    +GamePanel(window: GameWindow, p1Index: int, p2Index: int)
+    +executeSkill(skillID: int): void
+    +stopMusic(): void
+    +reloadCharacterDefs(): void
+  }
+
+  class SurivivalGamePanel {
+    -window: GameWindow
+    -gameMode: GameMode
+    -botDifficulty: BotAI.Difficulty
+    -currentPlayerDef: CharacterDef
+    -currentEnemyDef: CharacterDef
+    +executeSkill(skillID: int): void
+    +stopMusic(): void
+  }
+
+  class ArcadeGamePanel {
+    -window: GameWindow
+    -gameMode: GameMode
+    -botDifficulty: BotAI.Difficulty
+    -arcadeOpponents: List<Integer>
+    -currentPlayerDef: CharacterDef
+    -currentEnemyDef: CharacterDef
+    +executeSkill(skillID: int): void
+    +stopMusic(): void
+    +getGameMode(): GameMode
+  }
+
+  class KeyInputs {
+    -executor: SkillExecutor
+    +KeyInputs(executor: SkillExecutor)
+  }
+
+  class SoundManager {
+    +setFile(i: int): void
+    +play(): void
+    +loop(): void
+    +stop(): void
+    +run(): void
+  }
+
+  class BotAI <<final>> {
+    +chooseSkill(botHP: int, playerHP: int, botDef: CharacterDef): int
+    +chooseSkill(botHP: int, playerHP: int, botDef: CharacterDef, difficulty: Difficulty, maxHP: int): int
+  }
+
+  enum "BotAI.Difficulty" as BotAIDifficulty {
+    EASY
+    NORMAL
+    HARD
+  }
+
+  class CharacterDef {
+    +name: String
+    +backstory: String
+    +archetype: String
+    +weaknesses: String[]
+    +getSkillPower(skillID: int): int
+    +getSkillName(skillID: int): String
+    +getSkillType(skillID: int): String
+    +getSkillDescription(skillID: int): String
+    +getSkillProjectile(skillID: int): ProjectileDef
+    +isWeakTo(attackerArchetype: String): boolean
+  }
+
+  class "CharacterDef.AnimationDef" as AnimationDef {
+    +sheetPath: String
+    +frameWidth: int
+    +frameHeight: int
+    +frameDelayMs: int
+  }
+
+  class "CharacterDef.ProjectileDef" as ProjectileDef {
+    +sheetPath: String
+    +frameWidth: int
+    +frameHeight: int
+    +drawWidth: int
+    +drawHeight: int
+    +speed: int
+  }
+
+  class "CharacterDef.DefenseFormDef" as DefenseFormDef {
+    +toggleSkillSlot: int
+    +altSkillSlot: int
+    +enterFreezeFrame: int
+    +exitStartFrame: int
+  }
+
+  class CharacterDataLoader <<final>> {
+    +loadCharacterConfigs(resourcePath: String): List<CharacterConfig>
+  }
+
+  class "CharacterDataLoader.CharacterConfig" as CharacterConfig
+  class "CharacterDataLoader.JsonParser" as JsonParser
+
+  class CombatBalance <<final>>
+
+  class MapGenerator <<final>> {
+    +createBackgroundState(): BackgroundState
+    +drawBackground(): void
+  }
+
+  class "MapGenerator.BackgroundState" as BackgroundState
+}
+
+package "assets.Utility" {
+  class BackButton {
+    +createBackButton(window: GameWindow, panel: JPanel): JButton
+  }
+
+  class CreditsButton
+  class ExitButton
+  class ButtonTextRenderer <<final>>
+  class FontManager
+
+  class BattleUISkillButton
+  class BattleMessageOverlay {
+    +showMessage(text: String, type: MessageType): void
+    +hideMessage(): void
+  }
+  enum "BattleMessageOverlay.MessageType" as MessageType
+  enum "BattleMessageOverlay.State" as MessageState
+
+  class CircularTimerLabel {
+    +getText(): String
+    +setText(text: String): void
+  }
+
+  class GameBar {
+    +setValue(value: int): void
+    +setMaxValue(maxValue: int): void
+  }
+  enum "GameBar.BarType" as BarType {
+    HP
+    MP
+  }
+
+  class RoundsWonIndicator {
+    +setWins(wins: int): void
+  }
+
+  class RoundManager {
+    +MAX_ROUNDS: int
+    +WINS_TO_WIN: int
+    -gameMode: GameMode
+    +startMatch(): void
+    +recordRoundResult(p1WonRound: boolean): void
+    +advanceRound(): void
+    +reset(): void
+    +getGameMode(): GameMode
+  }
+
+  interface "RoundManager.OnRoundStart" as OnRoundStart
+  interface "RoundManager.OnRoundEnd" as OnRoundEnd
+  interface "RoundManager.OnMatchEnd" as OnMatchEnd
+
+  class MatchResultPopupDialog
+  class SurvivalRetryPopupDialog
+  class SurvivalLeaderboardPopupDialog
+  class SurvivalLeaderboardEntryDialog
+
+  class SurvivalLeaderboardManager <<final>> {
+    +recordEntry(playerName: String, score: int): void
+    +loadEntries(): List<Entry>
+    +formatEntries(): String
+  }
+  class "SurvivalLeaderboardManager.Entry" as LeaderboardEntry {
+    -playerName: String
+    -score: int
+    -recordedAt: long
+    +playerName(): String
+    +score(): int
+    +recordedAt(): long
+  }
+}
+
+' Java/Swing base types
+class JFrame <<Java Swing>>
+class JPanel <<Java Swing>>
+class JDialog <<Java Swing>>
+class JComponent <<Java Swing>>
+class JButton <<Java Swing>>
+interface Runnable <<Java>>
+interface KeyListener <<Java AWT>>
+
+' Layout helpers
+together {
+  class Main
+  class GameWindow
+}
+
+together {
+  class IntroPanel
+  class GameModeSelector
+  class CharacterSelectionPanel
+  class CreditsPanel
+  class PauseMenuPanel
+  class SettingsMenuPanel
+}
+
+together {
+  class GamePanel
+  class SurivivalGamePanel
+  class ArcadeGamePanel
+}
+
+together {
+  class CharacterDef
+  class AnimationDef
+  class ProjectileDef
+  class DefenseFormDef
+}
+
+together {
+  class GameBar
+  class CircularTimerLabel
+  class RoundsWonIndicator
+  class BattleMessageOverlay
+  class BattleUISkillButton
+}
+
+together {
+  class MatchResultPopupDialog
+  class SurvivalRetryPopupDialog
+  class SurvivalLeaderboardPopupDialog
+  class SurvivalLeaderboardEntryDialog
+}
+
+Main -[hidden]down- GameWindow
+GameWindow -[hidden]down- IntroPanel
+IntroPanel -[hidden]right- GameModeSelector
+GameModeSelector -[hidden]right- CharacterSelectionPanel
+CharacterSelectionPanel -[hidden]right- CreditsPanel
+CreditsPanel -[hidden]right- PauseMenuPanel
+PauseMenuPanel -[hidden]right- SettingsMenuPanel
+GameWindow -[hidden]down- GamePanel
+GamePanel -[hidden]right- SurivivalGamePanel
+SurivivalGamePanel -[hidden]right- ArcadeGamePanel
+AbstractGamePanel -[hidden]down- GamePanel
+CharacterDef -[hidden]right- AnimationDef
+AnimationDef -[hidden]right- ProjectileDef
+ProjectileDef -[hidden]right- DefenseFormDef
+RoundManager -[hidden]right- GameBar
+GameBar -[hidden]right- CircularTimerLabel
+CircularTimerLabel -[hidden]right- RoundsWonIndicator
+RoundsWonIndicator -[hidden]right- BattleMessageOverlay
+
+' Inheritance / implementation
+JFrame <|-- GameWindow
+JPanel <|-- AbstractGamePanel
+JPanel <|-- IntroPanel
+JPanel <|-- GameModeSelector
+JPanel <|-- CharacterSelectionPanel
+JPanel <|-- CreditsPanel
+JPanel <|-- PauseMenuPanel
+JPanel <|-- SettingsMenuPanel
+JPanel <|-- GameBar
+JPanel <|-- RoundsWonIndicator
+JPanel <|-- BattleMessageOverlay
+JComponent <|-- CircularTimerLabel
+JButton <|-- BattleUISkillButton
+JDialog <|-- MatchResultPopupDialog
+JDialog <|-- SurvivalRetryPopupDialog
+JDialog <|-- SurvivalLeaderboardPopupDialog
+JDialog <|-- SurvivalLeaderboardEntryDialog
+
+SkillExecutor <|.. AbstractGamePanel
+AbstractGamePanel <|-- GamePanel
+AbstractGamePanel <|-- SurivivalGamePanel
+AbstractGamePanel <|-- ArcadeGamePanel
+Runnable <|.. CharacterSelectionPanel
+Runnable <|.. SoundManager
+KeyListener <|.. KeyInputs
+
+' Composition / ownership
+Main ..> GameWindow : creates
+GameWindow *-- SoundManager : menu music
+GameWindow *-- IntroPanel
+GameWindow *-- GameModeSelector
+GameWindow *-- CreditsPanel
+GameWindow o-- CharacterSelectionPanel
+GameWindow o-- GamePanel
+GameWindow o-- SurivivalGamePanel
+GameWindow o-- ArcadeGamePanel
+GameWindow ..> PauseMenuPanel : creates
+GameWindow ..> SettingsMenuPanel : creates
+
+AbstractGamePanel *-- KeyInputs
+KeyInputs --> SkillExecutor
+
+GamePanel *-- SoundManager
+GamePanel *-- RoundManager
+GamePanel *-- GameBar
+GamePanel *-- CircularTimerLabel
+GamePanel *-- RoundsWonIndicator
+GamePanel *-- BattleMessageOverlay
+GamePanel --> CharacterDef
+GamePanel ..> CharacterDataLoader : loads configs
+GamePanel ..> MapGenerator : map/background
+GamePanel ..> MatchResultPopupDialog
+
+SurivivalGamePanel *-- SoundManager
+SurivivalGamePanel *-- RoundManager
+SurivivalGamePanel *-- GameBar
+SurivivalGamePanel *-- CircularTimerLabel
+SurivivalGamePanel *-- RoundsWonIndicator
+SurivivalGamePanel *-- BattleMessageOverlay
+SurivivalGamePanel --> CharacterDef
+SurivivalGamePanel --> GameMode
+SurivivalGamePanel --> BotAIDifficulty
+SurivivalGamePanel ..> BotAI : chooses skill
+SurivivalGamePanel ..> SurvivalRetryPopupDialog
+SurivivalGamePanel ..> SurvivalLeaderboardEntryDialog
+
+ArcadeGamePanel *-- SoundManager
+ArcadeGamePanel *-- RoundManager
+ArcadeGamePanel *-- GameBar
+ArcadeGamePanel *-- CircularTimerLabel
+ArcadeGamePanel *-- RoundsWonIndicator
+ArcadeGamePanel *-- BattleMessageOverlay
+ArcadeGamePanel --> CharacterDef
+ArcadeGamePanel --> GameMode
+ArcadeGamePanel --> BotAIDifficulty
+ArcadeGamePanel ..> BotAI : chooses skill
+ArcadeGamePanel ..> MapGenerator
+
+CharacterSelectionPanel --> GameWindow
+CharacterSelectionPanel --> GameMode
+CharacterSelectionPanel --> CharacterDef
+CharacterSelectionPanel *-- SoundManager
+
+IntroPanel --> GameWindow
+IntroPanel *-- SoundManager
+IntroPanel ..> SurvivalLeaderboardPopupDialog
+GameModeSelector --> GameWindow
+CreditsPanel --> GameWindow
+CreditsPanel ..> BackButton
+PauseMenuPanel --> GameWindow
+SettingsMenuPanel --> GameWindow
+
+BotAI --> CharacterDef
+BotAI *-- BotAIDifficulty
+
+CharacterDef *-- AnimationDef
+CharacterDef *-- ProjectileDef
+CharacterDef *-- DefenseFormDef
+DefenseFormDef *-- AnimationDef
+DefenseFormDef *-- ProjectileDef
+CharacterDataLoader ..> CharacterConfig
+CharacterDataLoader ..> JsonParser
+CharacterConfig --> ProjectileDef
+CharacterConfig --> DefenseFormDef
+
+MapGenerator *-- BackgroundState
+
+RoundManager --> GameMode
+RoundManager *-- OnRoundStart
+RoundManager *-- OnRoundEnd
+RoundManager *-- OnMatchEnd
+
+GameBar *-- BarType
+BattleMessageOverlay *-- MessageType
+BattleMessageOverlay *-- MessageState
+
+SurvivalLeaderboardManager *-- LeaderboardEntry
+SurvivalLeaderboardPopupDialog ..> SurvivalLeaderboardManager
+SurvivalLeaderboardEntryDialog ..> SurvivalLeaderboardManager
+
+BackButton ..> GameWindow
+ExitButton ..> GameWindow
+CreditsButton ..> GameWindow
+
+@enduml

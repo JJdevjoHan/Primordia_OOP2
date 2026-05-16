@@ -48,7 +48,7 @@ public class SurivivalGamePanel extends AbstractGamePanel {
     private static final int SURVIVAL_ROUND_HEAL_AMOUNT = 30;
 
     private static final int MAX_MP              = 100;
-    private static final int MP_REGEN_PER_TURN   = 10;   // MP regained at the start of each turn
+    private static final int MP_REGEN_PER_TURN   = 25;   // MP regained at the start of each turn
 
     private static final int[] SKILL_MP_COST = { 10, 20, 30 };
 
@@ -167,6 +167,7 @@ public class SurivivalGamePanel extends AbstractGamePanel {
 
     //HP
     private int p1HP = 100, p2HP = 100;
+    private boolean poisonTickedThisTurn = false;
     private int p1MP = MAX_MP, p2MP = MAX_MP;
     private boolean isP1Turn = true;
 
@@ -175,6 +176,9 @@ public class SurivivalGamePanel extends AbstractGamePanel {
     private int p1PoisonDamage = 0;
     private int p2PoisonTurns = 0;
     private int p2PoisonDamage = 0;
+    // RGB of the poison flash tint, set from attacker's element when poison is applied
+    private int[] p1PoisonHurtRGB = {0, 200, 0};  // default green
+    private int[] p2PoisonHurtRGB = {0, 200, 0};
     private final List<ShieldVisualEffect> shieldVisualEffects = new ArrayList<>();
     private Timer shieldVisualTimer;
     private static final long SHIELD_VISUAL_DURATION_MS = 900L;
@@ -213,6 +217,7 @@ public class SurivivalGamePanel extends AbstractGamePanel {
     private final List<JButton> skillButtons = new ArrayList<>();
     private JLabel              skillPanelTitle;
     private JLabel              turnLabel, p1HPLabel, p2HPLabel;
+    private JLabel p1TypeLabel, p2TypeLabel;  // elemental type indicators above HP bars
 
     private JLabel  scoreLabel;
 
@@ -295,14 +300,28 @@ public class SurivivalGamePanel extends AbstractGamePanel {
         this.add(skillButtonPanel);
 
         //GAMEBARRR
-        p1HealthBar = new GameBar(100, Color.GREEN,  GameBar.BarType.HP);
-        p2HealthBar = new GameBar(100, Color.RED,    GameBar.BarType.HP);
+        p1HealthBar = new GameBar(currentPlayerDef != null ? currentPlayerDef.getMaxHp() : 100, Color.GREEN,  GameBar.BarType.HP);
+        p2HealthBar = new GameBar(currentEnemyDef  != null ? currentEnemyDef.getMaxHp()  : 100, Color.RED,    GameBar.BarType.HP);
         this.add(p1HealthBar);
         this.add(p2HealthBar);
         p2HealthBar.setFillFromRight(true);
 
-        p1MpBar = new GameBar(MAX_MP, new Color(40, 100, 180), GameBar.BarType.MP);
-        p2MpBar = new GameBar(MAX_MP, new Color(40, 100, 180), GameBar.BarType.MP);
+        // -- Type indicator labels (above HP bars) ----------------------------
+        Font typeFont = FontManager.getFont(22).deriveFont(Font.BOLD);
+        p1TypeLabel = new JLabel("", SwingConstants.RIGHT);
+        p1TypeLabel.setFont(typeFont);
+        p1TypeLabel.setForeground(Color.WHITE);
+        p1TypeLabel.setOpaque(false);
+        this.add(p1TypeLabel);
+
+        p2TypeLabel = new JLabel("", SwingConstants.LEFT);
+        p2TypeLabel.setFont(typeFont);
+        p2TypeLabel.setForeground(Color.WHITE);
+        p2TypeLabel.setOpaque(false);
+        this.add(p2TypeLabel);
+
+        p1MpBar = new GameBar(currentPlayerDef != null ? currentPlayerDef.getMaxMp() : MAX_MP, new Color(40, 100, 180), GameBar.BarType.MP);
+        p2MpBar = new GameBar(currentEnemyDef  != null ? currentEnemyDef.getMaxMp()  : MAX_MP, new Color(40, 100, 180), GameBar.BarType.MP);
         this.add(p1MpBar);
         this.add(p2MpBar);
         p2MpBar.setFillFromRight(true);
@@ -335,16 +354,16 @@ public class SurivivalGamePanel extends AbstractGamePanel {
 
                     resetNatureDefenseForms();
                     if (gameMode == GameMode.SURVIVAL && round > 1) {
-                        p1HP = Math.min(100, p1HP + SURVIVAL_ROUND_HEAL_AMOUNT);
+                        p1HP = Math.min(currentPlayerDef != null ? currentPlayerDef.getMaxHp() : 100, p1HP + SURVIVAL_ROUND_HEAL_AMOUNT);
                         pickNewSurvivalEnemy();
                     } else {
-                        p1HP = 100;
+                        p1HP = currentPlayerDef != null ? currentPlayerDef.getMaxHp() : 100;
                     }
-                    p2HP = 100;
+                    p2HP = currentEnemyDef != null ? currentEnemyDef.getMaxHp() : 100;
 
                     // Restore MP fully at the start of every round
-                     p1MP = MAX_MP;
-                     p2MP = MAX_MP;
+                     p1MP = currentPlayerDef != null ? currentPlayerDef.getMaxMp() : MAX_MP;
+                     p2MP = currentEnemyDef  != null ? currentEnemyDef.getMaxMp()  : MAX_MP;
 
                      // Reset poison debuffs
                      p1PoisonTurns = 0;
@@ -429,26 +448,30 @@ public class SurivivalGamePanel extends AbstractGamePanel {
         this.add(messageOverlay);
     }
 
-    private static int mpCostFor(int skillID) {
-        if (skillID < 1 || skillID > SKILL_MP_COST.length) return 0;
-        return SKILL_MP_COST[skillID - 1];
+    private int mpCostFor(CharacterDef def, int skillID) {
+        if (def == null || skillID < 1 || skillID > 3) return 0;
+        return def.getSkillManaCost(skillID);
     }
 
 
     private boolean hasEnoughMP(boolean actingPlayerOne, int skillID) {
+        CharacterDef def = actingPlayerOne ? currentPlayerDef : currentEnemyDef;
         int available = actingPlayerOne ? p1MP : p2MP;
-        return available >= mpCostFor(skillID);
+        return available >= mpCostFor(def, skillID);
     }
 
 
     private void spendAndRegenMP(boolean actingPlayerOne, int skillID) {
-        int cost = mpCostFor(skillID);
+        CharacterDef actingDef  = actingPlayerOne ? currentPlayerDef : currentEnemyDef;
+        CharacterDef waitingDef = actingPlayerOne ? currentEnemyDef  : currentPlayerDef;
+        int cost       = mpCostFor(actingDef, skillID);
+        int waitingMax = waitingDef != null ? waitingDef.getMaxMp() : MAX_MP;
         if (actingPlayerOne) {
             p1MP = Math.max(0, p1MP - cost);
-            p2MP = Math.min(MAX_MP, p2MP + MP_REGEN_PER_TURN);
+            p2MP = Math.min(waitingMax, p2MP + MP_REGEN_PER_TURN);
         } else {
             p2MP = Math.max(0, p2MP - cost);
-            p1MP = Math.min(MAX_MP, p1MP + MP_REGEN_PER_TURN);
+            p1MP = Math.min(waitingMax, p1MP + MP_REGEN_PER_TURN);
         }
     }
 
@@ -456,13 +479,15 @@ public class SurivivalGamePanel extends AbstractGamePanel {
     private void refreshSkillButtonMPState() {
         boolean actingP1 = isP1Turn;
         int currentMP = actingP1 ? p1MP : p2MP;
+        CharacterDef activeDef = actingP1 ? currentPlayerDef : currentEnemyDef;
 
         for (int i = 0; i < skillButtons.size(); i++) {
-            int cost = mpCostFor(i + 1);
+            int cost = mpCostFor(activeDef, i + 1);
             boolean canAfford = currentMP >= cost;
             skillButtons.get(i).setEnabled(canAfford);
             // Visual cue: dim the button text when unaffordable
             skillButtons.get(i).setForeground(canAfford ? Color.BLACK : new Color(140, 140, 140));
+            skillButtons.get(i).setToolTipText("MP Cost: " + cost);
         }
     }
 
@@ -509,10 +534,12 @@ public class SurivivalGamePanel extends AbstractGamePanel {
 
         String skippedPlayer = isP1Turn ? "PLAYER 1" : "PLAYER 2";
         // Still grant regen to the player whose turn was skipped
+        int _skipMaxMp1 = currentPlayerDef != null ? currentPlayerDef.getMaxMp() : MAX_MP;
+        int _skipMaxMp2 = currentEnemyDef  != null ? currentEnemyDef.getMaxMp()  : MAX_MP;
         if (isP1Turn) {
-            p1MP = Math.min(MAX_MP, p1MP + MP_REGEN_PER_TURN);
+            p1MP = Math.min(_skipMaxMp1, p1MP + MP_REGEN_PER_TURN);
         } else {
-            p2MP = Math.min(MAX_MP, p2MP + MP_REGEN_PER_TURN);
+            p2MP = Math.min(_skipMaxMp2, p2MP + MP_REGEN_PER_TURN);
         }
 
         isP1Turn = !isP1Turn;
@@ -619,7 +646,7 @@ public class SurivivalGamePanel extends AbstractGamePanel {
 
         for (int i = 0; i < 3; i++) {
             JButton btn = new BattleUISkillButton("Skill " + (i + 1));
-            btn.setToolTipText("MP Cost: " + SKILL_MP_COST[i]);
+            // tooltip set dynamically in refreshSkillButtonMPState()
             int skillID = i + 1;
             btn.addActionListener(e -> executeSkill(skillID));
             grid.add(btn);
@@ -696,11 +723,9 @@ public class SurivivalGamePanel extends AbstractGamePanel {
             if (isPlayerHurtAnimating && !playerHurtFrames.isEmpty()) {
                 BufferedImage hurtFrame = playerHurtFrames.get(playerHurtFrameIndex);
                 if (playerHurtFlashing) {
-                    if (isPlayerPoisonHurt) {
-                        hurtFrame = applyGreenTintToNonTransparent(hurtFrame);
-                    } else {
-                        hurtFrame = applyRedTintToNonTransparent(hurtFrame);
-                    }
+                    hurtFrame = applyTintToNonTransparent(hurtFrame, isPlayerPoisonHurt
+                        ? new java.awt.Color(p1PoisonHurtRGB[0], p1PoisonHurtRGB[1], p1PoisonHurtRGB[2])
+                        : java.awt.Color.RED);
                 }
                 g2.drawImage(hurtFrame,
                         p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
@@ -711,11 +736,9 @@ public class SurivivalGamePanel extends AbstractGamePanel {
         } else if (isPlayerHurtAnimating && !playerHurtFrames.isEmpty()) {
             BufferedImage hurtFrame = playerHurtFrames.get(playerHurtFrameIndex);
             if (playerHurtFlashing) {
-                if (isPlayerPoisonHurt) {
-                    hurtFrame = applyGreenTintToNonTransparent(hurtFrame);
-                } else {
-                    hurtFrame = applyRedTintToNonTransparent(hurtFrame);
-                }
+                hurtFrame = applyTintToNonTransparent(hurtFrame, isPlayerPoisonHurt
+                    ? new java.awt.Color(p1PoisonHurtRGB[0], p1PoisonHurtRGB[1], p1PoisonHurtRGB[2])
+                    : java.awt.Color.RED);
             }
             g2.drawImage(hurtFrame,
                     p1SpriteX, p1SpriteY, getPlayerDrawWidth(), getPlayerDrawHeight(), this);
@@ -764,11 +787,9 @@ public class SurivivalGamePanel extends AbstractGamePanel {
         } else if (isEnemyHurtAnimating && !enemyHurtFrames.isEmpty()) {
             BufferedImage hurtFrame = enemyHurtFrames.get(enemyHurtFrameIndex);
             if (enemyHurtFlashing) {
-                if (isEnemyPoisonHurt) {
-                    hurtFrame = applyGreenTintToNonTransparent(hurtFrame);
-                } else {
-                    hurtFrame = applyRedTintToNonTransparent(hurtFrame);
-                }
+                hurtFrame = applyTintToNonTransparent(hurtFrame, isEnemyPoisonHurt
+                    ? new java.awt.Color(p2PoisonHurtRGB[0], p2PoisonHurtRGB[1], p2PoisonHurtRGB[2])
+                    : java.awt.Color.RED);
             }
             g2.drawImage(hurtFrame,
                     p2SpriteX + getEnemyDrawWidth(), p2SpriteY, -getEnemyDrawWidth(), getEnemyDrawHeight(), this);
@@ -962,14 +983,14 @@ public class SurivivalGamePanel extends AbstractGamePanel {
         holdPlayerDeathFrameUntilNextRound = false;
         holdEnemyDeathFrameUntilNextRound = false;
         if (encounterNumber > 1) {
-            p1HP = Math.min(100, p1HP + SURVIVAL_ROUND_HEAL_AMOUNT);
+            p1HP = Math.min(currentPlayerDef != null ? currentPlayerDef.getMaxHp() : 100, p1HP + SURVIVAL_ROUND_HEAL_AMOUNT);
             pickNewSurvivalEnemy();
         } else {
-            p1HP = 100;
+            p1HP = currentPlayerDef != null ? currentPlayerDef.getMaxHp() : 100;
         }
-        p2HP = 100;
-        p1MP = MAX_MP;
-        p2MP = MAX_MP;
+        p2HP = currentEnemyDef  != null ? currentEnemyDef.getMaxHp()  : 100;
+        p1MP = currentPlayerDef != null ? currentPlayerDef.getMaxMp() : MAX_MP;
+        p2MP = currentEnemyDef  != null ? currentEnemyDef.getMaxMp()  : MAX_MP;
         isP1Turn = true;
         resetIdleTimersForRoundStart();
         updateGameState();
@@ -1345,14 +1366,17 @@ public class SurivivalGamePanel extends AbstractGamePanel {
 
     private void applyCasterHealing(CharacterDef actor, int skillID, boolean actingPlayerOne, double timingRatio) {
         boolean shieldHeal = isValidShieldSkill(actor, skillID);
-        boolean urgent = actingPlayerOne ? p1HP <= 40 : p2HP <= 40;
+        int actingMaxHp = (actingPlayerOne ? (currentPlayerDef != null ? currentPlayerDef.getMaxHp() : 100)
+                                           : (currentEnemyDef  != null ? currentEnemyDef.getMaxHp()  : 100));
+        boolean urgent = actingPlayerOne ? p1HP <= (int)(actingMaxHp * 0.40)
+                                        : p2HP <= (int)(actingMaxHp * 0.40);
         int healAmount = shieldHeal
                 ? CombatBalance.calculateShieldHealing(actor, skillID, timingRatio, urgent)
                 : CombatBalance.calculateHealing(actor, skillID, timingRatio, urgent);
         if (actingPlayerOne) {
-            p1HP = Math.min(100, p1HP + healAmount);
+            p1HP = Math.min(currentPlayerDef != null ? currentPlayerDef.getMaxHp() : 100, p1HP + healAmount);
         } else {
-            p2HP = Math.min(100, p2HP + healAmount);
+            p2HP = Math.min(currentEnemyDef  != null ? currentEnemyDef.getMaxHp()  : 100, p2HP + healAmount);
         }
         if (shieldHeal) {
             startShieldVisualEffect(actingPlayerOne, healAmount);
@@ -1363,9 +1387,9 @@ public class SurivivalGamePanel extends AbstractGamePanel {
         int healAmount = CombatBalance.calculateSelfHeal(actor, skillID, timingRatio, damageDealt);
         if (healAmount <= 0) return;
         if (actingPlayerOne) {
-            p1HP = Math.min(100, p1HP + healAmount);
+            p1HP = Math.min(currentPlayerDef != null ? currentPlayerDef.getMaxHp() : 100, p1HP + healAmount);
         } else {
-            p2HP = Math.min(100, p2HP + healAmount);
+            p2HP = Math.min(currentEnemyDef  != null ? currentEnemyDef.getMaxHp()  : 100, p2HP + healAmount);
         }
     }
 
@@ -1482,7 +1506,7 @@ public class SurivivalGamePanel extends AbstractGamePanel {
         if (!hasEnoughMP(isP1Turn, skillID)) {
             // Flash the turn label to tell the player they can't afford it
             String original = turnLabel.getText();
-            turnLabel.setText("Not enough MP! (Need " + mpCostFor(skillID) + " MP)");
+            turnLabel.setText("Not enough MP! (Need " + mpCostFor(isP1Turn ? currentPlayerDef : currentEnemyDef, skillID) + " MP)");
             Timer restore = new Timer(1200, e -> turnLabel.setText(original));
             restore.setRepeats(false);
             restore.start();
@@ -1540,11 +1564,13 @@ public class SurivivalGamePanel extends AbstractGamePanel {
          int poisonDuration = CombatBalance.calculatePoisonDuration(actor, skillID);
          if (poisonDmg > 0 && poisonDuration > 0) {
              if (actingPlayerOne) {
-                 p2PoisonDamage = poisonDmg;
-                 p2PoisonTurns = poisonDuration;
+                 p2PoisonDamage = Math.min(p2PoisonDamage + poisonDmg, 28);
+                 p2PoisonTurns  = Math.max(p2PoisonTurns, poisonDuration);
+                 p2PoisonHurtRGB = poisonRGBForElement(actor != null ? actor.archetype : null);
              } else {
-                 p1PoisonDamage = poisonDmg;
-                 p1PoisonTurns = poisonDuration;
+                 p1PoisonDamage = Math.min(p1PoisonDamage + poisonDmg, 28);
+                 p1PoisonTurns  = Math.max(p1PoisonTurns, poisonDuration);
+                 p1PoisonHurtRGB = poisonRGBForElement(actor != null ? actor.archetype : null);
              }
          }
 
@@ -1610,6 +1636,7 @@ public class SurivivalGamePanel extends AbstractGamePanel {
             playSkillAnimation(actingPlayerOne, skillID, false, null);
         }
 
+        poisonTickedThisTurn = false;
         isP1Turn = !isP1Turn;
         updateGameState(); // restarts timer for the next player
         repaint();
@@ -1639,7 +1666,7 @@ public class SurivivalGamePanel extends AbstractGamePanel {
         if (p1HP <= 0 || p2HP <= 0) { setPlayerButtonsEnabled(true); return; }
 
         // Bot also respects MP — try its preferred skill; fall back if unaffordable
-        int preferred = BotAI.chooseSkill(p2HP, p1HP, currentEnemyDef, scaledDifficulty(), 100);
+        int preferred = BotAI.chooseSkill(p2HP, p1HP, currentEnemyDef, scaledDifficulty(), currentEnemyDef != null ? currentEnemyDef.getMaxHp() : 100);
         int chosenSkill = preferred;
         if (!hasEnoughMP(false, preferred)) {
             // Fall back to the cheapest affordable skill
@@ -1649,7 +1676,7 @@ public class SurivivalGamePanel extends AbstractGamePanel {
             }
             if (chosenSkill == 0) {
                 // No affordable skill — skip and regen
-                p2MP = Math.min(MAX_MP, p2MP + MP_REGEN_PER_TURN);
+                p2MP = Math.min(currentEnemyDef != null ? currentEnemyDef.getMaxMp() : MAX_MP, p2MP + MP_REGEN_PER_TURN);
                 isP1Turn = true;
                 updateGameState();
                 setPlayerButtonsEnabled(true);
@@ -1688,25 +1715,32 @@ public class SurivivalGamePanel extends AbstractGamePanel {
     }
 
      protected void updateGameState() {
-         p1HP = Math.max(0, Math.min(100,    p1HP));
-         p2HP = Math.max(0, Math.min(100,    p2HP));
-         p1MP = Math.max(0, Math.min(MAX_MP, p1MP));
-         p2MP = Math.max(0, Math.min(MAX_MP, p2MP));
+         int _p1MaxHp = currentPlayerDef != null ? currentPlayerDef.getMaxHp() : 100;
+         int _p2MaxHp = currentEnemyDef  != null ? currentEnemyDef.getMaxHp()  : 100;
+         int _p1MaxMp = currentPlayerDef != null ? currentPlayerDef.getMaxMp() : MAX_MP;
+         int _p2MaxMp = currentEnemyDef  != null ? currentEnemyDef.getMaxMp()  : MAX_MP;
+         p1HP = Math.max(0, Math.min(_p1MaxHp, p1HP));
+         p2HP = Math.max(0, Math.min(_p2MaxHp, p2HP));
+         p1MP = Math.max(0, Math.min(_p1MaxMp, p1MP));
+         p2MP = Math.max(0, Math.min(_p2MaxMp, p2MP));
 
-         // Apply poison damage at start of turn (after turn switch)
-         if (isP1Turn) {
-             if (p1PoisonTurns > 0) {
-                  p1HP -= p1PoisonDamage;
-                  p1PoisonTurns--;
-                  if (p1PoisonTurns <= 0) p1PoisonDamage = 0;
-                  startTimedHurt(true, POST_ATTACK_HURT_MS, true);
-             }
-         } else {
-             if (p2PoisonTurns > 0) {
-                  p2HP -= p2PoisonDamage;
-                  p2PoisonTurns--;
-                  if (p2PoisonTurns <= 0) p2PoisonDamage = 0;
-                  startTimedHurt(false, POST_ATTACK_HURT_MS, true);
+         // Apply poison damage at start of turn (after turn switch) — only once per turn.
+         if (!poisonTickedThisTurn) {
+             poisonTickedThisTurn = true;
+             if (isP1Turn) {
+                 if (p1PoisonTurns > 0) {
+                      p1HP -= p1PoisonDamage;
+                      p1PoisonTurns--;
+                      if (p1PoisonTurns <= 0) p1PoisonDamage = 0;
+                      schedulePoisonHurtWhenIdle(true);
+                 }
+             } else {
+                 if (p2PoisonTurns > 0) {
+                      p2HP -= p2PoisonDamage;
+                      p2PoisonTurns--;
+                      if (p2PoisonTurns <= 0) p2PoisonDamage = 0;
+                      schedulePoisonHurtWhenIdle(false);
+                 }
              }
          }
          // Clamp after poison
@@ -1723,6 +1757,8 @@ public class SurivivalGamePanel extends AbstractGamePanel {
 
         // Update bars
         if (p1HealthBar != null) p1HealthBar.updateValue(p1HP);
+        // -- Type indicator labels -----------------------------------------------
+        refreshTypeLabels();
         if (p2HealthBar != null) p2HealthBar.updateValue(p2HP);
         if (p1MpBar     != null) p1MpBar.updateValue(p1MP);
         if (p2MpBar     != null) p2MpBar.updateValue(p2MP);
@@ -1789,6 +1825,25 @@ public class SurivivalGamePanel extends AbstractGamePanel {
         }
     }
 
+
+    /** Updates the elemental type labels above each HP bar with matchup-aware colours. */
+    private void refreshTypeLabels() {
+        if (p1TypeLabel == null || p2TypeLabel == null) return;
+        String p1Type = currentPlayerDef != null ? currentPlayerDef.archetype : null;
+        String p2Type = currentEnemyDef  != null ? currentEnemyDef.archetype  : null;
+
+        p1TypeLabel.setText(p1Type != null && !p1Type.isBlank() ? p1Type : "???");
+        p2TypeLabel.setText(p2Type != null && !p2Type.isBlank() ? p2Type : "???");
+
+        boolean p1Adv = CombatBalance.hasElementAdvantage(currentPlayerDef, currentEnemyDef);
+        boolean p1Dis = CombatBalance.hasElementAdvantage(currentEnemyDef,  currentPlayerDef);
+        p1TypeLabel.setForeground(p1Adv ? new Color(80, 220, 100) : p1Dis ? new Color(230, 70, 70) : Color.WHITE);
+
+        boolean p2Adv = CombatBalance.hasElementAdvantage(currentEnemyDef,  currentPlayerDef);
+        boolean p2Dis = CombatBalance.hasElementAdvantage(currentPlayerDef, currentEnemyDef);
+        p2TypeLabel.setForeground(p2Adv ? new Color(80, 220, 100) : p2Dis ? new Color(230, 70, 70) : Color.WHITE);
+    }
+
     private void repositionUI() {
         // HP labels (invisible — kept so no NPE)
         if (p1HPLabel != null) p1HPLabel.setBounds(0, 0, 0, 0);
@@ -1820,6 +1875,11 @@ public class SurivivalGamePanel extends AbstractGamePanel {
         if (p2HealthBar != null) p2HealthBar.setBounds(rightX, barTop, hpWidth, hpHeight);
         if (p2MpBar != null) p2MpBar.setBounds(rightX + indicatorWidth + indicatorGap, barTop + hpHeight + barSpacing, manaWidth, manaHeight);
         if (p2RoundsWon != null) p2RoundsWon.setBounds(rightX, barTop + hpHeight + barSpacing - 2, indicatorWidth, 28);
+
+        // Type labels sit just above the HP bars
+        int typeLabelH = 26;
+        if (p1TypeLabel != null) p1TypeLabel.setBounds(leftX, barTop - typeLabelH - 2, hpWidth, typeLabelH);
+        if (p2TypeLabel != null) p2TypeLabel.setBounds(rightX, barTop - typeLabelH - 2, hpWidth, typeLabelH);
 
         if (countdownLabel != null) countdownLabel.setBounds(centerX, barTop - 4, centerDiameter, centerDiameter);
 
@@ -2930,6 +2990,21 @@ public class SurivivalGamePanel extends AbstractGamePanel {
         else                enemyHurtDelayTimer  = delayTimer;
     }
 
+    private void schedulePoisonHurtWhenIdle(boolean isPlayer) {
+        Timer[] holder = new Timer[1];
+        Timer poll = new Timer(80, null);
+        poll.addActionListener(e -> {
+            boolean animsRunning = isAnyCombatAnimationActive()
+                || (isPlayer ? isPlayerHurtAnimating : isEnemyHurtAnimating);
+            if (!animsRunning) {
+                holder[0].stop();
+                startTimedHurt(isPlayer, 350, true);
+            }
+        });
+        holder[0] = poll;
+        poll.start();
+    }
+
     private void startTimedHurt(boolean isPlayer, int durationMs, boolean fromPoison) {
         if (isPlayer) {
             if (playerHurtFrames.isEmpty()) return;
@@ -2937,7 +3012,7 @@ public class SurivivalGamePanel extends AbstractGamePanel {
             if (playerHurtWindowTimer != null) playerHurtWindowTimer.stop();
             if (playerHurtFlashTimer  != null) playerHurtFlashTimer.stop();
             isPlayerHurtAnimating = true; playerHurtFrameIndex = 0;
-            playerHurtFlashing = false;
+            playerHurtFlashing = fromPoison;
             isPlayerPoisonHurt = fromPoison;
             playerHurtTimer = new Timer(DEFAULT_HURT_DELAY_MS, null);
             playerHurtTimer.addActionListener(e -> {
@@ -2946,13 +3021,14 @@ public class SurivivalGamePanel extends AbstractGamePanel {
                 repaint();
             });
             playerHurtTimer.start();
-            // Flash timer: toggle red flash every 150ms
-            playerHurtFlashTimer = new Timer(150, null);
-            playerHurtFlashTimer.addActionListener(e -> {
-                playerHurtFlashing = !playerHurtFlashing;
-                repaint();
-            });
-            playerHurtFlashTimer.start();
+            if (!fromPoison) {
+                playerHurtFlashTimer = new Timer(150, null);
+                playerHurtFlashTimer.addActionListener(e -> {
+                    playerHurtFlashing = !playerHurtFlashing;
+                    repaint();
+                });
+                playerHurtFlashTimer.start();
+            }
             playerHurtWindowTimer = new Timer(durationMs, null);
             playerHurtWindowTimer.setRepeats(false);
             playerHurtWindowTimer.addActionListener(e -> stopHurtTimeline(true));
@@ -2963,7 +3039,7 @@ public class SurivivalGamePanel extends AbstractGamePanel {
             if (enemyHurtWindowTimer != null) enemyHurtWindowTimer.stop();
             if (enemyHurtFlashTimer  != null) enemyHurtFlashTimer.stop();
             isEnemyHurtAnimating = true; enemyHurtFrameIndex = 0;
-            enemyHurtFlashing = false;
+            enemyHurtFlashing = fromPoison;
             isEnemyPoisonHurt = fromPoison;
             enemyHurtTimer = new Timer(DEFAULT_HURT_DELAY_MS, null);
             enemyHurtTimer.addActionListener(e -> {
@@ -2972,13 +3048,14 @@ public class SurivivalGamePanel extends AbstractGamePanel {
                 repaint();
             });
             enemyHurtTimer.start();
-            // Flash timer: toggle red flash every 150ms
-            enemyHurtFlashTimer = new Timer(150, null);
-            enemyHurtFlashTimer.addActionListener(e -> {
-                enemyHurtFlashing = !enemyHurtFlashing;
-                repaint();
-            });
-            enemyHurtFlashTimer.start();
+            if (!fromPoison) {
+                enemyHurtFlashTimer = new Timer(150, null);
+                enemyHurtFlashTimer.addActionListener(e -> {
+                    enemyHurtFlashing = !enemyHurtFlashing;
+                    repaint();
+                });
+                enemyHurtFlashTimer.start();
+            }
             enemyHurtWindowTimer = new Timer(durationMs, null);
             enemyHurtWindowTimer.setRepeats(false);
             enemyHurtWindowTimer.addActionListener(e -> stopHurtTimeline(false));
@@ -3026,6 +3103,16 @@ public class SurivivalGamePanel extends AbstractGamePanel {
             }
         }
         return tinted;
+    }
+
+    /** Returns the RGB tint for poison flash based on the attacker's element. */
+    private static int[] poisonRGBForElement(String element) {
+        if (element == null) return new int[]{0, 200, 0};
+        return switch (element.toLowerCase()) {
+            case "fire"    -> new int[]{255, 60,  0};   // burn — orange-red
+            case "thunder" -> new int[]{80,  140, 255}; // electrocuted — electric blue
+            default        -> new int[]{0,   200, 0};   // poison — green
+        };
     }
 
     private void startDeadAnimation(boolean isPlayer) {
@@ -3112,7 +3199,9 @@ public class SurivivalGamePanel extends AbstractGamePanel {
                     .withWeaknesses(config.weaknesses)
                     .withSkillShieldValues(config.skill1ShieldValue, config.skill2ShieldValue, config.skill3ShieldValue)
                     .withSkillHealValues(config.skill1HealValue, config.skill2HealValue, config.skill3HealValue)
-                    .withSkillSelfHeals(config.skill1SelfHeal, config.skill2SelfHeal, config.skill3SelfHeal));
+                    .withSkillSelfHeals(config.skill1SelfHeal, config.skill2SelfHeal, config.skill3SelfHeal)
+                    .withStats(config.getMaxHp(), config.getMaxMp())
+                    .withSkillManaCosts(config.getSkill1ManaCost(), config.getSkill2ManaCost(), config.getSkill3ManaCost()));
         }
         if (!defs.isEmpty()) return List.copyOf(defs);
 
