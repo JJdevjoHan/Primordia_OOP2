@@ -238,7 +238,7 @@
           "hurtTriggerBufferSeconds": 0.12,
           "description": "Cuts through one enemy with a burning sword arc, dealing strong fire damage.",
           "manaCost": 45,
-          "power": 42,
+          "power": 999,
           "cooldownTurns": 0,
           "target": "single_enemy"
         },
